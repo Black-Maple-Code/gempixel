@@ -4,6 +4,7 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
+import { compileCanvasPartnerUrl } from './engine/checkout';
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
@@ -178,6 +179,15 @@ export function App() {
   const updatePriceDb = (qty: 200 | 500 | 1000 | 2000, val: number) => {
     setPriceDb(prev => ({ ...prev, [qty]: val }));
   };
+
+  const [canvasTemplate, setCanvasTemplate] = useState<string>(() => {
+    return localStorage.getItem('gempixel_canvas_template') || 
+           'https://www.heartfuldiamonds.com/products/custom-diamond-painting-kit?width={width}&height={height}&shape={shape}';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_canvas_template', canvasTemplate);
+  }, [canvasTemplate]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<CanvasViewer | null>(null);
@@ -708,6 +718,16 @@ export function App() {
   const artistProfitExact = laborMarkupExact;
   const artistProfitSafety = laborMarkupSafety;
 
+  const handleCanvasOrder = () => {
+    const url = compileCanvasPartnerUrl({
+      baseUrlTemplate: canvasTemplate,
+      widthCm: cols / 4,
+      heightCm: rows / 4,
+      shape: drillStyle
+    });
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
       {/* Left Sidebar Control Panel */}
@@ -1157,6 +1177,39 @@ export function App() {
                     <span className="font-semibold text-slate-400 font-mono">${suppliesCostSafety.toFixed(2)}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Partnerships & Ordering */}
+            <div className="flex flex-col gap-2 border-t border-slate-800/80 pt-3 mt-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Partnerships & Ordering</span>
+              
+              <div className="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60">
+                {/* Canvas integration */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={handleCanvasOrder}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+                  >
+                    <span>Order Custom Sized Canvas</span>
+                  </button>
+                </div>
+                
+                {/* Affiliate Configuration expander */}
+                <details className="text-[11px] text-slate-400 mt-1 cursor-pointer">
+                  <summary className="font-semibold text-[10px] uppercase text-indigo-400 select-none">Affiliate & Partner Settings</summary>
+                  <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-850">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Base URL Template</label>
+                      <input
+                        type="text"
+                        value={canvasTemplate}
+                        onChange={(e) => setCanvasTemplate((e.target as HTMLInputElement).value)}
+                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono"
+                      />
+                    </div>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
