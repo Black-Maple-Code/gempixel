@@ -16,13 +16,13 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Support Art Dot 100-color and 200-color manufacturer indexes (Validated in Phase 01: Core Engine & Color Mathematics).
 - Load local images (JPEG, PNG, etc.) in-browser (Validated in Phase 02: Client-side Engine & Worker Architecture).
 - Specify canvas size using two modes: direct grid dimensions (rows/cols) or physical dimensions (cm/inches) with standard density calculations (2.5mm per dot, 10 dots/inch) (Validated in Phase 02: Client-side Engine & Worker Architecture).
+- Enable visual inspection of the grid with zoom/pan and custom styling (square vs. round drill representation) (Validated in Phase 03: Canvas Viewer & Zoom/Pan Interaction).
 
 ### Active
 
 - [ ] Render a pixelated grid representation of the image.
 - [ ] Support custom sub-palette selection/filtering (allowing the artist to include or exclude specific colors from matching).
 - [ ] Display a supply specification report showing required color codes, names, and exact quantities of dots needed.
-- [ ] Enable visual inspection of the grid with zoom/pan and custom styling (square vs. round drill representation).
 
 ### Out of Scope
 
@@ -52,6 +52,10 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | Downsampling Algorithm | Box Sampling (Area Averaging) for accurate color representation | — Implemented in ingest.ts (Phase 02) |
 | Concurrency Engine | Single persistent Web Worker with batching and abort signaling | — Implemented in matcher.worker.ts (Phase 02) |
 | RGBA Match Cache | Persisted across dimension changes, cleared only on palette edits | — Implemented in worker-client.ts (Phase 02) |
+| Transform Handling | Pointer Events (drag pan) + Wheel Listener (scale zoom) | — Implemented in viewer.ts (Phase 03) |
+| Zoom Anchor | Cursor-centered offset updates | — Implemented in viewer.ts (Phase 03) |
+| Viewport Rendering | Double-buffered offscreen canvas blitted to screen | — Implemented in viewer.ts (Phase 03) |
+| Grid Gaps Backing | Slate Gray `#2D3748` drawn behind cells | — Implemented in viewer.ts (Phase 03) |
 
 ## Evolution
 
@@ -71,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 02 completion*
+*Last updated: 2026-07-07 after Phase 03 completion*
