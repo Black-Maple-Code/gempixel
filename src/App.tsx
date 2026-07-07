@@ -23,11 +23,37 @@ export const STANDARD_SIZES = [
   { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
 ];
 
-export function calculateSafetyPurchase(exactCount: number): { safety: number; packets: number; purchase: number } {
+export function calculateSafetyPurchase(exactCount: number, bagSize: number = 200): { safety: number; packets: number; purchase: number } {
   const safety = Math.ceil(Math.round(exactCount * 110) / 100);
-  const packets = Math.ceil(safety / 200);
-  const purchase = packets * 200;
+  const packets = Math.ceil(safety / bagSize);
+  const purchase = packets * bagSize;
   return { safety, packets, purchase };
+}
+
+export function getDefaultPacketCost(type: 'standard' | 'ab' | 'glow' | 'crystal', bagSize: number): number {
+  if (bagSize === 200) {
+    if (type === 'standard') return 0.25;
+    if (type === 'ab') return 0.35;
+    if (type === 'glow') return 0.45;
+    return 0.50; // crystal
+  }
+  if (bagSize === 1000) {
+    if (type === 'standard') return 0.80;
+    if (type === 'ab') return 1.10;
+    if (type === 'glow') return 1.40;
+    return 1.60;
+  }
+  if (bagSize === 2000) {
+    if (type === 'standard') return 1.40;
+    if (type === 'ab') return 1.90;
+    if (type === 'glow') return 2.40;
+    return 2.70;
+  }
+  // 5000 drills bulk bag
+  if (type === 'standard') return 3.00;
+  if (type === 'ab') return 4.00;
+  if (type === 'glow') return 5.00;
+  return 6.00;
 }
 
 export function hexToHue(hex: string): number {
@@ -91,6 +117,7 @@ export function App() {
   const [matchResult, setMatchResult] = useState<{ matches: string[]; counts: Record<string, number> } | null>(null);
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
+  const [drillBagSize, setDrillBagSize] = useState<number>(200);
   const [laborFee, setLaborFee] = useState(25.0);
   const [markupType, setMarkupType] = useState<'fixed' | 'percent'>('fixed');
 
@@ -188,13 +215,10 @@ export function App() {
     }
   }, [cols, rows, unit]);
 
-  // Synchronize drillPacketCost defaults when drillType changes
+  // Synchronize drillPacketCost defaults when drillType or drillBagSize changes
   useEffect(() => {
-    if (drillType === 'standard') setDrillPacketCost(0.25);
-    else if (drillType === 'ab') setDrillPacketCost(0.35);
-    else if (drillType === 'glow') setDrillPacketCost(0.45);
-    else if (drillType === 'crystal') setDrillPacketCost(0.50);
-  }, [drillType]);
+    setDrillPacketCost(getDefaultPacketCost(drillType, drillBagSize));
+  }, [drillType, drillBagSize]);
 
   // Handle changes to unit selector
   const handleUnitChange = (newUnit: 'cm' | 'inch' | 'grid') => {
@@ -528,7 +552,7 @@ export function App() {
   const sortedMatches = Object.entries(matchResult?.counts || {})
     .map(([code, count]) => {
       const colorInfo = DMC_PALETTE.find(c => c.dmc === code);
-      const metrics = calculateSafetyPurchase(count);
+      const metrics = calculateSafetyPurchase(count, drillBagSize);
       return {
         code,
         count,
@@ -562,7 +586,7 @@ export function App() {
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
   const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
 
-  const exactDrillCost = (totalExactDrills / 200) * drillPacketCost;
+  const exactDrillCost = (totalExactDrills / drillBagSize) * drillPacketCost;
   const safetyDrillCost = totalPackets * drillPacketCost;
 
   const suppliesCostExact = canvasBaseCost + exactDrillCost;
@@ -573,6 +597,9 @@ export function App() {
 
   const totalQuoteExact = suppliesCostExact + laborMarkupExact;
   const totalQuoteSafety = suppliesCostSafety + laborMarkupSafety;
+
+  const artistProfitExact = laborMarkupExact;
+  const artistProfitSafety = laborMarkupSafety;
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
@@ -850,16 +877,31 @@ export function App() {
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Packet Cost ($ / 200 Drills)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={drillPacketCost}
-                onInput={(e) => setDrillPacketCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-              />
+             <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Bag Size</label>
+                <select
+                  value={drillBagSize}
+                  onChange={(e) => setDrillBagSize(parseInt((e.target as HTMLSelectElement).value, 10))}
+                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[26px]"
+                >
+                  <option value={200}>200 Drills</option>
+                  <option value={1000}>1,000 Drills</option>
+                  <option value={2000}>2,000 Drills</option>
+                  <option value={5000}>5,000 Drills</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bag Price ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={drillPacketCost}
+                  onInput={(e) => setDrillPacketCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -891,39 +933,55 @@ export function App() {
             <div className="flex flex-col gap-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Price Estimation</span>
               
-              <div className="flex flex-col gap-2.5 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60 text-[11px] text-slate-350">
+              <div className="flex flex-col gap-3 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60 text-[11px] text-slate-350">
                 <div className="text-slate-400 font-bold border-b border-slate-850/50 pb-1.5 mb-1.5 flex justify-between">
                   <span>Commission Models</span>
                   <span className="text-[9px] text-indigo-400 font-medium normal-case">Canvas included</span>
                 </div>
                 
-                <div className="flex flex-col gap-1 mb-2 pb-2 border-b border-slate-850/30">
-                  <div className="flex justify-between font-bold text-slate-400">
-                    <span>Exact Drill Count ({totalExactDrills.toLocaleString()} pcs)</span>
-                    <span className="text-indigo-400 font-mono">${totalQuoteExact.toFixed(2)}</span>
+                {/* Exact Count Model */}
+                <div className="flex flex-col gap-1.5 mb-2 pb-2.5 border-b border-slate-850/30">
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-bold text-slate-200">Exact Drill Count ({totalExactDrills.toLocaleString()} pcs)</span>
                   </div>
-                  <div className="flex justify-between text-[10px] pl-2">
-                    <span className="text-slate-500">Materials:</span>
-                    <span className="font-semibold text-slate-355 font-mono">${suppliesCostExact.toFixed(2)}</span>
+                  
+                  <div className="flex justify-between items-center bg-slate-900/40 p-1.5 rounded border border-slate-850/40 my-1">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
+                      <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteExact.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Profit</span>
+                      <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitExact.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-[10px] pl-2">
-                    <span className="text-slate-500">Labor Fee:</span>
-                    <span className="font-semibold text-slate-355 font-mono">${laborMarkupExact.toFixed(2)}</span>
+
+                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-500">
+                    <span>Material Costs (Canvas + Drills):</span>
+                    <span className="font-semibold text-slate-400 font-mono">${suppliesCostExact.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between font-bold text-slate-400">
-                    <span>Safety Bags Count ({totalSafetyDrills.toLocaleString()} pcs)</span>
-                    <span className="text-violet-400 font-mono">${totalQuoteSafety.toFixed(2)}</span>
+                {/* Safety Bags Model */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-bold text-slate-200">Safety Bags Model ({totalSafetyDrills.toLocaleString()} pcs)</span>
                   </div>
-                  <div className="flex justify-between text-[10px] pl-2">
-                    <span className="text-slate-500">Materials ({totalPackets} bags):</span>
-                    <span className="font-semibold text-slate-355 font-mono">${suppliesCostSafety.toFixed(2)}</span>
+                  
+                  <div className="flex justify-between items-center bg-slate-900/40 p-1.5 rounded border border-slate-850/40 my-1">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
+                      <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteSafety.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Profit</span>
+                      <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitSafety.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-[10px] pl-2">
-                    <span className="text-slate-500">Labor Fee:</span>
-                    <span className="font-semibold text-slate-355 font-mono">${laborMarkupSafety.toFixed(2)}</span>
+
+                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-500">
+                    <span>Material Costs ({totalPackets} bag(s) of {drillBagSize}):</span>
+                    <span className="font-semibold text-slate-400 font-mono">${suppliesCostSafety.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -1199,7 +1257,7 @@ export function App() {
                       Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th className="py-1.5 px-2 text-right">Safety</th>
-                    <th className="py-1.5 px-2 text-right">Bags</th>
+                    <th className="py-1.5 px-2 text-right text-ellipsis overflow-hidden truncate max-w-[60px]" title={`Bags of size ${drillBagSize}`}>Bags ({drillBagSize})</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1239,7 +1297,7 @@ export function App() {
                         <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
                         <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
                         <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono">
-                          {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * 200})</span>
+                          {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
                         </td>
                       </tr>
                     );
@@ -1276,7 +1334,7 @@ export function App() {
                   <th className="p-2 border border-gray-300">Color Name</th>
                   <th className="p-2 text-right border border-gray-300">Exact Dots</th>
                   <th className="p-2 text-right border border-gray-300">Safety Marg. (+10%)</th>
-                  <th className="p-2 text-right border border-gray-300">Recommended 200-Drill Packets</th>
+                  <th className="p-2 text-right border border-gray-300">Recommended {drillBagSize}-Drill Packets</th>
                 </tr>
               </thead>
               <tbody>
@@ -1296,7 +1354,7 @@ export function App() {
                     <td className="p-2 text-right border border-gray-300">{row.count}</td>
                     <td className="p-2 text-right border border-gray-300">{row.safety}</td>
                     <td className="p-2 text-right font-bold border border-gray-300">
-                      {row.packets} pack(s) ({row.packets * 200} drills)
+                      {row.packets} pack(s) ({row.packets * drillBagSize} drills)
                     </td>
                   </tr>
                 ))}

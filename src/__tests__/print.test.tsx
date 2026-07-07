@@ -15,4 +15,18 @@ describe('Safety margin calculations', () => {
     expect(result.packets).toBe(1);
     expect(result.purchase).toBe(200);
   });
+
+  it('supports custom bulk bag sizes in safety purchase calculations', () => {
+    // 350 exact drills with 1000 bulk bag size
+    const resultLarge = calculateSafetyPurchase(350, 1000);
+    expect(resultLarge.safety).toBe(385);
+    expect(resultLarge.packets).toBe(1);
+    expect(resultLarge.purchase).toBe(1000);
+
+    // 1500 exact drills with 1000 bulk bag size
+    const resultTwoBags = calculateSafetyPurchase(1500, 1000);
+    expect(resultTwoBags.safety).toBe(1650);
+    expect(resultTwoBags.packets).toBe(2);
+    expect(resultTwoBags.purchase).toBe(2000);
+  });
 });
