@@ -29,7 +29,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Interactive Grid Preview
 
-- [ ] **VIEW-01**: User can zoom and pan the preview grid using pointer events.
+- [x] **VIEW-01**: User can zoom and pan the preview grid using pointer events.
 - [ ] **VIEW-02**: User can toggle between Square (full grid cell coverage) and Round (circular representation showing gaps) drill styles.
 - [ ] **VIEW-03**: User can highlight occurrences of a selected color in the grid preview by selecting it in the legend/report.
 
@@ -70,7 +70,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | PALETTE-01 | Phase 1 | Complete |
 | PALETTE-02 | Phase 1 | Complete |
 | PALETTE-03 | Phase 4 | Pending |
-| VIEW-01 | Phase 3 | Pending |
+| VIEW-01 | Phase 3 | Complete |
 | VIEW-02 | Phase 3 | Pending |
 | VIEW-03 | Phase 4 | Pending |
 | REPORT-01 | Phase 4 | Pending |
