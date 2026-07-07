@@ -16,7 +16,11 @@ export const STANDARD_SIZES = [
   { name: '12 x 12 inch', value: '12x12-inch', width: 12, height: 12, unit: 'inch' },
   { name: '12 x 16 inch', value: '12x16-inch', width: 12, height: 16, unit: 'inch' },
   { name: '16 x 20 inch', value: '16x20-inch', width: 16, height: 20, unit: 'inch' },
-  { name: '20 x 28 inch', value: '20x28-inch', width: 20, height: 28, unit: 'inch' }
+  { name: '20 x 28 inch', value: '20x28-inch', width: 20, height: 28, unit: 'inch' },
+  { name: '40 x 30 grid', value: '40x30-grid', width: 40, height: 30, unit: 'grid' },
+  { name: '80 x 53 grid', value: '80x53-grid', width: 80, height: 53, unit: 'grid' },
+  { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
+  { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
 ];
 
 export function calculateSafetyPurchase(exactCount: number): { safety: number; packets: number; purchase: number } {
@@ -248,6 +252,9 @@ export function App() {
       } else if (preset.unit === 'inch') {
         setCols(Math.max(1, Math.round(preset.width * 10)));
         setRows(Math.max(1, Math.round(preset.height * 10)));
+      } else if (preset.unit === 'grid') {
+        setCols(preset.width);
+        setRows(preset.height);
       }
     }
   };

@@ -426,6 +426,15 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(widthEl.value).toBe('30');
       expect(heightEl.value).toBe('40');
     });
+
+    // Select standard grid preset: '80x53-grid'
+    presetSelect.value = '80x53-grid';
+    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => {
+      expect(widthEl.value).toBe('80');
+      expect(heightEl.value).toBe('53');
+    });
   });
 
   it('collapses and expands the left sidebar correctly on trigger clicks', async () => {
