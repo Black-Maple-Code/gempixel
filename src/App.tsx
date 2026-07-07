@@ -30,6 +30,27 @@ export function calculateSafetyPurchase(exactCount: number): { safety: number; p
   return { safety, packets, purchase };
 }
 
+export function hexToHue(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  if (max !== min) {
+    const d = max - min;
+    if (max === r) {
+      h = (g - b) / d + (g < b ? 6 : 0);
+    } else if (max === g) {
+      h = (b - r) / d + 2;
+    } else if (max === b) {
+      h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return h * 360;
+}
+
 export function App() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [cols, setCols] = useState(80);
@@ -44,6 +65,8 @@ export function App() {
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
+  const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
     try {
       const saved = localStorage.getItem('gempixel_recent_images');
@@ -454,6 +477,15 @@ export function App() {
     setRecentImages(prev => prev.filter(x => x.id !== id));
   };
 
+  const handleHeaderClick = (type: 'color' | 'code' | 'name' | 'quantity') => {
+    if (sortBy === type) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortBy(type);
+      setSortAsc(type === 'name' || type === 'code' || type === 'color');
+    }
+  };
+
   const printReport = () => {
     window.print();
   };
@@ -471,7 +503,25 @@ export function App() {
         ...metrics
       };
     })
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      let diff = 0;
+      if (sortBy === 'quantity') {
+        diff = a.count - b.count;
+      } else if (sortBy === 'name') {
+        diff = a.name.localeCompare(b.name);
+      } else if (sortBy === 'code') {
+        const numA = parseInt(a.code, 10);
+        const numB = parseInt(b.code, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          diff = numA - numB;
+        } else {
+          diff = a.code.localeCompare(b.code);
+        }
+      } else if (sortBy === 'color') {
+        diff = hexToHue(a.hex) - hexToHue(b.hex);
+      }
+      return sortAsc ? diff : -diff;
+    });
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
@@ -750,7 +800,7 @@ export function App() {
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
               </svg>
-              <span>Fit to Container</span>
+              <span>Zoom</span>
             </button>
           </div>
         )}
@@ -901,10 +951,34 @@ export function App() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
                   <tr>
-                    <th className="py-1.5 px-2 w-8 text-center">Color</th>
-                    <th className="py-1.5 px-2 w-12 text-center">DMC</th>
-                    <th className="py-1.5 px-2 truncate max-w-[100px]">Name</th>
-                    <th className="py-1.5 px-2 text-right">Exact</th>
+                    <th 
+                      onClick={() => handleHeaderClick('color')}
+                      className="py-1.5 px-2 w-8 text-center cursor-pointer hover:text-slate-200 transition-colors"
+                      title="Sort by Color Hue"
+                    >
+                      Color{sortBy === 'color' && (sortAsc ? ' ▲' : ' ▼')}
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderClick('code')}
+                      className="py-1.5 px-2 w-12 text-center cursor-pointer hover:text-slate-200 transition-colors"
+                      title="Sort by DMC Code"
+                    >
+                      DMC{sortBy === 'code' && (sortAsc ? ' ▲' : ' ▼')}
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderClick('name')}
+                      className="py-1.5 px-2 truncate max-w-[100px] cursor-pointer hover:text-slate-200 transition-colors"
+                      title="Sort by Color Name"
+                    >
+                      Name{sortBy === 'name' && (sortAsc ? ' ▲' : ' ▼')}
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderClick('quantity')}
+                      className="py-1.5 px-2 text-right cursor-pointer hover:text-slate-200 transition-colors"
+                      title="Sort by Quantity Needed"
+                    >
+                      Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
+                    </th>
                     <th className="py-1.5 px-2 text-right">Safety</th>
                     <th className="py-1.5 px-2 text-right">Bags</th>
                   </tr>

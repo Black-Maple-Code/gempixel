@@ -725,9 +725,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(container.querySelector('canvas')).not.toBeNull();
     });
 
-    // Query and click Fit to Container button
+    // Query and click Zoom button
     const fitBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Fit to Container')
+      (btn) => btn.textContent?.includes('Zoom')
     );
     expect(fitBtn).not.toBeUndefined();
     fitBtn!.dispatchEvent(new Event('click', { bubbles: true }));
@@ -735,5 +735,27 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     expect(mockFitToContainer).toHaveBeenCalled();
 
     HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
+
+  it('supports sorting columns in the DMC Supply List on header clicks', async () => {
+    render(<App />, container);
+
+    // Click DMC header to sort by code
+    const dmcHeader = Array.from(container.querySelectorAll('.no-print th')).find(
+      (th) => th.textContent?.includes('DMC')
+    ) as HTMLElement;
+    expect(dmcHeader).not.toBeUndefined();
+
+    // Click it to trigger sort
+    dmcHeader.click();
+    await vi.waitFor(() => {
+      expect(dmcHeader.textContent).toContain('▲');
+    });
+
+    // Click it again to reverse sort direction
+    dmcHeader.click();
+    await vi.waitFor(() => {
+      expect(dmcHeader.textContent).toContain('▼');
+    });
   });
 });
