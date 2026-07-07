@@ -1276,6 +1276,24 @@ export function App() {
                       </select>
                     </div>
                     <div className="flex flex-col gap-1">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Partner Preset</label>
+                      <select
+                        onChange={(e) => {
+                          const val = (e.target as HTMLSelectElement).value;
+                          if (val === 'adiamondpainting') {
+                            setCanvasTemplate('https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}');
+                          } else if (val === 'pandacrafty') {
+                            setCanvasTemplate('https://pandacraftysteam.com/products/custom-diamond-painting-kit?width={width}&height={height}&shape={shape}');
+                          }
+                        }}
+                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
+                        value={canvasTemplate.includes('pandacraftysteam') || canvasTemplate.includes('pandacrafty') ? 'pandacrafty' : 'adiamondpainting'}
+                      >
+                        <option value="adiamondpainting">ADiamondPainting</option>
+                        <option value="pandacrafty">Panda Crafty</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
                       <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Base URL Template</label>
                       <input
                         type="text"

@@ -36,7 +36,7 @@ describe('Checkout and Sizing Integration', () => {
 
       const result = compileShopifyCartLink(items, 'tag123', 'ref');
       expect(result.url).toContain('diamonddrillsusa.com/cart/');
-      expect(result.url).toContain('29774636089458:1'); // 310 square 200 variant ID
+      expect(result.url).toContain('29699641213010:1'); // 310 square 200 variant ID
       expect(result.url).toContain('ref=tag123');
       expect(result.url).toContain('attributes%5Bref_tag%5D=tag123');
       expect(result.isUrlTooLong).toBe(false);
