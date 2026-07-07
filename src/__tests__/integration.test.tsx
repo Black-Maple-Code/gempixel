@@ -313,4 +313,97 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
+
+  it('automatically adjusts height to stay in ratio with the loaded image when width changes', async () => {
+    // 1. Stub FileReader and Image with naturalWidth = 100, naturalHeight = 50 (aspect ratio = 2)
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 100,
+      naturalHeight: 50,
+      width: 100,
+      height: 50,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    // Stub Canvas context for image loader pixels extraction
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const mockContext = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(100 * 50 * 4),
+        width: 100,
+        height: 50
+      })
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') return mockContext as any;
+      return null;
+    });
+
+    render(<App />, container);
+
+    // 2. Load the image
+    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
+    const file = new File([''], 'test.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for image onload macro-task
+    await vi.waitFor(() => {
+      const canvas = container.querySelector('canvas');
+      expect(canvas).not.toBeNull();
+    });
+
+    // 3. Find sizing inputs and trigger width change
+    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
+    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
+
+    // Change width to 20
+    widthEl.value = '20';
+    widthEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Wait for the render cycle to complete and verify ratio
+    await vi.waitFor(() => {
+      expect(widthEl.value).toBe('20');
+      expect(heightEl.value).toBe('10');
+    });
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
+
+  it('updates dimensions and units when preset canvas size changes', async () => {
+    render(<App />, container);
+
+    // Query specifically the second select element (Canvas Preset Size)
+    const selects = container.querySelectorAll('select');
+    const presetSelect = selects[1] as HTMLSelectElement;
+    expect(presetSelect).not.toBeNull();
+
+    // Select standard size preset: '30x40-cm' (width: 30, height: 40, unit: cm)
+    presetSelect.value = '30x40-cm';
+    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
+    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
+
+    // Wait for async Preact state update and render
+    await vi.waitFor(() => {
+      expect(widthEl.value).toBe('30');
+      expect(heightEl.value).toBe('40');
+    });
+  });
 });

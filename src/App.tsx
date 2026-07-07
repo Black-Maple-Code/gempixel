@@ -4,6 +4,20 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 
+export const STANDARD_SIZES = [
+  { name: 'Custom size', value: 'custom' },
+  { name: '20 x 25 cm', value: '20x25-cm', width: 20, height: 25, unit: 'cm' },
+  { name: '30 x 30 cm', value: '30x30-cm', width: 30, height: 30, unit: 'cm' },
+  { name: '30 x 40 cm', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
+  { name: '40 x 50 cm', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
+  { name: '50 x 70 cm', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
+  { name: '8 x 10 inch', value: '8x10-inch', width: 8, height: 10, unit: 'inch' },
+  { name: '12 x 12 inch', value: '12x12-inch', width: 12, height: 12, unit: 'inch' },
+  { name: '12 x 16 inch', value: '12x16-inch', width: 12, height: 16, unit: 'inch' },
+  { name: '16 x 20 inch', value: '16x20-inch', width: 16, height: 20, unit: 'inch' },
+  { name: '20 x 28 inch', value: '20x28-inch', width: 20, height: 28, unit: 'inch' }
+];
+
 export function calculateSafetyPurchase(exactCount: number): { safety: number; packets: number; purchase: number } {
   const safety = Math.ceil(Math.round(exactCount * 110) / 100);
   const packets = Math.ceil(safety / 200);
@@ -19,6 +33,7 @@ export function App() {
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('40');
   const [heightInput, setHeightInput] = useState<string>('30');
+  const [selectedPreset, setSelectedPreset] = useState<string>('custom');
 
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -62,21 +77,26 @@ export function App() {
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
+    const activeEl = document.activeElement;
+    const widthFocused = activeEl && activeEl.getAttribute('data-field') === 'width';
+    const heightFocused = activeEl && activeEl.getAttribute('data-field') === 'height';
+
     if (unit === 'grid') {
-      setWidthInput(cols.toString());
-      setHeightInput(rows.toString());
+      if (!widthFocused) setWidthInput(cols.toString());
+      if (!heightFocused) setHeightInput(rows.toString());
     } else if (unit === 'cm') {
-      setWidthInput((cols / 4).toString());
-      setHeightInput((rows / 4).toString());
+      if (!widthFocused) setWidthInput((cols / 4).toString());
+      if (!heightFocused) setHeightInput((rows / 4).toString());
     } else if (unit === 'inch') {
-      setWidthInput((cols / 10).toString());
-      setHeightInput((rows / 10).toString());
+      if (!widthFocused) setWidthInput((cols / 10).toString());
+      if (!heightFocused) setHeightInput((rows / 10).toString());
     }
   }, [cols, rows, unit]);
 
   // Handle changes to unit selector
   const handleUnitChange = (newUnit: 'cm' | 'inch' | 'grid') => {
     setUnit(newUnit);
+    setSelectedPreset('custom');
     if (newUnit === 'grid') {
       setWidthInput(cols.toString());
       setHeightInput(rows.toString());
@@ -91,29 +111,93 @@ export function App() {
 
   const handleWidthChange = (valStr: string) => {
     setWidthInput(valStr);
+    setSelectedPreset('custom');
     const val = parseFloat(valStr);
     if (isNaN(val) || val <= 0) return;
 
+    let computedCols = cols;
     if (unit === 'grid') {
-      setCols(Math.max(1, Math.round(val)));
+      computedCols = Math.max(1, Math.round(val));
     } else if (unit === 'cm') {
-      setCols(Math.max(1, Math.round(val * 4)));
+      computedCols = Math.max(1, Math.round(val * 4));
     } else if (unit === 'inch') {
-      setCols(Math.max(1, Math.round(val * 10)));
+      computedCols = Math.max(1, Math.round(val * 10));
+    }
+    setCols(computedCols);
+
+    // Auto-adjust height if image is loaded to maintain aspect ratio
+    if (image) {
+      const ar = image.naturalWidth / image.naturalHeight;
+      const computedHeight = val / ar;
+      let computedRows = rows;
+      if (unit === 'grid') {
+        computedRows = Math.max(1, Math.round(computedHeight));
+        setHeightInput(Math.max(1, Math.round(computedHeight)).toString());
+      } else {
+        setHeightInput(computedHeight.toFixed(1));
+        if (unit === 'cm') {
+          computedRows = Math.max(1, Math.round(computedHeight * 4));
+        } else if (unit === 'inch') {
+          computedRows = Math.max(1, Math.round(computedHeight * 10));
+        }
+      }
+      setRows(computedRows);
     }
   };
 
   const handleHeightChange = (valStr: string) => {
     setHeightInput(valStr);
+    setSelectedPreset('custom');
     const val = parseFloat(valStr);
     if (isNaN(val) || val <= 0) return;
 
+    let computedRows = rows;
     if (unit === 'grid') {
-      setRows(Math.max(1, Math.round(val)));
+      computedRows = Math.max(1, Math.round(val));
     } else if (unit === 'cm') {
-      setRows(Math.max(1, Math.round(val * 4)));
+      computedRows = Math.max(1, Math.round(val * 4));
     } else if (unit === 'inch') {
-      setRows(Math.max(1, Math.round(val * 10)));
+      computedRows = Math.max(1, Math.round(val * 10));
+    }
+    setRows(computedRows);
+
+    // Auto-adjust width if image is loaded to maintain aspect ratio
+    if (image) {
+      const ar = image.naturalWidth / image.naturalHeight;
+      const computedWidth = val * ar;
+      let computedCols = cols;
+      if (unit === 'grid') {
+        computedCols = Math.max(1, Math.round(computedWidth));
+        setWidthInput(Math.max(1, Math.round(computedWidth)).toString());
+      } else {
+        setWidthInput(computedWidth.toFixed(1));
+        if (unit === 'cm') {
+          computedCols = Math.max(1, Math.round(computedWidth * 4));
+        } else if (unit === 'inch') {
+          computedCols = Math.max(1, Math.round(computedWidth * 10));
+        }
+      }
+      setCols(computedCols);
+    }
+  };
+
+  const handlePresetChange = (e: Event) => {
+    const val = (e.target as HTMLSelectElement).value;
+    setSelectedPreset(val);
+    if (val === 'custom') return;
+
+    const preset = STANDARD_SIZES.find(s => s.value === val);
+    if (preset && preset.width && preset.height && preset.unit) {
+      setUnit(preset.unit as any);
+      setWidthInput(preset.width.toString());
+      setHeightInput(preset.height.toString());
+      if (preset.unit === 'cm') {
+        setCols(Math.max(1, Math.round(preset.width * 4)));
+        setRows(Math.max(1, Math.round(preset.height * 4)));
+      } else if (preset.unit === 'inch') {
+        setCols(Math.max(1, Math.round(preset.width * 10)));
+        setRows(Math.max(1, Math.round(preset.height * 10)));
+      }
     }
   };
 
@@ -258,6 +342,26 @@ export function App() {
         // Reset exclusions when loading a new image
         setExcludedColors(new Set());
         setHighlightedColor(null);
+        setSelectedPreset('custom');
+
+        // Adjust dimensions to match aspect ratio
+        const ar = img.naturalWidth / img.naturalHeight;
+        let newRows = rows;
+        if (unit === 'grid') {
+          newRows = Math.max(1, Math.round(cols / ar));
+          setHeightInput(newRows.toString());
+        } else if (unit === 'cm') {
+          const currentWidthCm = cols / 4;
+          const newHeightCm = currentWidthCm / ar;
+          newRows = Math.max(1, Math.round(newHeightCm * 4));
+          setHeightInput(newHeightCm.toFixed(1));
+        } else if (unit === 'inch') {
+          const currentWidthInch = cols / 10;
+          const newHeightInch = currentWidthInch / ar;
+          newRows = Math.max(1, Math.round(newHeightInch * 10));
+          setHeightInput(newHeightInch.toFixed(1));
+        }
+        setRows(newRows);
         setImage(img);
       };
       img.src = event.target?.result as string;
@@ -334,6 +438,20 @@ export function App() {
           </select>
         </div>
 
+        {/* Canvas Preset Size */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-semibold text-slate-300">Canvas Preset Size</label>
+          <select
+            value={selectedPreset}
+            onChange={handlePresetChange}
+            className="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            {STANDARD_SIZES.map(sz => (
+              <option key={sz.value} value={sz.value}>{sz.name}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Sizing Units & Inputs */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-semibold text-slate-300">Sizing Mode</label>
@@ -357,6 +475,7 @@ export function App() {
             <label className="text-xs text-slate-400">Width ({unit === 'grid' ? 'dots' : unit})</label>
             <input
               type="number"
+              data-field="width"
               step={unit === 'grid' ? '1' : '0.1'}
               value={widthInput}
               onInput={(e) => handleWidthChange((e.target as HTMLInputElement).value)}
@@ -367,6 +486,7 @@ export function App() {
             <label className="text-xs text-slate-400">Height ({unit === 'grid' ? 'dots' : unit})</label>
             <input
               type="number"
+              data-field="height"
               step={unit === 'grid' ? '1' : '0.1'}
               value={heightInput}
               onInput={(e) => handleHeightChange((e.target as HTMLInputElement).value)}
