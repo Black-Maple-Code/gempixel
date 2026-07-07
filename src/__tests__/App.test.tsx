@@ -50,7 +50,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Click 'Size' tab to render sizing inputs
     const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'size');
+    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
     expect(sizeTab).toBeTruthy();
     sizeTab?.click();
     await new Promise(r => setTimeout(r, 10));
@@ -60,7 +60,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(numberInputs.length).toBe(2);
 
     // Verify file input exists (it's in the 'files' tab, let's switch back)
-    const filesTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'files');
+    const filesTab = Array.from(buttons).find(b => b.title === 'Upload' || b.textContent?.toLowerCase() === 'files');
     filesTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -74,7 +74,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Switch to Size tab first
     const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'size');
+    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
     sizeTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -108,7 +108,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Switch to Size tab first
     const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'size');
+    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
     sizeTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -135,7 +135,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Click 'Quote' tab
     const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'quote');
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
     expect(quoteTab).toBeTruthy();
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
@@ -199,7 +199,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Files tab is active by default. Let's find the drill type select dropdown.
+    // Navigate to Palette (Step 3) to find the drill type select dropdown.
+    const buttons = container.querySelectorAll('button');
+    const paletteTab = Array.from(buttons).find(b => b.title === 'Palette');
+    expect(paletteTab).toBeTruthy();
+    paletteTab?.click();
+    await new Promise(r => setTimeout(r, 10));
+
     const selects = container.querySelectorAll('select');
     const drillTypeSelect = selects[1] as HTMLSelectElement;
     expect(drillTypeSelect).toBeTruthy();
@@ -209,9 +215,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
-    // Now switch to 'Quote' tab to check packet price
-    const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'quote');
+    // Now switch to 'Quote' tab (Step 4) to check packet price
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -233,7 +238,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Click 'Quote' tab
     const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'quote');
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -316,7 +321,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(canvasAfterLoad).toBeTruthy();
 
       // Verify sizing inputs are restored
-      const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
+      const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
       sizeTab?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -361,6 +366,129 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       const registryAfterDelete = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
       expect(registryAfterDelete.length).toBe(0);
       expect(localStorage.getItem('gempixel_project_test-uuid-123')).toBeNull();
+    });
+
+    it('asserts step progression using Back/Next footer buttons and validation lock when both image and project ID are missing', async () => {
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 0));
+
+      // Initially on step 1 (Upload)
+      // Check that Next button is disabled because both image and project ID are missing
+      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      expect(nextBtn.disabled).toBe(true);
+
+      // Back button should not be rendered on step 1
+      const backButtons = Array.from(container.querySelectorAll('button')).filter(b => b.textContent === 'Back');
+      expect(backButtons.length).toBe(0);
+    });
+
+    it('allows progression for loaded projects even with null image, verifies back/next navigation and display isolation of active step options', async () => {
+      const mockProjectSummary = {
+        id: 'test-project-999',
+        name: 'Null Image Project',
+        thumbnail: '',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+
+      const mockProjectData = {
+        id: 'test-project-999',
+        name: 'Null Image Project',
+        dateCreated: mockProjectSummary.dateCreated,
+        dateModified: mockProjectSummary.dateModified,
+        imageName: 'project.json',
+        dimensions: { cols: 60, rows: 40 },
+        drillStyle: 'square',
+        selectedBaseKit: '200',
+        safetyMargin: 10,
+        laborMarkup: 20,
+        kitBaseCost: 15,
+        drillPacketCost: 0.25,
+        excludedDmcCodes: [],
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        drillType: 'standard',
+        canvasTemplate: 'https://custom.com/{size}',
+        affiliateTag: 'tag',
+        affiliateApp: 'ref',
+        gridData: [1, 2, 3]
+      };
+
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-project-999', JSON.stringify(mockProjectData));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click project row to load configuration
+      const projectRow = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(projectRow).toBeTruthy();
+      projectRow.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Next button should now be enabled because project ID is loaded, even though image is null
+      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      expect(nextBtn.disabled).toBe(false);
+
+      // Verify display isolation: Step 1 options are shown, but Step 2 (sizing) is not
+      const selectElementsInitial = Array.from(container.querySelectorAll('select'));
+      const initialPresetSelect = selectElementsInitial.find(s => s.value === 'custom');
+      expect(initialPresetSelect).toBeUndefined(); // Sizing preset in step 2 should not be rendered yet
+      expect(container.querySelector('input[id="file-upload"]')).toBeTruthy(); // Step 1 element
+
+      // Progress to Step 2
+      nextBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Now on Step 2
+      // Verify display isolation: Step 2 options should be rendered, but Step 1 and Step 3 are not
+      expect(container.querySelector('input[id="file-upload"]')).toBeNull(); // Step 1 element should be isolated/hidden
+      expect(container.querySelector('input[data-field="width"]')).toBeTruthy(); // Step 2 width input
+      const selectElementsStep2 = Array.from(container.querySelectorAll('select'));
+      const step3KitSelect = selectElementsStep2.find(s => s.value === '200');
+      expect(step3KitSelect).toBeUndefined(); // Step 3 base kit selector not rendered yet
+
+      // Back button should be visible on step 2
+      const backBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      expect(backBtn).toBeTruthy();
+
+      // Progress to Step 3
+      const nextBtnStep2 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      nextBtnStep2.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Now on Step 3
+      // Verify display isolation: Step 3 options (base kit selector) rendered, Step 2 width input hidden
+      expect(container.querySelector('input[data-field="width"]')).toBeNull(); // Step 2 width input isolated
+      const kitSelect = Array.from(container.querySelectorAll('select')).find(s => s.value === '200');
+      expect(kitSelect).toBeTruthy(); // Step 3 selector
+
+      // Progress to Step 4
+      const nextBtnStep3 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      nextBtnStep3.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Now on Step 4
+      const selectElements = Array.from(container.querySelectorAll('select'));
+      const activeKitSelect = selectElements.find(s => s.value === '200');
+      expect(activeKitSelect).toBeUndefined(); // Step 3 selector isolated
+
+      const numberInputs = Array.from(container.querySelectorAll('input[type="number"]'));
+      const canvasCostInput = numberInputs.find(i => (i as HTMLInputElement).value === '15');
+      expect(canvasCostInput).toBeTruthy(); // Step 4 Canvas cost input
+
+      // Next button should be hidden on Step 4
+      const nextBtnStep4 = container.querySelector('#wizard-next-btn');
+      expect(nextBtnStep4).toBeNull();
+
+      // Go back to Step 3
+      const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      backBtnStep4.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Should be back on Step 3
+      expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeTruthy();
     });
   });
 });
