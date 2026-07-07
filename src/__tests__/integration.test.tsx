@@ -389,7 +389,11 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
-    // 3. Find sizing inputs and trigger width change
+    // 3. Switch to Size tab and find sizing inputs
+    const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
+    sizeTab?.dispatchEvent(new Event('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+
     const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
     const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
 
@@ -408,10 +412,15 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
   it('updates dimensions and units when preset canvas size changes', async () => {
     render(<App />, container);
+    await new Promise(r => setTimeout(r, 0));
 
-    // Query specifically the second select element (Canvas Preset Size)
-    const selects = container.querySelectorAll('select');
-    const presetSelect = selects[1] as HTMLSelectElement;
+    // Switch to Size tab first
+    const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
+    sizeTab?.dispatchEvent(new Event('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+
+    // Query standard size preset select element
+    const presetSelect = container.querySelector('select') as HTMLSelectElement;
     expect(presetSelect).not.toBeNull();
 
     // Select standard size preset: '30x40-cm' (width: 30, height: 40, unit: cm)
