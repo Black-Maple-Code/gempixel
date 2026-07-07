@@ -43,8 +43,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### ordering & partnerships
 
-- [ ] **PARTNER-01**: User can select canvas options and generate custom links to canvas suppliers (with sizing/dimensions parameters passed) to order sticky-glue canvas prints matching the layout.
-- [ ] **PARTNER-02**: User can build and export an optimized cart link to Diamond Drills USA containing the exact combination of drill bags needed, integrating partner affiliate tracking.
+- [x] **PARTNER-01**: User can select canvas options and generate custom links to canvas suppliers (with sizing/dimensions parameters passed) to order sticky-glue canvas prints matching the layout.
+- [x] **PARTNER-02**: User can build and export an optimized cart link to Diamond Drills USA containing the exact combination of drill bags needed, integrating partner affiliate tracking.
 
 ### commission artist experience
 
@@ -80,18 +80,18 @@ Requirements for initial release. Each maps to roadmap phases.
 | REPORT-01 | Phase 4 | Complete |
 | REPORT-02 | Phase 4 | Complete |
 | REPORT-03 | Phase 4 | Complete |
-| PARTNER-01 | Phase 5 | Pending |
-| PARTNER-02 | Phase 5 | Pending |
+| PARTNER-01 | Phase 5 | Complete |
+| PARTNER-02 | Phase 5 | Complete |
 | ARTIST-01 | Phase 6 | Pending |
 | ARTIST-02 | Phase 6 | Pending |
 
 **Coverage:**
 
 - Milestone v1.0 requirements: 17 total (17 complete)
-- Milestone v2.0 requirements: 4 total (0 complete)
+- Milestone v2.0 requirements: 4 total (2 complete)
 - Mapped to phases: 21
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-07 after Milestone v2.0 planning*
+*Last updated: 2026-07-07 after Milestone v2.0 Phase 5 completion*
