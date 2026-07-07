@@ -49,12 +49,12 @@ Plans:
   3. The color-matching loop executes asynchronously in a Web Worker, keeping UI frame rate responsive.
   4. Recalculation uses an RGBA cache to bypass redundant distance checks on similar colors.
 
-**Plans**: TBD
+**Plans**: 0/2 plans complete
 
 Plans:
 
-- [ ] 02-01: Build HTML5 File API loader and canvas-based image downscaler with fit/crop controls
-- [ ] 02-02: Integrate Web Worker for asynchronous CIEDE2000 color mapping with RGBA lookup caching
+- [ ] 02-01-PLAN.md — Build HTML5 File API loader and canvas-based image downscaler with Crop/Cover and Box Sampling.
+- [ ] 02-02-PLAN.md — Integrate background Web Worker for CIEDE2000 color matching with RGBA caching and abort signaling.
 
 ### Phase 3: Canvas Viewer & Zoom/Pan Interaction
 
