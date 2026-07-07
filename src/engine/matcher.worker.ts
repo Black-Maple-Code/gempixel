@@ -1,4 +1,4 @@
-import { blendAlpha, matchColor } from './color';
+import { blendAlpha, matchColor, clearCache } from './color';
 import { DmcColor } from './types';
 
 // Cast self (or globalThis in Node testing) to any to avoid type conflicts
@@ -35,6 +35,7 @@ async function runMatching(
 ) {
   if (clearCacheOption) {
     rgbaCache.clear();
+    clearCache();
   }
 
   const totalPixels = pixels.length / 4;
