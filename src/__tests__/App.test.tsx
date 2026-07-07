@@ -20,6 +20,7 @@ vi.mock('../engine/viewer', () => {
       setDrillStyle = vi.fn();
       setHighlightedColor = vi.fn();
       setDrillType = vi.fn();
+      fitToContainer = vi.fn();
       destroy = vi.fn();
     }
   };
@@ -244,5 +245,122 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect((inputs[2] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
     expect((inputs[3] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
     expect((inputs[4] as HTMLInputElement).value).toBe('3.2'); // 2000 qty default standard price
+  });
+
+  describe('Commissions Workspace LocalStorage and Project Switching', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('handles project saving, summary registry addition, state recovery, deletion, and reset', async () => {
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 0));
+
+      // 1. Initially, no commissions should be saved
+      expect(localStorage.getItem('gempixel_workspace_registry')).toBeNull();
+
+      const mockProjectSummary = {
+        id: 'test-uuid-123',
+        name: 'Client A Commission',
+        thumbnail: 'data:image/jpeg;base64,thumb',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+
+      const mockProjectData = {
+        id: 'test-uuid-123',
+        name: 'Client A Commission',
+        dateCreated: mockProjectSummary.dateCreated,
+        dateModified: mockProjectSummary.dateModified,
+        imageName: 'test.jpg',
+        dimensions: { cols: 40, rows: 30 },
+        drillStyle: 'round',
+        selectedBaseKit: '100',
+        safetyMargin: 10,
+        laborMarkup: 50,
+        kitBaseCost: 20,
+        drillPacketCost: 0.5,
+        excludedDmcCodes: ['310'],
+        pricesPerBagSize: { 200: 0.8, 500: 1.5, 1000: 2.5, 2000: 4.5 },
+        drillType: 'ab',
+        canvasTemplate: 'https://custom.com/{size}',
+        affiliateTag: 'my-tag',
+        affiliateApp: 'ref',
+        gridData: [0, 1, 2] // pointers to palette
+      };
+
+      // Save mock project to localStorage directly
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-uuid-123', JSON.stringify(mockProjectData));
+
+      // Re-render App so it loads the registry from localStorage
+      render(null, container);
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Verify project row exists in Left Sidebar switcher
+      const projectRow = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(projectRow).toBeTruthy();
+      expect(projectRow.textContent).toContain('Client A Commission');
+
+      // Verify canvas is NOT rendered initially (since matchResult and image are null on fresh mount before load)
+      const initialCanvas = container.querySelector('canvas');
+      expect(initialCanvas).toBeNull();
+
+      // Click project row to load configuration
+      projectRow.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Verify canvas mounts successfully (because matchResult is restored even without raw image!)
+      const canvasAfterLoad = container.querySelector('canvas');
+      expect(canvasAfterLoad).toBeTruthy();
+
+      // Verify sizing inputs are restored
+      const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
+      sizeTab?.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      const inputs = container.querySelectorAll('input[type="number"]');
+      const widthInput = inputs[0] as HTMLInputElement;
+      const heightInput = inputs[1] as HTMLInputElement;
+      expect(widthInput.value).toBe('40'); // cols
+      expect(heightInput.value).toBe('30'); // rows
+
+      // Verify workspace reset to default config on reset/new action
+      const newBtn = container.querySelector('#new-project-btn') as HTMLButtonElement;
+      expect(newBtn).toBeTruthy();
+      newBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // After newBtn click, grid dimensions should be reset to default 80x53
+      expect(widthInput.value).toBe('80');
+      expect(heightInput.value).toBe('53');
+      // And canvas should unmount because matchResult is reset to null
+      expect(container.querySelector('canvas')).toBeNull();
+
+      // Verify removal of registry and project details on deletion
+      // Re-render to see the project switcher row again
+      render(null, container);
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click delete button ('×') inside project row
+      // Mock window.confirm to return true
+      const originalConfirm = window.confirm;
+      window.confirm = () => true;
+
+      const deleteBtn = container.querySelector('button[title="Delete Commission"]') as HTMLButtonElement;
+      expect(deleteBtn).toBeTruthy();
+      deleteBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Restore confirm
+      window.confirm = originalConfirm;
+
+      // Registry should be empty now
+      const registryAfterDelete = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
+      expect(registryAfterDelete.length).toBe(0);
+      expect(localStorage.getItem('gempixel_project_test-uuid-123')).toBeNull();
+    });
   });
 });
