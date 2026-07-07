@@ -36,8 +36,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Supply Reporting & Export
 
 - [x] **REPORT-01**: Display a table summarizing the required DMC codes, names, swatches, and exact dot counts.
-- [ ] **REPORT-02**: Add a configurable safety margin (default +10% to +15%) to exact counts and round counts to recommend purchase packaging units.
-- [ ] **REPORT-03**: User can export the supply list and grid details as a clean, printable PDF using native browser print media formatting.
+- [x] **REPORT-02**: Add a configurable safety margin (default +10% to +15%) to exact counts and round counts to recommend purchase packaging units.
+- [x] **REPORT-03**: User can export the supply list and grid details as a clean, printable PDF using native browser print media formatting.
 
 ## v2 Requirements
 
@@ -74,8 +74,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | VIEW-02 | Phase 3 | Complete |
 | VIEW-03 | Phase 4 | Complete |
 | REPORT-01 | Phase 4 | Complete |
-| REPORT-02 | Phase 4 | Pending |
-| REPORT-03 | Phase 4 | Pending |
+| REPORT-02 | Phase 4 | Complete |
+| REPORT-03 | Phase 4 | Complete |
 
 **Coverage:**
 
