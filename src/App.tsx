@@ -36,6 +36,8 @@ export function App() {
   const [selectedPreset, setSelectedPreset] = useState<string>('custom');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [excludeListOpen, setExcludeListOpen] = useState(false);
+  const [supplyListOpen, setSupplyListOpen] = useState(true);
+  const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
 
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -440,6 +442,18 @@ export function App() {
           </div>
         </div>
 
+        {/* Reference Image Thumbnail */}
+        {image && (
+          <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Reference Image</span>
+            <img
+              src={image.src}
+              alt="Reference Preview"
+              className="w-full max-h-24 object-contain rounded border border-slate-800 bg-slate-950/50"
+            />
+          </div>
+        )}
+
         {/* Base Kit Selector */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
@@ -564,6 +578,25 @@ export function App() {
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
+        {/* Floating Top Mode Selector */}
+        {image && (
+          <div className="absolute top-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print">
+            {(['grid', 'reference'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewportMode(mode)}
+                className={`text-[10px] px-3 py-1 rounded font-semibold transition-all cursor-pointer capitalize ${
+                  viewportMode === mode
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mode === 'grid' ? 'Grid View' : 'Original Photo'}
+              </button>
+            ))}
+          </div>
+        )}
+
         {leftPanelCollapsed && (
           <button
             onClick={() => setLeftPanelCollapsed(false)}
@@ -577,12 +610,23 @@ export function App() {
         )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
           {image ? (
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={600}
-              className="shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none"
-            />
+            viewportMode === 'grid' ? (
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={600}
+                className="shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none"
+              />
+            ) : (
+              <div className="relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print">
+                <img
+                  src={image.src}
+                  alt="Original reference full size"
+                  className="max-w-full max-h-[75vh] object-contain rounded-lg border border-slate-800 shadow-2xl"
+                />
+                <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
+              </div>
+            )
           ) : (
             <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
               <span className="text-lg font-bold text-slate-350">No Image Loaded</span>
@@ -662,75 +706,99 @@ export function App() {
 
         {/* Legend table */}
         <div className="p-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
-          <div className="flex justify-between items-center mb-2.5 no-print">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">DMC Supply List</h3>
-            {highlightedColor && (
+          <button
+            onClick={() => setSupplyListOpen(!supplyListOpen)}
+            className="w-full flex justify-between items-center py-2.5 hover:bg-slate-850/30 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none no-print mb-2 border border-slate-850/50 p-2 rounded bg-slate-950/20 shrink-0"
+          >
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${supplyListOpen ? 'rotate-90' : ''}`}>▶</span>
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">DMC Supply List</span>
+              {sortedMatches.length > 0 && !supplyListOpen && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold">{sortedMatches.length} colors</span>
+              )}
+            </div>
+            {highlightedColor && supplyListOpen && (
               <button
-                onClick={() => handleRowClick(highlightedColor)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRowClick(highlightedColor);
+                }}
                 className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors"
               >
                 Clear Highlight
               </button>
             )}
-          </div>
-          
-          <h2 className="hidden print:block text-2xl font-bold mb-4">GemPixel Supply Plan Report</h2>
+          </button>
+
+          <h2 className="hidden print:block text-2xl font-bold mb-4 font-sans">GemPixel Supply Plan Report</h2>
 
           {/* Table Container */}
-          <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-1.5 px-2 w-8 text-center">Color</th>
-                  <th className="py-1.5 px-2 w-12 text-center">DMC</th>
-                  <th className="py-1.5 px-2 truncate max-w-[100px]">Name</th>
-                  <th className="py-1.5 px-2 text-right">Exact</th>
-                  <th className="py-1.5 px-2 text-right">Safety</th>
-                  <th className="py-1.5 px-2 text-right">Bags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedMatches.map(row => {
-                  const isHighlighted = highlightedColor === row.code;
-                  return (
-                    <tr
-                      key={row.code}
-                      onClick={() => handleRowClick(row.code)}
-                      className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
-                        isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
-                      }`}
-                    >
-                      <td className="py-1 px-2 flex justify-center">
-                        <span
-                          className="block w-3 h-3 rounded-full border border-slate-850 shadow-sm"
-                          style={{ backgroundColor: row.hex }}
-                        />
-                      </td>
-                      <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">{row.code}</td>
-                      <td className="py-1 px-2 text-slate-400 truncate max-w-[100px] text-[11px]" title={row.name}>
-                        {row.name}
-                      </td>
-                      <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
-                      <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
-                      <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono">
-                        {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * 200})</span>
+          {supplyListOpen && (
+            <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-1.5 px-2 w-8 text-center">Color</th>
+                    <th className="py-1.5 px-2 w-12 text-center">DMC</th>
+                    <th className="py-1.5 px-2 truncate max-w-[100px]">Name</th>
+                    <th className="py-1.5 px-2 text-right">Exact</th>
+                    <th className="py-1.5 px-2 text-right">Safety</th>
+                    <th className="py-1.5 px-2 text-right">Bags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedMatches.map(row => {
+                    const isHighlighted = highlightedColor === row.code;
+                    return (
+                      <tr
+                        key={row.code}
+                        onClick={() => handleRowClick(row.code)}
+                        className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
+                          isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
+                        }`}
+                      >
+                        <td className="py-1 px-2 flex justify-center">
+                          <span
+                            className="block w-3 h-3 rounded-full border border-slate-850 shadow-sm"
+                            style={{ backgroundColor: row.hex }}
+                          />
+                        </td>
+                        <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">{row.code}</td>
+                        <td className="py-1 px-2 text-slate-400 truncate max-w-[100px] text-[11px]" title={row.name}>
+                          {row.name}
+                        </td>
+                        <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
+                        <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
+                        <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono">
+                          {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * 200})</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {sortedMatches.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
+                        No matching colors. Load an image to compute.
                       </td>
                     </tr>
-                  );
-                })}
-                {sortedMatches.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
-                      No matching colors. Load an image to compute.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Printable Layout Table (displayed only during printing) */}
           <div className="hidden print:block">
+            {image && (
+              <div className="mb-6 text-center page-break-inside-avoid">
+                <h3 className="text-base font-bold mb-2">Original Reference Image</h3>
+                <img
+                  src={image.src}
+                  alt="Original Reference"
+                  className="max-h-48 object-contain mx-auto rounded border border-gray-300"
+                />
+              </div>
+            )}
             <table className="w-full text-left text-sm border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-150 border-b border-gray-300">

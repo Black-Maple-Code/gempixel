@@ -453,4 +453,107 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(sidebar.className).toContain('w-80');
     });
   });
+
+  it('collapses and expands the DMC Supply List correctly on trigger clicks', async () => {
+    render(<App />, container);
+
+    // Should start open
+    let table = container.querySelector('.no-print table');
+    expect(table).not.toBeNull();
+
+    // Click DMC Supply List header button to collapse
+    const supplyListToggle = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('DMC Supply List')
+    );
+    expect(supplyListToggle).not.toBeUndefined();
+    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Verify table is collapsed (not in DOM)
+    await vi.waitFor(() => {
+      table = container.querySelector('.no-print table');
+      expect(table).toBeNull();
+    });
+
+    // Expand it again
+    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
+    await vi.waitFor(() => {
+      table = container.querySelector('.no-print table');
+      expect(table).not.toBeNull();
+    });
+  });
+
+  it('supports toggling between Grid View and Original Photo modes', async () => {
+    // 1. Stub FileReader and Image to allow loading
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 10,
+      naturalHeight: 10,
+      width: 10,
+      height: 10,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') {
+        return {
+          drawImage: vi.fn(),
+          getImageData: vi.fn().mockReturnValue({
+            data: new Uint8ClampedArray(400),
+            width: 10,
+            height: 10,
+          }),
+        } as any;
+      }
+      return null;
+    });
+
+    render(<App />, container);
+
+    // 2. Load mock image
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'test.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for image load
+    await vi.waitFor(() => {
+      expect(container.querySelector('canvas')).not.toBeNull();
+    });
+
+    // Viewport Mode selector should be visible
+    const gridViewBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('Grid View')
+    );
+    const originalPhotoBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('Original Photo')
+    );
+    expect(gridViewBtn).not.toBeUndefined();
+    expect(originalPhotoBtn).not.toBeUndefined();
+
+    // Toggle to Original Photo
+    originalPhotoBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Should hide canvas and render original reference image preview full size
+    await vi.waitFor(() => {
+      expect(container.querySelector('canvas')).toBeNull();
+      expect(container.querySelector('img[alt="Original reference full size"]')).not.toBeNull();
+    });
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
 });
