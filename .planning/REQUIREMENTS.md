@@ -23,8 +23,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Palettes & Inventory
 
-- [ ] **PALETTE-01**: Support matching against the Art Dot 100-color manufacturer index.
-- [ ] **PALETTE-02**: Support matching against the Art Dot 200-color manufacturer index.
+- [x] **PALETTE-01**: Support matching against the Art Dot 100-color manufacturer index.
+- [x] **PALETTE-02**: Support matching against the Art Dot 200-color manufacturer index.
 - [ ] **PALETTE-03**: User can toggle specific colors on/off in a sub-palette selector, triggering instant client-side recalculation to other kit colors.
 
 ### Interactive Grid Preview
@@ -67,8 +67,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | ENGINE-02 | Phase 1 | Complete |
 | ENGINE-03 | Phase 2 | Pending |
 | ENGINE-04 | Phase 2 | Pending |
-| PALETTE-01 | Phase 1 | Pending |
-| PALETTE-02 | Phase 1 | Pending |
+| PALETTE-01 | Phase 1 | Complete |
+| PALETTE-02 | Phase 1 | Complete |
 | PALETTE-03 | Phase 4 | Pending |
 | VIEW-01 | Phase 3 | Pending |
 | VIEW-02 | Phase 3 | Pending |
