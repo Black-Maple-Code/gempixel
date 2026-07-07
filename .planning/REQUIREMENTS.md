@@ -9,10 +9,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Ingestion & Sizing
 
-- [ ] **INGEST-01**: User can load local images (PNG, JPG/JPEG) client-side without server upload.
-- [ ] **INGEST-02**: User can select image sizing behaviors (fit or crop) to preserve aspect ratio.
-- [ ] **INGEST-03**: User can specify direct canvas dimensions in rows and columns (e.g. 40x40 dots).
-- [ ] **INGEST-04**: User can specify canvas size in physical dimensions (cm/inches) with automatic dot calculation based on standard drill size (2.5mm per drill / 10 dots per inch).
+- [x] **INGEST-01**: User can load local images (PNG, JPG/JPEG) client-side without server upload.
+- [x] **INGEST-02**: User can select image sizing behaviors (fit or crop) to preserve aspect ratio.
+- [x] **INGEST-03**: User can specify direct canvas dimensions in rows and columns (e.g. 40x40 dots).
+- [x] **INGEST-04**: User can specify canvas size in physical dimensions (cm/inches) with automatic dot calculation based on standard drill size (2.5mm per drill / 10 dots per inch).
 
 ### Color Matching Engine
 
@@ -59,10 +59,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INGEST-01 | Phase 2 | Pending |
-| INGEST-02 | Phase 2 | Pending |
-| INGEST-03 | Phase 2 | Pending |
-| INGEST-04 | Phase 2 | Pending |
+| INGEST-01 | Phase 2 | Complete |
+| INGEST-02 | Phase 2 | Complete |
+| INGEST-03 | Phase 2 | Complete |
+| INGEST-04 | Phase 2 | Complete |
 | ENGINE-01 | Phase 1 | Complete |
 | ENGINE-02 | Phase 1 | Complete |
 | ENGINE-03 | Phase 2 | Pending |
