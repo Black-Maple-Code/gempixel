@@ -17,12 +17,13 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Load local images (JPEG, PNG, etc.) in-browser (Validated in Phase 02: Client-side Engine & Worker Architecture).
 - Specify canvas size using two modes: direct grid dimensions (rows/cols) or physical dimensions (cm/inches) with standard density calculations (2.5mm per dot, 10 dots/inch) (Validated in Phase 02: Client-side Engine & Worker Architecture).
 - Enable visual inspection of the grid with zoom/pan and custom styling (square vs. round drill representation) (Validated in Phase 03: Canvas Viewer & Zoom/Pan Interaction).
+- Render a pixelated grid representation of the image (Validated in Phase 04: Supply Planning, Customization & Exports).
+- Support custom sub-palette selection/filtering (allowing the artist to include or exclude specific colors from matching) (Validated in Phase 04: Supply Planning, Customization & Exports).
+- Display a supply specification report showing required color codes, names, and exact quantities of dots needed (Validated in Phase 04: Supply Planning, Customization & Exports).
 
 ### Active
 
-- [ ] Render a pixelated grid representation of the image.
-- [ ] Support custom sub-palette selection/filtering (allowing the artist to include or exclude specific colors from matching).
-- [ ] Display a supply specification report showing required color codes, names, and exact quantities of dots needed.
+*(All core milestone requirements validated)*
 
 ### Out of Scope
 
@@ -75,4 +76,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 03 completion*
+*Last updated: 2026-07-07 after Phase 04 completion*
