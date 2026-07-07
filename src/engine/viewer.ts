@@ -1,4 +1,8 @@
-
+/**
+ * CanvasViewer handles interactive rendering of the gem art grid.
+ * It implements panning, cursor-centered zoom, and offscreen double-buffering.
+ * Supports rendering drills in square and round styles, showing neutral slate backing.
+ */
 export class CanvasViewer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
