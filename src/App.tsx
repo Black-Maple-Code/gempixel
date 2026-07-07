@@ -423,6 +423,7 @@ export function App() {
       2000: 3.20
     });
     setRawMatchResult(null);
+    setWizardStep(1);
   };
 
   const handleSaveProject = (name: string, forceNewId = false) => {
@@ -1969,6 +1970,16 @@ export function App() {
                 </div>
               </div>
             </details>
+
+            {/* Start Over / Reset button */}
+            <div className="mt-2 pt-2 border-t border-slate-800/60 no-print">
+              <button
+                onClick={resetWorkspace}
+                className="w-full bg-slate-800 hover:bg-slate-750 hover:text-slate-100 text-slate-350 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <span>Start New Commission / Reset</span>
+              </button>
+            </div>
           </div>
         )}
 

@@ -342,9 +342,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       newBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // After newBtn click, grid dimensions should be reset to default 80x53
-      expect(widthInput.value).toBe('80');
-      expect(heightInput.value).toBe('53');
+      // After reset, we should be on Step 1, and the Next button should be disabled because image & project ID are reset
+      const nextBtnAfterReset = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtnAfterReset).toBeTruthy();
+      expect(nextBtnAfterReset.disabled).toBe(true);
+
       // And canvas should unmount because matchResult is reset to null
       expect(container.querySelector('canvas')).toBeNull();
 
@@ -757,6 +759,77 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Check registry now has 2 projects
       const registryAfterCopy = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
       expect(registryAfterCopy.length).toBe(2);
+    });
+
+    it('returns to Step 1 and resets workspace configuration when Start New Commission button is clicked on Step 5', async () => {
+      const mockProjectSummary = {
+        id: 'test-project-reset',
+        name: 'Reset Test Project',
+        thumbnail: '',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+      const mockProjectData = {
+        id: 'test-project-reset',
+        name: 'Reset Test Project',
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        dimensions: { cols: 40, rows: 30 },
+        unit: 'grid',
+        excludedColors: [],
+        drillStyle: 'square',
+        selectedBaseKit: 'all',
+        drillType: 'standard',
+        canvasBaseCost: 15,
+        drillPacketCost: 0.25,
+        drillBagSize: 200,
+        laborFee: 25,
+        markupType: 'fixed',
+        optimizeBagsCost: true,
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [0, 1]
+      };
+
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-project-reset', JSON.stringify(mockProjectData));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click to load project
+      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(rowBtn).toBeTruthy();
+      rowBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Advance to Step 5
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click Start New Commission / Reset button
+      const resetBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start New Commission / Reset') as HTMLButtonElement;
+      expect(resetBtn).toBeTruthy();
+      resetBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Verify we are back on Step 1 (Upload element exists)
+      expect(container.querySelector('input[id="file-upload"]')).toBeTruthy();
+
+      // Next button should be disabled because image and project ID are reset
+      const nextBtnAfterReset = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtnAfterReset).toBeTruthy();
+      expect(nextBtnAfterReset.disabled).toBe(true);
     });
   });
 });
