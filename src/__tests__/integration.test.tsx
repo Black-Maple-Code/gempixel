@@ -10,6 +10,7 @@ import { DMC_PALETTE } from '../engine/palette';
 const mockSetData = vi.fn();
 const mockSetDrillStyle = vi.fn();
 const mockSetHighlightedColor = vi.fn();
+const mockFitToContainer = vi.fn();
 const mockDestroy = vi.fn();
 
 vi.mock('../engine/viewer', () => {
@@ -19,6 +20,7 @@ vi.mock('../engine/viewer', () => {
         setData: mockSetData,
         setDrillStyle: mockSetDrillStyle,
         setHighlightedColor: mockSetHighlightedColor,
+        fitToContainer: mockFitToContainer,
         destroy: mockDestroy,
       };
     })
@@ -657,6 +659,71 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       const recentList = container.querySelector('div[title="scenery.png"]');
       expect(recentList).toBeNull();
     });
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
+
+  it('triggers fitToContainer when Fit to Container button is clicked', async () => {
+    // Stub FileReader & Image
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mockImageSource' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 10,
+      naturalHeight: 10,
+      width: 10,
+      height: 10,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') {
+        return {
+          drawImage: vi.fn(),
+          getImageData: vi.fn().mockReturnValue({
+            data: new Uint8ClampedArray(400),
+            width: 10,
+            height: 10,
+          }),
+        } as any;
+      }
+      return null;
+    });
+
+    render(<App />, container);
+
+    // Upload mock image
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'scenery.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file], writable: true });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for image onload and state updates
+    await vi.waitFor(() => {
+      expect(container.querySelector('canvas')).not.toBeNull();
+    });
+
+    // Query and click Fit to Container button
+    const fitBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('Fit to Container')
+    );
+    expect(fitBtn).not.toBeUndefined();
+    fitBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(mockFitToContainer).toHaveBeenCalled();
 
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });

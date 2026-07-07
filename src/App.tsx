@@ -687,14 +687,14 @@ export function App() {
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
         {/* Floating Center Mode Selector */}
         {image && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print font-sans">
             {(['grid', 'reference'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewportMode(mode)}
-                className={`text-[10px] px-3 py-1 rounded font-semibold transition-all cursor-pointer capitalize ${
+                className={`text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded font-bold transition-all cursor-pointer ${
                   viewportMode === mode
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -726,6 +726,26 @@ export function App() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7M17 19l-7-7 7-7" />
             </svg>
           </button>
+        )}
+
+        {/* Floating Zoom & Fit Controls */}
+        {image && viewportMode === 'grid' && (
+          <div className="absolute bottom-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-1 shadow-xl backdrop-blur-md flex flex-col gap-1 no-print font-sans">
+            <button
+              onClick={() => {
+                if (viewerRef.current) {
+                  viewerRef.current.fitToContainer();
+                }
+              }}
+              className="text-[9px] uppercase tracking-wider px-2.5 py-1.5 rounded font-bold text-slate-350 hover:text-white bg-slate-800 hover:bg-slate-750 transition-all cursor-pointer flex items-center gap-1 border border-slate-700/50"
+              title="Fit Grid to Screen"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+              <span>Fit to Container</span>
+            </button>
+          </div>
         )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
           {image ? (

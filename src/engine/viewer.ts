@@ -254,4 +254,20 @@ export class CanvasViewer {
     }
     this.ctx.globalAlpha = 1.0; // Reset
   }
+
+  public fitToContainer() {
+    if (this.gridWidth <= 0 || this.gridHeight <= 0) return;
+    const cellSize = 16;
+    const offscreenWidth = this.gridWidth * cellSize;
+    const offscreenHeight = this.gridHeight * cellSize;
+
+    const scaleX = this.canvas.width / offscreenWidth;
+    const scaleY = this.canvas.height / offscreenHeight;
+    const newScale = Math.min(scaleX, scaleY) * 0.95; // 5% padding
+
+    this.scale = Math.min(Math.max(newScale, 0.1), 50.0);
+    this.offsetX = (this.canvas.width - offscreenWidth * this.scale) / 2;
+    this.offsetY = (this.canvas.height - offscreenHeight * this.scale) / 2;
+    this.draw();
+  }
 }
