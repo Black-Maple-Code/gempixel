@@ -187,8 +187,11 @@ export function App() {
     return (localStorage.getItem('gempixel_affiliate_app') as any) || 'ref';
   });
   const [canvasTemplate, setCanvasTemplate] = useState<string>(() => {
-    return localStorage.getItem('gempixel_canvas_template') || 
-           'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
+    const saved = localStorage.getItem('gempixel_canvas_template');
+    if (saved && saved.includes('heartfuldiamonds')) {
+      return 'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
+    }
+    return saved || 'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
   });
 
   useEffect(() => {
@@ -1863,23 +1866,32 @@ export function App() {
                     {checkoutWarning.unmappedItems.map((item) => (
                       <div key={item.dmcCode} className="flex items-center justify-between bg-slate-900/60 p-2 rounded border border-slate-800 text-xs">
                         <span className="font-mono font-bold text-slate-200">DMC {item.dmcCode}</span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center flex-wrap">
                           <a
                             href={`https://diamonddrillsusa.com/products/${item.handle}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
                           >
-                            Product Page ↗
+                            DiamondDrillsUSA ↗
                           </a>
                           <span className="text-slate-700">|</span>
                           <a
-                            href={`https://diamonddrillsusa.com/search?q=dmc+${item.dmcCode}+${drillStyle}`}
+                            href={`https://www.aliexpress.com/wholesale?SearchText=dmc+${item.dmcCode}+diamond+painting+drills`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
                           >
-                            Search ↗
+                            AliExpress ↗
+                          </a>
+                          <span className="text-slate-700">|</span>
+                          <a
+                            href={`https://www.temu.com/search_result.html?search_key=dmc+${item.dmcCode}+diamond+painting+drills`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
+                          >
+                            Temu ↗
                           </a>
                         </div>
                       </div>
