@@ -478,11 +478,22 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       const canvasCostInput = numberInputs.find(i => (i as HTMLInputElement).value === '15');
       expect(canvasCostInput).toBeTruthy(); // Step 4 Canvas cost input
 
-      // Next button should be hidden on Step 4
-      const nextBtnStep4 = container.querySelector('#wizard-next-btn');
-      expect(nextBtnStep4).toBeNull();
+      // Click Next to go to Step 5
+      const nextBtnStep4 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtnStep4).toBeTruthy();
+      nextBtnStep4.click();
+      await new Promise(r => setTimeout(r, 10));
 
-      // Go back to Step 3
+      // Next button should be hidden on Step 5
+      const nextBtnStep5 = container.querySelector('#wizard-next-btn');
+      expect(nextBtnStep5).toBeNull();
+
+      // Go back to Step 4
+      const backBtnStep5 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      backBtnStep5.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Now back on Step 4. Go back to Step 3
       const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
       backBtnStep4.click();
       await new Promise(r => setTimeout(r, 10));
@@ -608,12 +619,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       rowBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Go to Step 4
+      // Go to Step 5
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
       await new Promise(r => setTimeout(r, 10));
 
       // Open the Settings expander
@@ -633,6 +646,88 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Logged colors list should be cleared
       expect(container.textContent).toContain('No unmapped colors logged.');
       expect(localStorage.getItem('gempixel_unmapped_colors_log')).toBeNull();
+    });
+
+    it('supports inline project save, update, and copy actions on Step 5', async () => {
+      const mockProjectSummary = {
+        id: 'test-project-save',
+        name: 'Initial Project Name',
+        thumbnail: '',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+      const mockProjectData = {
+        id: 'test-project-save',
+        name: 'Initial Project Name',
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        dimensions: { cols: 80, rows: 53 },
+        unit: 'grid',
+        excludedColors: [],
+        drillStyle: 'square',
+        selectedBaseKit: 'all',
+        drillType: 'standard',
+        canvasBaseCost: 15,
+        drillPacketCost: 0.25,
+        drillBagSize: 200,
+        laborFee: 25,
+        markupType: 'fixed',
+        optimizeBagsCost: true,
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [0, 1]
+      };
+
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-project-save', JSON.stringify(mockProjectData));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click to load project
+      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(rowBtn).toBeTruthy();
+      rowBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Advance to Step 5
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
+      await new Promise(r => setTimeout(r, 10));
+
+      // Locate inline name input in Step 5
+      const nameInput = container.querySelector('#step5-save-name-input') as HTMLInputElement;
+      expect(nameInput).toBeTruthy();
+      expect(nameInput.value).toBe('Initial Project Name');
+
+      // Edit name
+      nameInput.value = 'Updated Project Name';
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click Update button
+      const updateBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Update') as HTMLButtonElement;
+      expect(updateBtn).toBeTruthy();
+      updateBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Check updated name in local storage
+      const registry = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
+      expect(registry[0].name).toBe('Updated Project Name');
+
+      // Click Save as Copy button
+      const copyBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Save as Copy') as HTMLButtonElement;
+      expect(copyBtn).toBeTruthy();
+      copyBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Check registry now has 2 projects
+      const registryAfterCopy = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
+      expect(registryAfterCopy.length).toBe(2);
     });
   });
 });

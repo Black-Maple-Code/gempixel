@@ -5,7 +5,7 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
-import { compileCanvasPartnerUrl, compileShopifyCartLink } from './engine/checkout';
+import { compileShopifyCartLink } from './engine/checkout';
 
 export interface ProjectSummary {
   id: string;
@@ -247,6 +247,7 @@ export function App() {
   });
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [commissionsDrawerOpen, setCommissionsDrawerOpen] = useState(true);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
@@ -356,6 +357,7 @@ export function App() {
     setActiveProjectId(project.id);
     setImage(null);
     setImageName(project.imageName || '');
+    setSaveProjectName(project.name || '');
     setCols(project.dimensions.cols);
     setRows(project.dimensions.rows);
     setDrillStyle(project.drillStyle);
@@ -423,10 +425,10 @@ export function App() {
     setRawMatchResult(null);
   };
 
-  const handleSaveProject = (name: string) => {
+  const handleSaveProject = (name: string, forceNewId = false) => {
     if (!name.trim()) return;
 
-    const projectId = activeProjectId || generateUUID();
+    const projectId = (forceNewId ? '' : activeProjectId) || generateUUID();
     const nowStr = new Date().toISOString();
     
     let thumbnailDataUrl = '';
@@ -475,6 +477,13 @@ export function App() {
 
     setActiveProjectId(projectId);
     setSaveModalOpen(false);
+  };
+
+  const showSaveSuccess = () => {
+    setSaveSuccessMsg('Saved successfully!');
+    setTimeout(() => {
+      setSaveSuccessMsg('');
+    }, 3000);
   };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1033,16 +1042,6 @@ export function App() {
     unmappedItems: Array<{ dmcCode: string; handle: string }>;
   } | null>(null);
 
-  const handleCanvasOrder = () => {
-    const url = compileCanvasPartnerUrl({
-      baseUrlTemplate: canvasTemplate,
-      widthCm: cols / 4,
-      heightCm: rows / 4,
-      shape: drillStyle
-    });
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   const handleShopifyCheckout = () => {
     if (!matchResult) return;
     const items = Object.entries(matchResult.counts).map(([code, count]) => {
@@ -1105,13 +1104,13 @@ export function App() {
           {/* Active Progress Line */}
           <div 
             className="absolute top-[22px] left-8 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
-            style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
+            style={{ width: `${((wizardStep - 1) / 4) * 80}%` }}
           />
           
-          {[1, 2, 3, 4].map((step) => {
+          {[1, 2, 3, 4, 5].map((step) => {
             const isActive = wizardStep === step;
             const isCompleted = wizardStep > step;
-            const labels = ['Upload', 'Size', 'Palette', 'Quote'];
+            const labels = ['Upload', 'Size', 'Palette', 'Quote', 'Save'];
             const label = labels[step - 1];
             
             return (
@@ -1795,118 +1794,181 @@ export function App() {
               </div>
             </div>
 
-            {/* Partnerships & Ordering */}
-            <div className="flex flex-col gap-2 border-t border-slate-800/80 pt-3 mt-3">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Partnerships & Ordering</span>
-              
-              <div className="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60">
-                {/* Shopify Cart Integration */}
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={handleShopifyCheckout}
-                    disabled={!matchResult}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
-                  >
-                    <span>Order Drills from Diamond Drills USA</span>
-                  </button>
-                </div>
+          </div>
+        )}
 
-                {/* Canvas integration */}
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={handleCanvasOrder}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
-                  >
-                    <span>Order Custom Sized Canvas</span>
-                  </button>
+        {wizardStep === 5 && (
+          <div className="flex flex-col gap-4">
+            {/* Section A: Summary */}
+            <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex flex-col gap-2.5">
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Commission Summary</span>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Dimensions</span>
+                  <span className="font-bold text-slate-200">{cols} x {rows} {unit}</span>
                 </div>
-                
-                {/* Affiliate Configuration expander */}
-                <details className="text-[11px] text-slate-400 mt-1 cursor-pointer">
-                  <summary className="font-semibold text-[10px] uppercase text-indigo-400 select-none">Affiliate & Partner Settings</summary>
-                  <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-850">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Affiliate Tag</label>
-                      <input
-                        type="text"
-                        value={affiliateTag}
-                        onChange={(e) => setAffiliateTag((e.target as HTMLInputElement).value)}
-                        placeholder="e.g. gempixel"
-                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Tracking Engine</label>
-                      <select
-                        value={affiliateApp}
-                        onChange={(e) => setAffiliateApp((e.target as HTMLSelectElement).value as any)}
-                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
-                      >
-                        <option value="ref">Ref/Referral (ref=...)</option>
-                        <option value="rfsn">Refersion (rfsn=...)</option>
-                        <option value="none">None</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Partner Preset</label>
-                      <select
-                        onChange={(e) => {
-                          const val = (e.target as HTMLSelectElement).value;
-                          if (val === 'adiamondpainting') {
-                            setCanvasTemplate('https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}');
-                          } else if (val === 'pandacrafty') {
-                            setCanvasTemplate('https://pandacraftysteam.com/products/custom-diamond-painting-kit?width={width}&height={height}&shape={shape}');
-                          }
-                        }}
-                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
-                        value={canvasTemplate.includes('pandacraftysteam') || canvasTemplate.includes('pandacrafty') ? 'pandacrafty' : 'adiamondpainting'}
-                      >
-                        <option value="adiamondpainting">ADiamondPainting</option>
-                        <option value="pandacrafty">Panda Crafty</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Base URL Template</label>
-                      <input
-                        type="text"
-                        value={canvasTemplate}
-                        onChange={(e) => setCanvasTemplate((e.target as HTMLInputElement).value)}
-                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono"
-                      />
-                    </div>
-                    {/* Logged Unmapped Colors List */}
-                    <div className="flex flex-col gap-1 pt-2 border-t border-slate-850">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Logged Unmapped Colors</label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            localStorage.removeItem('gempixel_unmapped_colors_log');
-                            setUnmappedLog([]);
-                          }}
-                          className="text-[9px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"
-                        >
-                          Clear Log
-                        </button>
-                      </div>
-                      <div className="bg-slate-950/60 p-2 rounded border border-slate-850/60 max-h-24 overflow-y-auto text-[10px] font-mono text-slate-350">
-                        {unmappedLog.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {unmappedLog.map(code => (
-                              <span key={code} className="bg-slate-800 px-1 rounded border border-slate-700 select-all">
-                                {code}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic select-none">No unmapped colors logged.</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </details>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Palette Size</span>
+                  <span className="font-bold text-slate-200">{matchResult ? Object.keys(matchResult.counts).length : 0} Colors</span>
+                </div>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Drill Style</span>
+                  <span className="font-bold text-slate-200 capitalize">{drillStyle} / {drillType}</span>
+                </div>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Required Drills</span>
+                  <span className="font-bold text-slate-200">{totalSafetyDrills.toLocaleString()} pcs</span>
+                </div>
+              </div>
+
+              {/* Pricing summary */}
+              <div className="flex justify-between items-center bg-slate-900/80 p-2 rounded border border-slate-800 mt-1">
+                <div className="flex flex-col">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
+                  <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteSafety.toFixed(2)}</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Net Profit</span>
+                  <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitSafety.toFixed(2)}</span>
+                </div>
               </div>
             </div>
+
+            {/* Section B: Order & Print Actions */}
+            <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Checkout & Actions</span>
+              <button
+                onClick={handleShopifyCheckout}
+                disabled={!matchResult}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <span>Order Drills from Diamond Drills USA</span>
+              </button>
+              <button
+                onClick={printReport}
+                disabled={!matchResult}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <span>Export / Print PDF</span>
+              </button>
+            </div>
+
+            {/* Section C: Portfolio Saving Form */}
+            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850/60 flex flex-col gap-2.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Save Commission</span>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="text"
+                  id="step5-save-name-input"
+                  value={saveProjectName}
+                  onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
+                  placeholder="e.g. Commission Layout 1"
+                  className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
+                />
+                
+                <div className="flex gap-2">
+                  {activeProjectId ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleSaveProject(saveProjectName);
+                          showSaveSuccess();
+                        }}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                      >
+                        Update
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSaveProject(saveProjectName, true);
+                          showSaveSuccess();
+                        }}
+                        className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                      >
+                        Save as Copy
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleSaveProject(saveProjectName);
+                        showSaveSuccess();
+                      }}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                    >
+                      Save to My Commissions
+                    </button>
+                  )}
+                </div>
+
+                {saveSuccessMsg && (
+                  <span className="text-[10px] text-emerald-400 font-semibold text-center block mt-0.5">
+                    ✓ {saveSuccessMsg}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Section D: Affiliate & settings configurations */}
+            <details className="text-[11px] text-slate-400 cursor-pointer bg-slate-950/20 p-2 rounded border border-slate-850/40">
+              <summary className="font-semibold text-[10px] uppercase text-indigo-400 select-none">Affiliate & Partner Settings</summary>
+              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-850">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-wide text-slate-500">Affiliate Tag</label>
+                  <input
+                    type="text"
+                    value={affiliateTag}
+                    onChange={(e) => setAffiliateTag((e.target as HTMLInputElement).value)}
+                    placeholder="e.g. gempixel"
+                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 cursor-text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-wide text-slate-500">Tracking Engine</label>
+                  <select
+                    value={affiliateApp}
+                    onChange={(e) => setAffiliateApp((e.target as HTMLSelectElement).value as any)}
+                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 cursor-pointer"
+                  >
+                    <option value="ref">Ref/Referral (ref=...)</option>
+                    <option value="rfsn">Refersion (rfsn=...)</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+                {/* Logged Unmapped Colors List */}
+                <div className="flex flex-col gap-1 pt-2 border-t border-slate-850">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Logged Unmapped Colors</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem('gempixel_unmapped_colors_log');
+                        setUnmappedLog([]);
+                      }}
+                      className="text-[9px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"
+                    >
+                      Clear Log
+                    </button>
+                  </div>
+                  <div className="bg-slate-950/60 p-2 rounded border border-slate-850/60 max-h-24 overflow-y-auto text-[10px] font-mono text-slate-350 cursor-default">
+                    {unmappedLog.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {unmappedLog.map(code => (
+                          <span key={code} className="bg-slate-800 px-1 rounded border border-slate-700 select-all">
+                            {code}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-slate-500 italic select-none">No unmapped colors logged.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         )}
 
@@ -1922,7 +1984,7 @@ export function App() {
           ) : (
             <div className="flex-1" />
           )}
-          {wizardStep < 4 ? (
+          {wizardStep < 5 ? (
             <button
               id="wizard-next-btn"
               onClick={() => setWizardStep(prev => prev + 1)}
