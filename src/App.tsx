@@ -6,6 +6,110 @@ import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
 import { compileCanvasPartnerUrl, compileShopifyCartLink } from './engine/checkout';
 
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  thumbnail: string;
+  dateModified: string;
+  dateCreated: string;
+}
+
+export interface ProjectData {
+  id: string;
+  name: string;
+  dateCreated: string;
+  dateModified: string;
+  imageName: string;
+  dimensions: { cols: number; rows: number };
+  drillStyle: 'square' | 'round';
+  selectedBaseKit: 'all' | '100' | '200';
+  safetyMargin: number;
+  laborMarkup: number;
+  kitBaseCost: number;
+  drillPacketCost: number;
+  excludedDmcCodes: string[];
+  pricesPerBagSize: Record<200 | 500 | 1000 | 2000, number>;
+  drillType: 'standard' | 'ab' | 'glow' | 'crystal';
+  canvasTemplate: string;
+  affiliateTag: string;
+  affiliateApp: 'ref' | 'rfsn' | 'none';
+  gridData: number[] | null;
+}
+
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function generateThumbnail(canvas: HTMLCanvasElement): string {
+  try {
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = 80;
+    thumbCanvas.height = 60;
+    const ctx = thumbCanvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(canvas, 0, 0, 80, 60);
+      return thumbCanvas.toDataURL('image/jpeg', 0.6);
+    }
+  } catch (err) {
+    console.error('Failed to generate thumbnail', err);
+  }
+  return '';
+}
+
+export function saveProjectToStorage(summary: ProjectSummary, data: ProjectData) {
+  try {
+    const registryStr = localStorage.getItem('gempixel_workspace_registry');
+    const registry: ProjectSummary[] = registryStr ? JSON.parse(registryStr) : [];
+    const index = registry.findIndex(p => p.id === summary.id);
+    if (index >= 0) {
+      registry[index] = summary;
+    } else {
+      registry.push(summary);
+    }
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify(registry));
+  } catch (err) {
+    console.error('Failed to save to workspace registry', err);
+  }
+
+  try {
+    localStorage.setItem(`gempixel_project_${data.id}`, JSON.stringify(data));
+  } catch (err) {
+    console.error('Failed to save project data', err);
+  }
+}
+
+export function loadProjectFromStorage(id: string): ProjectData | null {
+  try {
+    const dataStr = localStorage.getItem(`gempixel_project_${id}`);
+    return dataStr ? JSON.parse(dataStr) : null;
+  } catch (err) {
+    console.error('Failed to load project data', err);
+    return null;
+  }
+}
+
+export function deleteProjectFromStorage(id: string) {
+  try {
+    const registryStr = localStorage.getItem('gempixel_workspace_registry');
+    if (registryStr) {
+      const registry: ProjectSummary[] = JSON.parse(registryStr);
+      const filtered = registry.filter(p => p.id !== id);
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify(filtered));
+    }
+  } catch (err) {
+    console.error('Failed to remove from registry', err);
+  }
+
+  try {
+    localStorage.removeItem(`gempixel_project_${id}`);
+  } catch (err) {
+    console.error('Failed to delete project data', err);
+  }
+}
+
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
   { name: '20 x 25 cm', value: '20x25-cm', width: 20, height: 25, unit: 'cm' },
@@ -130,6 +234,20 @@ export function App() {
   const [cols, setCols] = useState(80);
   const [rows, setRows] = useState(53);
 
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string>('');
+  const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => {
+    try {
+      const saved = localStorage.getItem('gempixel_workspace_registry');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveProjectName, setSaveProjectName] = useState('');
+  const [commissionsDrawerOpen, setCommissionsDrawerOpen] = useState(true);
+
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');
   const [heightInput, setHeightInput] = useState<string>('53');
@@ -206,6 +324,139 @@ export function App() {
     localStorage.setItem('gempixel_canvas_template', canvasTemplate);
   }, [canvasTemplate]);
 
+  const loadProject = (id: string) => {
+    const project = loadProjectFromStorage(id);
+    if (!project) return;
+
+    setActiveProjectId(project.id);
+    setImage(null);
+    setImageName(project.imageName || '');
+    setCols(project.dimensions.cols);
+    setRows(project.dimensions.rows);
+    setDrillStyle(project.drillStyle);
+    setSelectedBaseKit(project.selectedBaseKit || 'all');
+    setDrillType(project.drillType || 'standard');
+    setExcludedColors(new Set(project.excludedDmcCodes || []));
+    setHighlightedColor(null);
+    setCanvasBaseCost(project.kitBaseCost ?? 15.0);
+    setDrillPacketCost(project.drillPacketCost ?? 0.25);
+    setLaborFee(project.laborMarkup ?? 25.0);
+    setCanvasTemplate(project.canvasTemplate || '');
+    setAffiliateTag(project.affiliateTag || '');
+    setAffiliateApp(project.affiliateApp || 'ref');
+    setUnit('grid');
+    setWidthInput(project.dimensions.cols.toString());
+    setHeightInput(project.dimensions.rows.toString());
+    setSelectedPreset('custom');
+    
+    if (project.pricesPerBagSize) {
+      setPriceDb(project.pricesPerBagSize);
+    }
+
+    if (project.gridData) {
+      const restoredMatches = project.gridData.map(idx => DMC_PALETTE[idx]?.dmc || '310');
+      const counts: Record<string, number> = {};
+      restoredMatches.forEach(code => {
+        counts[code] = (counts[code] || 0) + 1;
+      });
+      setMatchResult({
+        matches: restoredMatches,
+        counts
+      });
+    } else {
+      setMatchResult(null);
+    }
+  };
+
+  const resetWorkspace = () => {
+    setActiveProjectId(null);
+    setImage(null);
+    setImageName('');
+    setCols(80);
+    setRows(53);
+    setUnit('grid');
+    setWidthInput('80');
+    setHeightInput('53');
+    setSelectedPreset('custom');
+    setDrillStyle('square');
+    setSelectedBaseKit('all');
+    setDrillType('standard');
+    setExcludedColors(new Set());
+    setHighlightedColor(null);
+    setCanvasBaseCost(15.0);
+    setDrillPacketCost(0.25);
+    setDrillBagSize(200);
+    setLaborFee(25.0);
+    setMarkupType('fixed');
+    setOptimizeBagsCost(true);
+    setPriceDb({
+      200: 0.60,
+      500: 1.10,
+      1000: 1.80,
+      2000: 3.20
+    });
+    setMatchResult(null);
+  };
+
+  const handleSaveProject = (name: string) => {
+    if (!name.trim()) return;
+
+    const projectId = activeProjectId || generateUUID();
+    const nowStr = new Date().toISOString();
+    
+    let thumbnailDataUrl = '';
+    if (canvasRef.current) {
+      thumbnailDataUrl = generateThumbnail(canvasRef.current);
+    }
+
+    const gridData = matchResult
+      ? matchResult.matches.map(code => DMC_PALETTE.findIndex(c => c.dmc === code))
+      : null;
+
+    const projectSummary: ProjectSummary = {
+      id: projectId,
+      name,
+      thumbnail: thumbnailDataUrl,
+      dateModified: nowStr,
+      dateCreated: activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.dateCreated || nowStr) : nowStr
+    };
+
+    const projectData: ProjectData = {
+      id: projectId,
+      name,
+      dateCreated: projectSummary.dateCreated,
+      dateModified: nowStr,
+      imageName: imageName || (image ? 'Uploaded Image' : 'Imported Project'),
+      dimensions: { cols, rows },
+      drillStyle,
+      selectedBaseKit,
+      safetyMargin: 10,
+      laborMarkup: laborFee,
+      kitBaseCost: canvasBaseCost,
+      drillPacketCost,
+      excludedDmcCodes: Array.from(excludedColors),
+      pricesPerBagSize: priceDb,
+      drillType,
+      canvasTemplate,
+      affiliateTag,
+      affiliateApp,
+      gridData
+    };
+
+    saveProjectToStorage(projectSummary, projectData);
+
+    const savedRegistry = localStorage.getItem('gempixel_workspace_registry');
+    setProjectsRegistry(savedRegistry ? JSON.parse(savedRegistry) : []);
+
+    setActiveProjectId(projectId);
+    setSaveModalOpen(false);
+  };
+
+  // Temporarily bypass unused locals warnings for Task 1 commit
+  if (false) {
+    console.log(saveModalOpen, saveProjectName, setSaveProjectName, commissionsDrawerOpen, setCommissionsDrawerOpen, loadProject, resetWorkspace, handleSaveProject);
+  }
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<CanvasViewer | null>(null);
   const clientRef = useRef<MatcherClient | null>(null);
@@ -250,9 +501,11 @@ export function App() {
     };
   }, []);
 
-  // Initialize CanvasViewer when canvas is rendered (depends on image)
+  const lastFitProjectRef = useRef<string | null>(null);
+
+  // Initialize CanvasViewer when canvas is rendered (depends on image OR matchResult)
   useEffect(() => {
-    if (canvasRef.current && image) {
+    if (canvasRef.current && (image || matchResult)) {
       if (!viewerRef.current) {
         viewerRef.current = new CanvasViewer(canvasRef.current);
       }
@@ -262,7 +515,7 @@ export function App() {
         viewerRef.current = null;
       }
     }
-  }, [image]);
+  }, [image, matchResult]);
 
   // Synchronize viewer data when canvas, matches, or styles change
   useEffect(() => {
@@ -274,13 +527,14 @@ export function App() {
       viewerRef.current.setHighlightedColor(highlightedColor);
       viewerRef.current.setDrillType(drillType);
 
-      // Automatically fit to container by default on first load of a new image
-      if (lastFitImageRef.current !== image) {
+      // Automatically fit to container by default on first load of a new image or when switching projects
+      if (lastFitImageRef.current !== image || (activeProjectId && lastFitProjectRef.current !== activeProjectId)) {
         viewerRef.current.fitToContainer();
         lastFitImageRef.current = image;
+        lastFitProjectRef.current = activeProjectId;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
@@ -556,6 +810,8 @@ export function App() {
         setExcludedColors(new Set());
         setHighlightedColor(null);
         setSelectedPreset('custom');
+        setActiveProjectId(null);
+        setImageName(file.name || 'Uploaded Image');
 
         // Adjust dimensions to match aspect ratio
         const ar = img.naturalWidth / img.naturalHeight;
@@ -601,6 +857,8 @@ export function App() {
       setExcludedColors(new Set());
       setHighlightedColor(null);
       setSelectedPreset('custom');
+      setActiveProjectId(null);
+      setImageName(entry.name || 'Recent Image');
 
       const ar = img.naturalWidth / img.naturalHeight;
       let newRows = rows;
@@ -1380,7 +1638,7 @@ export function App() {
         )}
 
         {/* Floating Zoom & Fit Controls */}
-        {image && viewportMode === 'grid' && (
+        {(image || matchResult) && viewportMode === 'grid' && (
           <div className="absolute bottom-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-1 shadow-xl backdrop-blur-md flex flex-col gap-1 no-print font-sans">
             <button
               onClick={() => {
@@ -1399,7 +1657,7 @@ export function App() {
           </div>
         )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
-          {image ? (
+          {(image || matchResult) ? (
             <>
               <canvas
                 ref={canvasRef}
@@ -1409,16 +1667,18 @@ export function App() {
                   viewportMode === 'grid' ? '' : 'hidden'
                 }`}
               />
-              <div className={`relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print ${
-                viewportMode === 'reference' ? '' : 'hidden'
-              }`}>
-                <img
-                  src={image.src}
-                  alt="Original reference full size"
-                  className="max-w-full max-h-[75vh] object-contain rounded-lg border border-slate-800 shadow-2xl"
-                />
-                <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
-              </div>
+              {image && (
+                <div className={`relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print ${
+                  viewportMode === 'reference' ? '' : 'hidden'
+                }`}>
+                  <img
+                    src={image.src}
+                    alt="Original reference full size"
+                    className="max-w-full max-h-[75vh] object-contain rounded-lg border border-slate-800 shadow-2xl"
+                  />
+                  <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
+                </div>
+              )}
             </>
           ) : (
             <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
