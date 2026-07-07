@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&family=Pixelify+Sans:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @layer base {
@@ -9,6 +9,10 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace !important;
   }
+}
+
+.font-pixel {
+  font-family: 'Pixelify Sans', sans-serif !important;
 }
 
 /* Custom scrollbars for sidebars and checkbox list */

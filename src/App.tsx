@@ -478,7 +478,7 @@ export function App() {
           <div className="flex items-center gap-2.5">
             <img src={logoUrl} alt="GemPixel Logo" className="w-8 h-8 rounded border border-slate-700 shadow shadow-indigo-500/20 object-cover" />
             <div>
-              <h1 className="text-lg font-bold text-indigo-400 tracking-wide leading-none">GemPixel</h1>
+              <h1 className="text-lg font-bold text-indigo-400 tracking-wide leading-none font-pixel">GemPixel</h1>
               <p className="text-[9px] text-slate-400 mt-1">Diamond Painting Planner</p>
             </div>
           </div>
