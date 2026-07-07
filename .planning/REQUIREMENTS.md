@@ -18,8 +18,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ENGINE-01**: Map sRGB pixels from the source image to the CIELAB color space.
 - [x] **ENGINE-02**: Match sRGB pixels to the nearest DMC catalog color using the CIEDE2000 color distance formula.
-- [ ] **ENGINE-03**: Process matching loops asynchronously using Web Workers to prevent UI thread lockups.
-- [ ] **ENGINE-04**: Implement an RGBA-to-DMC match lookup cache to bypass redundant distance checks on similar colors.
+- [x] **ENGINE-03**: Process matching loops asynchronously using Web Workers to prevent UI thread lockups.
+- [x] **ENGINE-04**: Implement an RGBA-to-DMC match lookup cache to bypass redundant distance checks on similar colors.
 
 ### Palettes & Inventory
 
@@ -65,8 +65,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | INGEST-04 | Phase 2 | Complete |
 | ENGINE-01 | Phase 1 | Complete |
 | ENGINE-02 | Phase 1 | Complete |
-| ENGINE-03 | Phase 2 | Pending |
-| ENGINE-04 | Phase 2 | Pending |
+| ENGINE-03 | Phase 2 | Complete |
+| ENGINE-04 | Phase 2 | Complete |
 | PALETTE-01 | Phase 1 | Complete |
 | PALETTE-02 | Phase 1 | Complete |
 | PALETTE-03 | Phase 4 | Pending |
