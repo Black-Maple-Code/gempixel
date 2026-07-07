@@ -3,6 +3,7 @@ import { MatcherClient } from './engine/worker-client';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
+import logoUrl from './logo.png';
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
@@ -39,7 +40,14 @@ export function App() {
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
-  const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>([]);
+  const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
+    try {
+      const saved = localStorage.getItem('gempixel_recent_images');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -62,6 +70,24 @@ export function App() {
 
   // Determine active candidates based on sub-palette exclusion checklist
   const activeCandidates = baseCandidates.filter(c => !excludedColors.has(c.dmc));
+
+  // Persist recent image list to localStorage, popping oldest if quota exceeded
+  useEffect(() => {
+    let list = [...recentImages];
+    while (list.length > 0) {
+      try {
+        localStorage.setItem('gempixel_recent_images', JSON.stringify(list));
+        break;
+      } catch (err) {
+        // QuotaExceededError - drop oldest entry and retry
+        list.pop();
+        if (list.length === 0) {
+          localStorage.removeItem('gempixel_recent_images');
+          break;
+        }
+      }
+    }
+  }, [recentImages]);
 
   // Initialize MatcherClient
   useEffect(() => {
@@ -449,9 +475,12 @@ export function App() {
         }`}
       >
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <div>
-            <h1 className="text-xl font-bold text-indigo-400 tracking-wide">GemPixel</h1>
-            <p className="text-[10px] text-slate-400 mt-0.5">Diamond Painting Supply Planner</p>
+          <div className="flex items-center gap-2.5">
+            <img src={logoUrl} alt="GemPixel Logo" className="w-8 h-8 rounded border border-slate-700 shadow shadow-indigo-500/20 object-cover" />
+            <div>
+              <h1 className="text-lg font-bold text-indigo-400 tracking-wide leading-none">GemPixel</h1>
+              <p className="text-[9px] text-slate-400 mt-1">Diamond Painting Planner</p>
+            </div>
           </div>
           <button
             onClick={() => setLeftPanelCollapsed(true)}
@@ -694,7 +723,7 @@ export function App() {
             title="Expand Workspace"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7M17 19l-7-7 7-7" />
             </svg>
           </button>
         )}
