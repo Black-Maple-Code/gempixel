@@ -10,7 +10,7 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 2: Client-side Engine & Worker Architecture** - Load images client-side, downsample/fit to size, and execute color matching on a background Web Worker with caching. (completed 2026-07-07)
 - [x] **Phase 3: Canvas Viewer & Zoom/Pan Interaction** - Implement high-performance interactive grid preview canvas with zoom, pan, and custom drill styles. (completed 2026-07-07)
 - [x] **Phase 4: Supply Planning, Customization & Exports** - Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF. (completed 2026-07-07)
-- [ ] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters.
+- [x] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters. (completed 2026-07-07)
 - [ ] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey.
 
 ## Phase Details
@@ -124,11 +124,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
   1. User can choose a partner canvas supplier and see an "Order Sticky Canvas" button that opens their site pre-filled with the active canvas rows, columns, and layout dimensions.
   2. User can view a "Buy Custom Drills Cart" link that compiles all exact drill sizes and quantities into a single referral cart at Diamond Drills USA for easy checkout.
 
-**Plans**: 0/2 plans complete
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 05-01-PLAN.md — Build canvas partner redirect link integrations passing sizing parameters.
-- [ ] 05-02-PLAN.md — Implement Diamond Drills USA shopping cart link compiler with affiliate referral tracking.
+- [x] 05-01-PLAN.md — Build canvas partner redirect link integrations passing sizing parameters.
+- [x] 05-02-PLAN.md — Implement Diamond Drills USA shopping cart link compiler with affiliate referral tracking.
 
 ### Phase 6: Commission Workspace & Streamlined Artist UX
 
@@ -158,5 +158,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Client-side Engine & Worker Architecture | 2/2 | Complete    | 2026-07-07 |
 | 3. Canvas Viewer & Zoom/Pan Interaction | 2/2 | Complete    | 2026-07-07 |
 | 4. Supply Planning, Customization & Exports | 3/3 | Complete    | 2026-07-07 |
-| 5. Supply Partnerships & Checkout Integration | 0/2 | Pending     | — |
+| 5. Supply Partnerships & Checkout Integration | 2/2 | Complete    | 2026-07-07 |
 | 6. Commission Workspace & Streamlined Artist UX | 0/2 | Pending     | — |
