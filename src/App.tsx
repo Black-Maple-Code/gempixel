@@ -27,17 +27,19 @@ export function calculateSafetyPurchase(exactCount: number): { safety: number; p
 
 export function App() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [cols, setCols] = useState(40);
-  const [rows, setRows] = useState(30);
+  const [cols, setCols] = useState(80);
+  const [rows, setRows] = useState(53);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
-  const [widthInput, setWidthInput] = useState<string>('40');
-  const [heightInput, setHeightInput] = useState<string>('30');
+  const [widthInput, setWidthInput] = useState<string>('80');
+  const [heightInput, setHeightInput] = useState<string>('53');
   const [selectedPreset, setSelectedPreset] = useState<string>('custom');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
+  const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>([]);
 
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -53,6 +55,14 @@ export function App() {
   const clientRef = useRef<MatcherClient | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
+  // Determine base catalog candidate list
+  const baseCandidates = selectedBaseKit === 'all'
+    ? DMC_PALETTE
+    : DMC_PALETTE.filter(c => c.kits.includes(selectedBaseKit));
+
+  // Determine active candidates based on sub-palette exclusion checklist
+  const activeCandidates = baseCandidates.filter(c => !excludedColors.has(c.dmc));
+
   // Initialize MatcherClient
   useEffect(() => {
     // Instantiate client with Vite worker URL syntax
@@ -65,7 +75,7 @@ export function App() {
     };
   }, []);
 
-  // Initialize CanvasViewer when canvas is rendered (depends on image)
+  // Initialize CanvasViewer when canvas is rendered (depends on image or view mode)
   useEffect(() => {
     if (canvasRef.current) {
       if (!viewerRef.current) {
@@ -77,7 +87,18 @@ export function App() {
         viewerRef.current = null;
       }
     }
-  }, [image]);
+  }, [image, viewportMode]);
+
+  // Synchronize viewer data when canvas, matches, or styles change
+  useEffect(() => {
+    if (viewerRef.current && matchResult && activeCandidates.length > 0 && viewportMode === 'grid') {
+      const colorMap = new Map<string, string>();
+      activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
+      viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
+      viewerRef.current.setDrillStyle(drillStyle);
+      viewerRef.current.setHighlightedColor(highlightedColor);
+    }
+  }, [image, viewportMode, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
@@ -223,13 +244,7 @@ export function App() {
     };
   };
 
-  // Determine base catalog candidate list
-  const baseCandidates = selectedBaseKit === 'all'
-    ? DMC_PALETTE
-    : DMC_PALETTE.filter(c => c.kits.includes(selectedBaseKit));
 
-  // Determine active candidates based on sub-palette exclusion checklist
-  const activeCandidates = baseCandidates.filter(c => !excludedColors.has(c.dmc));
 
   // Trigger match recalculation when image, dimensions, or candidates change
   useEffect(() => {
@@ -250,14 +265,6 @@ export function App() {
         (result) => {
           setLoading(false);
           setMatchResult(result);
-
-          if (viewerRef.current) {
-            const colorMap = new Map<string, string>();
-            activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
-            viewerRef.current.setData(cols, rows, result.matches, colorMap);
-            // Reapply current highlight
-            viewerRef.current.setHighlightedColor(highlightedColor);
-          }
         },
         cols
       );
@@ -266,13 +273,6 @@ export function App() {
       setLoading(false);
     }
   }, [image, cols, rows, selectedBaseKit, excludedColors]);
-
-  // Handle drill style selector changes
-  useEffect(() => {
-    if (viewerRef.current) {
-      viewerRef.current.setDrillStyle(drillStyle);
-    }
-  }, [drillStyle]);
 
   // Toggle exclusion for a color
   const toggleColorExclusion = (dmc: string) => {
@@ -341,6 +341,7 @@ export function App() {
   const loadImageFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (event) => {
+      const dataUrlStr = event.target?.result as string;
       const img = new Image();
       img.onload = () => {
         // Reset exclusions when loading a new image
@@ -367,10 +368,57 @@ export function App() {
         }
         setRows(newRows);
         setImage(img);
+
+        // Add to recent images history (limit to 5)
+        setRecentImages(prev => {
+          const newEntry = {
+            id: Math.random().toString(36).substring(2, 9),
+            name: file.name || 'Uploaded Image',
+            dataUrl: dataUrlStr,
+            width: img.naturalWidth,
+            height: img.naturalHeight
+          };
+          const filtered = prev.filter(x => x.dataUrl !== dataUrlStr);
+          return [newEntry, ...filtered].slice(0, 5);
+        });
       };
-      img.src = event.target?.result as string;
+      img.src = dataUrlStr;
     };
     reader.readAsDataURL(file);
+  };
+
+  const loadRecentImage = (entry: { name: string; dataUrl: string; width: number; height: number }) => {
+    const img = new Image();
+    img.onload = () => {
+      setExcludedColors(new Set());
+      setHighlightedColor(null);
+      setSelectedPreset('custom');
+
+      const ar = img.naturalWidth / img.naturalHeight;
+      let newRows = rows;
+      if (unit === 'grid') {
+        newRows = Math.max(1, Math.round(cols / ar));
+        setHeightInput(newRows.toString());
+      } else if (unit === 'cm') {
+        const currentWidthCm = cols / 4;
+        const newHeightCm = currentWidthCm / ar;
+        newRows = Math.max(1, Math.round(newHeightCm * 4));
+        setHeightInput(newHeightCm.toFixed(1));
+      } else if (unit === 'inch') {
+        const currentWidthInch = cols / 10;
+        const newHeightInch = currentWidthInch / ar;
+        newRows = Math.max(1, Math.round(newHeightInch * 10));
+        setHeightInput(newHeightInch.toFixed(1));
+      }
+      setRows(newRows);
+      setImage(img);
+    };
+    img.src = entry.dataUrl;
+  };
+
+  const deleteRecentImage = (id: string, e: Event) => {
+    e.stopPropagation();
+    setRecentImages(prev => prev.filter(x => x.id !== id));
   };
 
   const printReport = () => {
@@ -441,6 +489,36 @@ export function App() {
             />
           </div>
         </div>
+
+        {/* Recent Uploads */}
+        {recentImages.length > 0 && (
+          <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0 no-print">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recent Uploads</span>
+            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
+              {recentImages.map(imgEntry => (
+                <div
+                  key={imgEntry.id}
+                  onClick={() => loadRecentImage(imgEntry)}
+                  className="relative w-10 h-10 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-indigo-500/75 group shrink-0 overflow-hidden transition-all"
+                  title={imgEntry.name}
+                >
+                  <img
+                    src={imgEntry.dataUrl}
+                    alt={imgEntry.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={(e) => deleteRecentImage(imgEntry.id, e)}
+                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-slate-950/80 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
+                    title="Delete Image"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Reference Image Thumbnail */}
         {image && (
@@ -578,9 +656,9 @@ export function App() {
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
-        {/* Floating Top Mode Selector */}
+        {/* Floating Center Mode Selector */}
         {image && (
-          <div className="absolute top-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print">
             {(['grid', 'reference'] as const).map(mode => (
               <button
                 key={mode}
@@ -602,6 +680,18 @@ export function App() {
             onClick={() => setLeftPanelCollapsed(false)}
             className="absolute top-4 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95"
             title="Expand Sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+
+        {rightPanelCollapsed && (
+          <button
+            onClick={() => setRightPanelCollapsed(false)}
+            className="absolute top-4 right-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95"
+            title="Expand Workspace"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
@@ -646,7 +736,24 @@ export function App() {
         </div>
       </main>
       {/* Right Sidebar Checklist & Legend */}
-      <aside className="w-96 bg-slate-900/60 backdrop-blur-md border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300">
+      <aside
+        className={`bg-slate-900/60 backdrop-blur-md border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300 relative ${
+          rightPanelCollapsed ? 'w-0 border-l-0 p-0' : 'w-96'
+        }`}
+      >
+        {/* Workspace Panel Header */}
+        <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 px-4 pt-3.5 no-print shrink-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspace Panel</span>
+          <button
+            onClick={() => setRightPanelCollapsed(true)}
+            className="p-1 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
+            title="Collapse Workspace"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
         
         {/* Collapsible Sub-palette selection checklist */}
         <div className="border-b border-slate-800/80 no-print flex flex-col shrink-0 transition-all">

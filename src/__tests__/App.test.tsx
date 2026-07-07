@@ -63,8 +63,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     const widthInput = inputs[0] as HTMLInputElement;
     const heightInput = inputs[1] as HTMLInputElement;
 
-    expect(widthInput.value).toBe('40');
-    expect(heightInput.value).toBe('30');
+    expect(widthInput.value).toBe('80');
+    expect(heightInput.value).toBe('53');
 
     // Change width using prototype setter
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -99,8 +99,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     const widthInput = inputs[0] as HTMLInputElement;
     const heightInput = inputs[1] as HTMLInputElement;
 
-    // Default 40x30 in cm should be 40/4 = 10cm and 30/4 = 7.5cm
-    expect(widthInput.value).toBe('10');
-    expect(heightInput.value).toBe('7.5');
+    // Default 80x53 in cm should be 80/4 = 20cm and 53/4 = 13.25cm
+    expect(widthInput.value).toBe('20');
+    expect(heightInput.value).toBe('13.25');
   });
 });

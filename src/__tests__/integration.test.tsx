@@ -556,4 +556,108 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
+
+  it('collapses and expands the right workspace panel sidebar correctly', async () => {
+    render(<App />, container);
+
+    // Sidebar should start expanded
+    const sidebars = container.querySelectorAll('aside');
+    const rightSidebar = sidebars[1] as HTMLElement; // second aside
+    expect(rightSidebar.className).toContain('w-96');
+
+    // Click collapse button inside right sidebar
+    const collapseBtn = rightSidebar.querySelector('button[title="Collapse Workspace"]') as HTMLButtonElement;
+    expect(collapseBtn).not.toBeNull();
+    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Wait for sidebar to transition to collapsed state
+    await vi.waitFor(() => {
+      expect(rightSidebar.className).toContain('w-0');
+    });
+
+    // Pushed expand button should now be visible in main area
+    const expandBtn = container.querySelector('button[title="Expand Workspace"]') as HTMLButtonElement;
+    expect(expandBtn).not.toBeNull();
+    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Sidebar should expand back
+    await vi.waitFor(() => {
+      expect(rightSidebar.className).toContain('w-96');
+    });
+  });
+
+  it('tracks loaded images in recent uploads list and lets users load or delete them', async () => {
+    // Stub FileReader & Image
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mockImageSource' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 10,
+      naturalHeight: 10,
+      width: 10,
+      height: 10,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') {
+        return {
+          drawImage: vi.fn(),
+          getImageData: vi.fn().mockReturnValue({
+            data: new Uint8ClampedArray(400),
+            width: 10,
+            height: 10,
+          }),
+        } as any;
+      }
+      return null;
+    });
+
+    render(<App />, container);
+
+    // 1. Upload mock image
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'scenery.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file], writable: true });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for image onload and state updates
+    await vi.waitFor(() => {
+      const recentList = container.querySelector('div[title="scenery.png"]');
+      expect(recentList).not.toBeNull();
+    });
+
+    // 2. Click thumbnail to load image
+    const thumbnail = container.querySelector('div[title="scenery.png"]') as HTMLElement;
+    thumbnail.click();
+    await vi.waitFor(() => {
+      expect(container.querySelector('canvas')).not.toBeNull();
+    });
+
+    // 3. Delete recent image
+    const deleteBtn = thumbnail.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
+    expect(deleteBtn).not.toBeNull();
+    deleteBtn.click();
+
+    // Verify removed
+    await vi.waitFor(() => {
+      const recentList = container.querySelector('div[title="scenery.png"]');
+      expect(recentList).toBeNull();
+    });
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
 });
