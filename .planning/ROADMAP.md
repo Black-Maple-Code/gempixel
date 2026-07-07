@@ -1,0 +1,93 @@
+# Roadmap: GemPixel
+
+## Overview
+
+GemPixel is a client-side utility web application designed for diamond painting and gem art planning. This roadmap outlines the transition from a core color-matching library (Phase 1), to a client-side image-downscaling engine offloaded to Web Workers (Phase 2), then to an interactive graphics-accelerated Canvas viewport (Phase 3), and finally to a supply planner dashboard featuring sub-palette selection, highlighting, and print exports (Phase 4).
+
+## Phases
+
+- [ ] **Phase 1: Core Engine & Color Mathematics** - Establish accurate color conversion libraries and static manufacturer data structures.
+- [ ] **Phase 2: Client-side Engine & Worker Architecture** - Load images client-side, downsample/fit to size, and execute color matching on a background Web Worker with caching.
+- [ ] **Phase 3: Canvas Viewer & Zoom/Pan Interaction** - Implement high-performance interactive grid preview canvas with zoom, pan, and custom drill styles.
+- [ ] **Phase 4: Supply Planning, Customization & Exports** - Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF.
+
+## Phase Details
+
+### Phase 1: Core Engine & Color Mathematics
+**Goal**: Establish accurate color conversion libraries and static manufacturer data structures.
+**Mode**: mvp
+**Depends on**: Nothing (first phase)
+**Requirements**: ENGINE-01, ENGINE-02, PALETTE-01, PALETTE-02
+**Success Criteria** (what must be TRUE):
+  1. The program matches arbitrary sRGB colors to the nearest DMC/Art Dot code using CIEDE2000 color distance.
+  2. The system loads static lists for both Art Dot 100-color and Art Dot 200-color manufacturer indexes.
+  3. Automated test suite verifies correct matching results and color conversions within acceptable tolerances.
+**Plans**: TBD
+
+Plans:
+- [ ] 01-01: Implement CIELAB color conversion and CIEDE2000 distance logic
+- [ ] 01-02: Compile and test static Art Dot 100/200 color indexes
+
+### Phase 2: Client-side Engine & Worker Architecture
+**Goal**: Load images client-side, downsample/fit to size, and execute color matching on a background Web Worker with caching.
+**Mode**: mvp
+**Depends on**: Phase 1
+**Requirements**: INGEST-01, INGEST-02, INGEST-03, INGEST-04, ENGINE-03, ENGINE-04
+**Success Criteria** (what must be TRUE):
+  1. User can drag and drop/load a PNG or JPEG image entirely client-side.
+  2. User can specify canvas size in direct dimensions (rows/cols) or physical dimensions (cm/inches) and see computed dot sizes.
+  3. The color-matching loop executes asynchronously in a Web Worker, keeping UI frame rate responsive.
+  4. Recalculation uses an RGBA cache to bypass redundant distance checks on similar colors.
+**Plans**: TBD
+
+Plans:
+- [ ] 02-01: Build HTML5 File API loader and canvas-based image downscaler with fit/crop controls
+- [ ] 02-02: Integrate Web Worker for asynchronous CIEDE2000 color mapping with RGBA lookup caching
+
+### Phase 3: Canvas Viewer & Zoom/Pan Interaction
+**Goal**: Implement high-performance interactive grid preview canvas with zoom, pan, and custom drill styles.
+**Mode**: mvp
+**Depends on**: Phase 2
+**Requirements**: VIEW-01, VIEW-02
+**Success Criteria** (what must be TRUE):
+  1. User can zoom and pan the pixelated canvas preview using mouse scroll, click-and-drag, or touch pointer events.
+  2. User can toggle between Square and Round drill styles and immediately see the visual representation update.
+  3. Canvas rendering remains smooth (60 FPS during zoom/pan) even for large grid dimensions (e.g. 100x100).
+**Plans**: TBD
+
+**UI hint**: yes
+
+Plans:
+- [ ] 03-01: Build interactive HTML5 Canvas viewport renderer with mouse/pointer matrix transformation support
+- [ ] 03-02: Add Square and Round drill rendering styles with offscreen double-buffering optimizations
+
+### Phase 4: Supply Planning, Customization & Exports
+**Goal**: Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF.
+**Mode**: mvp
+**Depends on**: Phase 3
+**Requirements**: PALETTE-03, VIEW-03, REPORT-01, REPORT-02, REPORT-03
+**Success Criteria** (what must be TRUE):
+  1. User can view a tabular supply list showing DMC codes, names, swatches, and exact dot counts with a safety margin (e.g., +10%).
+  2. User can check/uncheck colors in the sub-palette list and see the preview canvas update colors dynamically based only on active palette items.
+  3. Selecting a row in the supply report highlights all occurrences of that color in the grid preview.
+  4. User can trigger the browser print dialog to output a clean, print-formatted PDF of the canvas grid and supply checklist.
+**Plans**: TBD
+
+**UI hint**: yes
+
+Plans:
+- [ ] 04-01: Design Preact supply checklist and sub-palette exclusion interface
+- [ ] 04-02: Implement legend color-highlight grid overlay logic
+- [ ] 04-03: Create CSS print layouts and print-to-PDF export mechanism
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Core Engine & Color Mathematics | 0/2 | Not started | - |
+| 2. Client-side Engine & Worker Architecture | 0/2 | Not started | - |
+| 3. Canvas Viewer & Zoom/Pan Interaction | 0/2 | Not started | - |
+| 4. Supply Planning, Customization & Exports | 0/3 | Not started | - |
