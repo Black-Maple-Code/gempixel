@@ -1056,6 +1056,87 @@ export function App() {
           </button>
         </div>
 
+        {/* My Commissions Portfolio Drawer */}
+        <div className="border-b border-slate-800/60 pb-3 flex flex-col gap-2 shrink-0">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setCommissionsDrawerOpen(!commissionsDrawerOpen)}
+              className="flex items-center gap-1.5 text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
+            >
+              <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${commissionsDrawerOpen ? 'rotate-90' : ''}`}>▶</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">My Commissions</span>
+              <span className="text-[9px] text-slate-500 font-medium">({projectsRegistry.length})</span>
+            </button>
+            <button
+              id="new-project-btn"
+              onClick={resetWorkspace}
+              className="text-[9px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer border border-indigo-500/20 px-1.5 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors"
+              title="Reset workspace to start a new commission"
+            >
+              New
+            </button>
+          </div>
+          
+          {commissionsDrawerOpen && (
+            <div className="flex flex-col gap-2 mt-1">
+              <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto scrollbar-thin">
+                {projectsRegistry.map(project => {
+                  const isActive = activeProjectId === project.id;
+                  return (
+                    <div
+                      key={project.id}
+                      onClick={() => loadProject(project.id)}
+                      className={`group relative flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all border ${
+                        isActive
+                          ? 'bg-indigo-600/10 border-indigo-500/30'
+                          : 'bg-slate-950/40 border-slate-850 hover:bg-slate-950/60 hover:border-slate-800'
+                      }`}
+                    >
+                      {project.thumbnail ? (
+                        <img
+                          src={project.thumbnail}
+                          alt={project.name}
+                          className="w-8 h-8 rounded object-cover border border-slate-800/80 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-slate-800 border border-slate-700/80 shrink-0 flex items-center justify-center text-[9px] text-slate-500 font-bold">
+                          GEM
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-semibold text-slate-200 block truncate group-hover:text-white transition-colors">{project.name}</span>
+                        <span className="text-[9px] text-slate-500 block truncate font-mono">{new Date(project.dateModified).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete commission "${project.name}"?`)) {
+                            deleteProjectFromStorage(project.id);
+                            const updated = projectsRegistry.filter(p => p.id !== project.id);
+                            setProjectsRegistry(updated);
+                            if (activeProjectId === project.id) {
+                              setActiveProjectId(null);
+                              setMatchResult(null);
+                            }
+                          }
+                        }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-950/80 text-[11px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
+                        title="Delete Commission"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+                {projectsRegistry.length === 0 && (
+                  <span className="text-[10px] text-slate-500 text-center block py-2 italic">No commissions saved yet.</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Sidebar Tabs */}
         <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-0.5 rounded border border-slate-850/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
           {(['files', 'size', 'quote'] as const).map(tab => {
