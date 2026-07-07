@@ -90,14 +90,14 @@ Plans:
   3. Selecting a row in the supply report highlights all occurrences of that color in the grid preview.
   4. User can trigger the browser print dialog to output a clean, print-formatted PDF of the canvas grid and supply checklist.
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 **UI hint**: yes
 
 Plans:
 
 - [x] 04-01-PLAN.md — Design Preact supply checklist and sub-palette exclusion interface.
-- [ ] 04-02-PLAN.md — Implement legend color-highlight grid overlay logic.
+- [x] 04-02-PLAN.md — Implement legend color-highlight grid overlay logic.
 - [ ] 04-03-PLAN.md — Create CSS print layouts and print-to-PDF export mechanism.
 
 ## Progress
@@ -110,4 +110,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Core Engine & Color Mathematics | 2/2 | Complete    | 2026-07-07 |
 | 2. Client-side Engine & Worker Architecture | 2/2 | Complete    | 2026-07-07 |
 | 3. Canvas Viewer & Zoom/Pan Interaction | 2/2 | Complete    | 2026-07-07 |
-| 4. Supply Planning, Customization & Exports | 1/3 | In Progress|  |
+| 4. Supply Planning, Customization & Exports | 2/3 | In Progress|  |

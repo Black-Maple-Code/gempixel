@@ -25,13 +25,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **PALETTE-01**: Support matching against the Art Dot 100-color manufacturer index.
 - [x] **PALETTE-02**: Support matching against the Art Dot 200-color manufacturer index.
-- [ ] **PALETTE-03**: User can toggle specific colors on/off in a sub-palette selector, triggering instant client-side recalculation to other kit colors.
+- [x] **PALETTE-03**: User can toggle specific colors on/off in a sub-palette selector, triggering instant client-side recalculation to other kit colors.
 
 ### Interactive Grid Preview
 
 - [x] **VIEW-01**: User can zoom and pan the preview grid using pointer events.
 - [x] **VIEW-02**: User can toggle between Square (full grid cell coverage) and Round (circular representation showing gaps) drill styles.
-- [ ] **VIEW-03**: User can highlight occurrences of a selected color in the grid preview by selecting it in the legend/report.
+- [x] **VIEW-03**: User can highlight occurrences of a selected color in the grid preview by selecting it in the legend/report.
 
 ### Supply Reporting & Export
 
@@ -69,10 +69,10 @@ Requirements for initial release. Each maps to roadmap phases.
 | ENGINE-04 | Phase 2 | Complete |
 | PALETTE-01 | Phase 1 | Complete |
 | PALETTE-02 | Phase 1 | Complete |
-| PALETTE-03 | Phase 4 | Pending |
+| PALETTE-03 | Phase 4 | Complete |
 | VIEW-01 | Phase 3 | Complete |
 | VIEW-02 | Phase 3 | Complete |
-| VIEW-03 | Phase 4 | Pending |
+| VIEW-03 | Phase 4 | Complete |
 | REPORT-01 | Phase 4 | Complete |
 | REPORT-02 | Phase 4 | Pending |
 | REPORT-03 | Phase 4 | Pending |
