@@ -54,13 +54,20 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     container.remove();
   });
 
-  it('renders base checklist options correctly', () => {
+  it('renders base checklist options correctly', async () => {
     render(<App />, container);
 
-    // Verify sub-palette checklist inputs exist
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-    // Initially, there are a lot of checkboxes representing all palette colors
-    expect(checkboxes.length).toBeGreaterThan(0);
+    // Expand the collapsible section first
+    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('Exclude Colors')
+    );
+    expect(excludeColorsBtn).not.toBeUndefined();
+    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    await vi.waitFor(() => {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBeGreaterThan(0);
+    });
   });
 
   it('toggles sub-palette checkboxes, filters candidates list, and triggers worker matches', async () => {
@@ -134,8 +141,20 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Clear call history
     mockMatch.mockClear();
 
-    // 3. Find check box of first color and toggle it (uncheck it)
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    // Expand the collapsible section first
+    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent?.includes('Exclude Colors')
+    );
+    expect(excludeColorsBtn).not.toBeUndefined();
+    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Wait for animation/render and find check box of first color and toggle it (uncheck it)
+    let checkboxes: NodeListOf<Element> = [] as any;
+    await vi.waitFor(() => {
+      checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBeGreaterThan(0);
+    });
+
     const firstCheckbox = checkboxes[0] as HTMLInputElement;
     expect(firstCheckbox.checked).toBe(true);
 
@@ -404,6 +423,34 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     await vi.waitFor(() => {
       expect(widthEl.value).toBe('30');
       expect(heightEl.value).toBe('40');
+    });
+  });
+
+  it('collapses and expands the left sidebar correctly on trigger clicks', async () => {
+    render(<App />, container);
+
+    // Sidebar should start expanded
+    const sidebar = container.querySelector('aside') as HTMLElement;
+    expect(sidebar.className).toContain('w-80');
+
+    // Click collapse button
+    const collapseBtn = container.querySelector('button[title="Collapse Sidebar"]') as HTMLButtonElement;
+    expect(collapseBtn).not.toBeNull();
+    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Wait for sidebar to transition to collapsed state
+    await vi.waitFor(() => {
+      expect(sidebar.className).toContain('w-0');
+    });
+
+    // Pushed expand button should now be visible in DOM
+    const expandBtn = container.querySelector('button[title="Expand Sidebar"]') as HTMLButtonElement;
+    expect(expandBtn).not.toBeNull();
+    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+    // Sidebar should expand back
+    await vi.waitFor(() => {
+      expect(sidebar.className).toContain('w-80');
     });
   });
 });

@@ -34,6 +34,8 @@ export function App() {
   const [widthInput, setWidthInput] = useState<string>('40');
   const [heightInput, setHeightInput] = useState<string>('30');
   const [selectedPreset, setSelectedPreset] = useState<string>('custom');
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [excludeListOpen, setExcludeListOpen] = useState(false);
 
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -391,26 +393,43 @@ export function App() {
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
       {/* Left Sidebar Control Panel */}
-      <aside className="w-80 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-4 overflow-y-auto no-print">
-        <div className="border-b border-slate-800 pb-3">
-          <h1 className="text-xl font-bold text-indigo-400">GemPixel</h1>
-          <p className="text-xs text-slate-400 mt-1">Diamond Painting Supply Planner</p>
+      <aside
+        className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 overflow-y-auto no-print transition-all duration-300 relative shrink-0 ${
+          leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
+        }`}
+      >
+        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div>
+            <h1 className="text-xl font-bold text-indigo-400 tracking-wide">GemPixel</h1>
+            <p className="text-[10px] text-slate-400 mt-0.5">Diamond Painting Supply Planner</p>
+          </div>
+          <button
+            onClick={() => setLeftPanelCollapsed(true)}
+            className="p-1.5 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
+            title="Collapse Sidebar"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
 
         {/* File Upload / Dropzone */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-300">Load Image</label>
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Load Image</label>
           <div
             ref={dropZoneRef}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[100px] ${
-              isDragOver ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600 bg-slate-950/50'
+            className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[90px] ${
+              isDragOver
+                ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
+                : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
             }`}
             onClick={() => document.getElementById('file-upload')?.click()}
           >
-            <span className="text-xs text-slate-400">Drag & Drop Image or Click to Browse</span>
+            <span className="text-[11px] text-slate-400 leading-relaxed max-w-[200px]">Drag & Drop Image or Click to Browse</span>
             <input
               id="file-upload"
               type="file"
@@ -422,15 +441,15 @@ export function App() {
         </div>
 
         {/* Base Kit Selector */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-300">DMC Kit Reference</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
           <select
             value={selectedBaseKit}
             onChange={(e) => {
               setSelectedBaseKit((e.target as HTMLSelectElement).value as any);
               setExcludedColors(new Set()); // Reset exclusions on kit change
             }}
-            className="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
           >
             <option value="all">All DMC Palette</option>
             <option value="100">Art Dot 100 Kit</option>
@@ -439,12 +458,12 @@ export function App() {
         </div>
 
         {/* Canvas Preset Size */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-300">Canvas Preset Size</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Preset Size</label>
           <select
             value={selectedPreset}
             onChange={handlePresetChange}
-            className="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
           >
             {STANDARD_SIZES.map(sz => (
               <option key={sz.value} value={sz.value}>{sz.name}</option>
@@ -454,14 +473,16 @@ export function App() {
 
         {/* Sizing Units & Inputs */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-300">Sizing Mode</label>
-          <div className="grid grid-cols-3 gap-1">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sizing Mode</label>
+          <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
             {(['grid', 'cm', 'inch'] as const).map(u => (
               <button
                 key={u}
                 onClick={() => handleUnitChange(u)}
-                className={`text-xs py-1 rounded capitalize font-medium ${
-                  unit === u ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
+                className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
+                  unit === u
+                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
                 }`}
               >
                 {u}
@@ -472,56 +493,57 @@ export function App() {
 
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400">Width ({unit === 'grid' ? 'dots' : unit})</label>
+            <label className="text-[10px] text-slate-500 uppercase font-semibold">Width ({unit === 'grid' ? 'dots' : unit})</label>
             <input
               type="number"
               data-field="width"
               step={unit === 'grid' ? '1' : '0.1'}
               value={widthInput}
               onInput={(e) => handleWidthChange((e.target as HTMLInputElement).value)}
-              className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400">Height ({unit === 'grid' ? 'dots' : unit})</label>
+            <label className="text-[10px] text-slate-500 uppercase font-semibold">Height ({unit === 'grid' ? 'dots' : unit})</label>
             <input
               type="number"
               data-field="height"
               step={unit === 'grid' ? '1' : '0.1'}
               value={heightInput}
               onInput={(e) => handleHeightChange((e.target as HTMLInputElement).value)}
-              className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
             />
           </div>
         </div>
 
         {/* Calculated Info */}
-        <div className="bg-slate-950/40 p-2.5 rounded border border-slate-800/80 text-xs flex flex-col gap-1">
+        <div className="bg-slate-950/30 p-2 rounded border border-slate-850/60 text-[11px] flex flex-col gap-1 text-slate-350">
           <div className="flex justify-between">
-            <span className="text-slate-400">Grid Dimensions:</span>
-            <span className="font-semibold text-slate-200">{cols} x {rows}</span>
+            <span className="text-slate-500 font-medium">Grid Dimensions:</span>
+            <span className="font-semibold text-slate-300 font-mono">{cols} × {rows}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">Total Drills Needed:</span>
-            <span className="font-semibold text-indigo-400">{(cols * rows).toLocaleString()}</span>
+            <span className="text-slate-500 font-medium">Total Drills Needed:</span>
+            <span className="font-bold text-indigo-400 font-mono">{(cols * rows).toLocaleString()}</span>
           </div>
         </div>
 
         {/* Drill Style */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-300">Drill Representation</label>
-          <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Representation</label>
+          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
             {(['square', 'round'] as const).map(style => (
-              <label key={style} className="flex items-center gap-2 cursor-pointer bg-slate-950/30 border border-slate-800 hover:border-slate-750 px-3 py-1.5 rounded text-xs select-none">
-                <input
-                  type="radio"
-                  name="drillStyle"
-                  checked={drillStyle === style}
-                  onChange={() => setDrillStyle(style)}
-                  className="text-indigo-600 focus:ring-indigo-500 bg-slate-900 border-slate-700"
-                />
-                <span className="capitalize">{style}</span>
-              </label>
+              <button
+                key={style}
+                onClick={() => setDrillStyle(style)}
+                className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
+                  drillStyle === style
+                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                }`}
+              >
+                {style}
+              </button>
             ))}
           </div>
         </div>
@@ -530,15 +552,29 @@ export function App() {
         {matchResult && (
           <button
             onClick={printReport}
-            className="mt-auto bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="mt-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-950/20 active:scale-[0.98] transition-all cursor-pointer border border-indigo-500/20"
           >
-            <span>Print / Export PDF</span>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Export / Print PDF</span>
           </button>
         )}
       </aside>
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
+        {leftPanelCollapsed && (
+          <button
+            onClick={() => setLeftPanelCollapsed(false)}
+            className="absolute top-4 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95"
+            title="Expand Sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
           {image ? (
             <canvas
@@ -549,8 +585,8 @@ export function App() {
             />
           ) : (
             <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
-              <span className="text-lg font-bold text-slate-300">No Image Loaded</span>
-              <p className="text-sm text-slate-400">Load a photo using the sidebar panel to see your diamond painting canvas layout preview.</p>
+              <span className="text-lg font-bold text-slate-350">No Image Loaded</span>
+              <p className="text-xs text-slate-400">Load a photo using the sidebar panel to see your diamond painting canvas layout preview.</p>
             </div>
           )}
 
@@ -565,59 +601,73 @@ export function App() {
           )}
         </div>
       </main>
-
       {/* Right Sidebar Checklist & Legend */}
-      <aside className="w-96 bg-slate-900 border-l border-slate-800 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto">
+      <aside className="w-96 bg-slate-900/60 backdrop-blur-md border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300">
         
-        {/* Sub-palette selection checklist */}
-        <div className="p-4 border-b border-slate-800 no-print flex flex-col gap-2 shrink-0">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-sm text-slate-200">Exclude Colors</h3>
-            <div className="flex gap-2">
-              <button onClick={handleSelectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                Select All
-              </button>
-              <span className="text-slate-700 text-[10px] select-none">|</span>
-              <button onClick={handleDeselectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                Deselect All
-              </button>
+        {/* Collapsible Sub-palette selection checklist */}
+        <div className="border-b border-slate-800/80 no-print flex flex-col shrink-0 transition-all">
+          <button
+            onClick={() => setExcludeListOpen(!excludeListOpen)}
+            className="w-full flex justify-between items-center py-3 px-4 hover:bg-slate-850/50 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
+          >
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
+              <span>Exclude Colors</span>
+              {excludedColors.size > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
+              )}
             </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mb-1">Uncheck colors to exclude them from the match algorithm.</p>
+            {excludeListOpen && (
+              <div className="flex gap-2 no-print" onClick={(e) => e.stopPropagation()}>
+                <button onClick={handleSelectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                  Select All
+                </button>
+                <span className="text-slate-700 text-[10px] select-none">|</span>
+                <button onClick={handleDeselectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                  Deselect All
+                </button>
+              </div>
+            )}
+          </button>
           
-          <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto border border-slate-800 p-2 rounded bg-slate-950/60">
-            {baseCandidates.map(c => {
-              const isExcluded = excludedColors.has(c.dmc);
-              return (
-                <label
-                  key={c.dmc}
-                  className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-850 p-1 rounded text-xs select-none"
-                >
-                  <input
-                    type="checkbox"
-                    checked={!isExcluded}
-                    onChange={() => toggleColorExclusion(c.dmc)}
-                    className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
-                  />
-                  <span
-                    className="w-2.5 h-2.5 rounded-full border border-slate-800 shrink-0"
-                    style={{ backgroundColor: c.hex }}
-                  />
-                  <span className="font-mono text-slate-300 text-[11px] truncate" title={c.name}>{c.dmc}</span>
-                </label>
-              );
-            })}
-          </div>
+          {excludeListOpen && (
+            <div className="px-4 pb-4 flex flex-col gap-2 transition-all">
+              <p className="text-[10px] text-slate-400">Uncheck colors to exclude them from calculations.</p>
+              <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto border border-slate-850 p-1.5 rounded bg-slate-950/60 shadow-inner">
+                {baseCandidates.map(c => {
+                  const isExcluded = excludedColors.has(c.dmc);
+                  return (
+                    <label
+                      key={c.dmc}
+                      className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-850 p-1 rounded text-xs select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!isExcluded}
+                        onChange={() => toggleColorExclusion(c.dmc)}
+                        className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-3 w-3 cursor-pointer"
+                      />
+                      <span
+                        className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
+                        style={{ backgroundColor: c.hex }}
+                      />
+                      <span className="font-mono text-slate-350 text-[11px] truncate" title={c.name}>{c.dmc}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Legend table */}
         <div className="p-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
-          <div className="flex justify-between items-center mb-3 no-print">
-            <h3 className="font-bold text-sm text-slate-200">DMC Supply List</h3>
+          <div className="flex justify-between items-center mb-2.5 no-print">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">DMC Supply List</h3>
             {highlightedColor && (
               <button
                 onClick={() => handleRowClick(highlightedColor)}
-                className="text-[11px] text-red-400 hover:text-red-300 cursor-pointer"
+                className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors"
               >
                 Clear Highlight
               </button>
@@ -627,16 +677,16 @@ export function App() {
           <h2 className="hidden print:block text-2xl font-bold mb-4">GemPixel Supply Plan Report</h2>
 
           {/* Table Container */}
-          <div className="flex-1 overflow-y-auto border border-slate-800 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print">
+          <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none">
+              <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
                 <tr>
-                  <th className="p-2 w-8">Color</th>
-                  <th className="p-2 w-12">DMC</th>
-                  <th className="p-2 truncate max-w-[100px]">Name</th>
-                  <th className="p-2 text-right">Exact</th>
-                  <th className="p-2 text-right">Safety</th>
-                  <th className="p-2 text-right">Bags</th>
+                  <th className="py-1.5 px-2 w-8 text-center">Color</th>
+                  <th className="py-1.5 px-2 w-12 text-center">DMC</th>
+                  <th className="py-1.5 px-2 truncate max-w-[100px]">Name</th>
+                  <th className="py-1.5 px-2 text-right">Exact</th>
+                  <th className="py-1.5 px-2 text-right">Safety</th>
+                  <th className="py-1.5 px-2 text-right">Bags</th>
                 </tr>
               </thead>
               <tbody>
@@ -646,31 +696,31 @@ export function App() {
                     <tr
                       key={row.code}
                       onClick={() => handleRowClick(row.code)}
-                      className={`border-b border-slate-800/60 hover:bg-slate-850/50 cursor-pointer select-none transition-colors ${
-                        isHighlighted ? 'bg-indigo-950/60 hover:bg-indigo-900/60 border-l-2 border-l-indigo-500' : ''
+                      className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
+                        isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
                       }`}
                     >
-                      <td className="p-2">
+                      <td className="py-1 px-2 flex justify-center">
                         <span
-                          className="block w-4 h-4 rounded border border-slate-800"
+                          className="block w-3 h-3 rounded-full border border-slate-850 shadow-sm"
                           style={{ backgroundColor: row.hex }}
                         />
                       </td>
-                      <td className="p-2 font-mono font-bold text-slate-350">{row.code}</td>
-                      <td className="p-2 text-slate-400 truncate max-w-[100px]" title={row.name}>
+                      <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">{row.code}</td>
+                      <td className="py-1 px-2 text-slate-400 truncate max-w-[100px] text-[11px]" title={row.name}>
                         {row.name}
                       </td>
-                      <td className="p-2 text-right text-slate-300">{row.count}</td>
-                      <td className="p-2 text-right font-medium text-indigo-300">{row.safety}</td>
-                      <td className="p-2 text-right font-bold text-slate-200">
-                        {row.packets} ({row.packets * 200})
+                      <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
+                      <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
+                      <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono">
+                        {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * 200})</span>
                       </td>
                     </tr>
                   );
                 })}
                 {sortedMatches.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center p-6 text-slate-500">
+                    <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
                       No matching colors. Load an image to compute.
                     </td>
                   </tr>
