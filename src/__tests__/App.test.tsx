@@ -139,6 +139,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
+    // Uncheck optimize bags checkbox to use standard simple packet costing in test
+    const optimizeBagsCheckbox = container.querySelector('#optimize-bags-checkbox') as HTMLInputElement;
+    if (optimizeBagsCheckbox && optimizeBagsCheckbox.checked) {
+      optimizeBagsCheckbox.click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+
     // Verify calculator input fields exist
     const inputs = container.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(3); // Canvas base price, DMC packet cost, Labor fee
@@ -207,8 +214,35 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
+    // Uncheck optimize bags checkbox to use standard simple packet costing in test
+    const optimizeBagsCheckbox = container.querySelector('#optimize-bags-checkbox') as HTMLInputElement;
+    if (optimizeBagsCheckbox && optimizeBagsCheckbox.checked) {
+      optimizeBagsCheckbox.click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+
     const inputs = container.querySelectorAll('input[type="number"]');
     const packetCostInput = inputs[1] as HTMLInputElement;
     expect(packetCostInput.value).toBe('0.35'); // AB price is 0.35
+  });
+
+  it('renders all 4 bulk bag inputs when optimize bags checkbox is checked (default)', async () => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 0));
+
+    // Click 'Quote' tab
+    const buttons = container.querySelectorAll('button');
+    const quoteTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'quote');
+    quoteTab?.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    // By default, optimizeBagsCost is true, so we should see 6 number inputs:
+    // Canvas price, 200 qty, 500 qty, 1000 qty, 2000 qty, and Labor fee
+    const inputs = container.querySelectorAll('input[type="number"]');
+    expect(inputs.length).toBe(6);
+    expect((inputs[1] as HTMLInputElement).value).toBe('0.6'); // 200 qty default standard price
+    expect((inputs[2] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
+    expect((inputs[3] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
+    expect((inputs[4] as HTMLInputElement).value).toBe('3.2'); // 2000 qty default standard price
   });
 });

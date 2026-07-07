@@ -56,6 +56,53 @@ export function getDefaultPacketCost(type: 'standard' | 'ab' | 'glow' | 'crystal
   return 6.00;
 }
 
+export function optimizeBags(
+  target: number,
+  prices: { 200: number; 500: number; 1000: number; 2000: number }
+): { bags: { 200: number; 500: number; 1000: number; 2000: number }; cost: number; totalDrills: number } {
+  if (target <= 0) {
+    return { bags: { 200: 0, 500: 0, 1000: 0, 2000: 0 }, cost: 0, totalDrills: 0 };
+  }
+
+  const priceMap = {
+    2000: prices[2000],
+    1000: prices[1000],
+    500: prices[500],
+    200: prices[200]
+  };
+
+  let minCost = Infinity;
+  let bestBags = { 200: 0, 500: 0, 1000: 0, 2000: 0 };
+  let bestDrills = 0;
+
+  const max2000 = Math.ceil(target / 2000);
+  for (let n2000 = 0; n2000 <= max2000; n2000++) {
+    const remAfter2000 = Math.max(0, target - n2000 * 2000);
+    const max1000 = Math.ceil(remAfter2000 / 1000);
+    for (let n1000 = 0; n1000 <= max1000; n1000++) {
+      const remAfter1000 = Math.max(0, remAfter2000 - n1000 * 1000);
+      const max500 = Math.ceil(remAfter1000 / 500);
+      for (let n500 = 0; n500 <= max500; n500++) {
+        const remAfter500 = Math.max(0, remAfter1000 - n500 * 500);
+        const n200 = Math.ceil(remAfter500 / 200);
+
+        const totalDrills = n2000 * 2000 + n1000 * 1000 + n500 * 500 + n200 * 200;
+        if (totalDrills >= target) {
+          const cost = n2000 * priceMap[2000] + n1000 * priceMap[1000] + n500 * priceMap[500] + n200 * priceMap[200];
+          // Use a small epsilon to avoid precision issues
+          if (cost < minCost - 0.0001) {
+            minCost = cost;
+            bestBags = { 200: n200, 500: n500, 1000: n1000, 2000: n2000 };
+            bestDrills = totalDrills;
+          }
+        }
+      }
+    }
+  }
+
+  return { bags: bestBags, cost: Math.round(minCost * 100) / 100, totalDrills: bestDrills };
+}
+
 export function hexToHue(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -120,6 +167,17 @@ export function App() {
   const [drillBagSize, setDrillBagSize] = useState<number>(200);
   const [laborFee, setLaborFee] = useState(25.0);
   const [markupType, setMarkupType] = useState<'fixed' | 'percent'>('fixed');
+  const [optimizeBagsCost, setOptimizeBagsCost] = useState(true);
+  const [priceDb, setPriceDb] = useState<Record<200 | 500 | 1000 | 2000, number>>({
+    200: 0.60,
+    500: 1.10,
+    1000: 1.80,
+    2000: 3.20
+  });
+
+  const updatePriceDb = (qty: 200 | 500 | 1000 | 2000, val: number) => {
+    setPriceDb(prev => ({ ...prev, [qty]: val }));
+  };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<CanvasViewer | null>(null);
@@ -215,9 +273,18 @@ export function App() {
     }
   }, [cols, rows, unit]);
 
-  // Synchronize drillPacketCost defaults when drillType or drillBagSize changes
+  // Synchronize drillPacketCost defaults and priceDb presets when drillType changes
   useEffect(() => {
     setDrillPacketCost(getDefaultPacketCost(drillType, drillBagSize));
+    if (drillType === 'standard') {
+      setPriceDb({ 200: 0.60, 500: 1.10, 1000: 1.80, 2000: 3.20 });
+    } else if (drillType === 'ab') {
+      setPriceDb({ 200: 0.70, 500: 1.30, 1000: 2.20, 2000: 3.90 });
+    } else if (drillType === 'glow') {
+      setPriceDb({ 200: 0.80, 500: 1.50, 1000: 2.60, 2000: 4.70 });
+    } else if (drillType === 'crystal') {
+      setPriceDb({ 200: 0.90, 500: 1.70, 1000: 3.00, 2000: 5.40 });
+    }
   }, [drillType, drillBagSize]);
 
   // Handle changes to unit selector
@@ -552,14 +619,54 @@ export function App() {
   const sortedMatches = Object.entries(matchResult?.counts || {})
     .map(([code, count]) => {
       const colorInfo = DMC_PALETTE.find(c => c.dmc === code);
-      const metrics = calculateSafetyPurchase(count, drillBagSize);
-      return {
-        code,
-        count,
-        name: colorInfo?.name || 'Unknown DMC Color',
-        hex: colorInfo?.hex || '#2D3748',
-        ...metrics
-      };
+      const name = colorInfo?.name || 'Unknown DMC Color';
+      const hex = colorInfo?.hex || '#2D3748';
+
+      if (optimizeBagsCost) {
+        // Find safety count first (+10%)
+        const safety = Math.ceil(Math.round(count * 110) / 100);
+        
+        // Run optimized combinations for both exact and safety targets
+        const optExact = optimizeBags(count, priceDb);
+        const optSafety = optimizeBags(safety, priceDb);
+
+        // Format bags text (e.g. 1×2000, 1×500)
+        const parts: string[] = [];
+        if (optSafety.bags[2000] > 0) parts.push(`${optSafety.bags[2000]}×2000`);
+        if (optSafety.bags[1000] > 0) parts.push(`${optSafety.bags[1000]}×1000`);
+        if (optSafety.bags[500] > 0) parts.push(`${optSafety.bags[500]}×500`);
+        if (optSafety.bags[200] > 0) parts.push(`${optSafety.bags[200]}×200`);
+        const bagsText = parts.length > 0 ? parts.join(', ') : 'None';
+
+        return {
+          code,
+          count,
+          name,
+          hex,
+          safety,
+          packets: optSafety.bags[200] + optSafety.bags[500] + optSafety.bags[1000] + optSafety.bags[2000], // total packet count (sum)
+          purchase: optSafety.totalDrills, // total drills purchased
+          costExact: optExact.cost,
+          costSafety: optSafety.cost,
+          bagsText,
+          optimizedBags: optSafety.bags
+        };
+      } else {
+        const metrics = calculateSafetyPurchase(count, drillBagSize);
+        const costExact = (count / drillBagSize) * drillPacketCost;
+        const costSafety = metrics.packets * drillPacketCost;
+        return {
+          code,
+          count,
+          name,
+          hex,
+          ...metrics,
+          costExact,
+          costSafety,
+          bagsText: `${metrics.packets} bag(s)`,
+          optimizedBags: null
+        };
+      }
     })
     .sort((a, b) => {
       let diff = 0;
@@ -586,8 +693,8 @@ export function App() {
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
   const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
 
-  const exactDrillCost = (totalExactDrills / drillBagSize) * drillPacketCost;
-  const safetyDrillCost = totalPackets * drillPacketCost;
+  const exactDrillCost = sortedMatches.reduce((acc, row) => acc + row.costExact, 0);
+  const safetyDrillCost = sortedMatches.reduce((acc, row) => acc + row.costSafety, 0);
 
   const suppliesCostExact = canvasBaseCost + exactDrillCost;
   const suppliesCostSafety = canvasBaseCost + safetyDrillCost;
@@ -877,32 +984,98 @@ export function App() {
               />
             </div>
 
-             <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Bag Size</label>
-                <select
-                  value={drillBagSize}
-                  onChange={(e) => setDrillBagSize(parseInt((e.target as HTMLSelectElement).value, 10))}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[26px]"
-                >
-                  <option value={200}>200 Drills</option>
-                  <option value={1000}>1,000 Drills</option>
-                  <option value={2000}>2,000 Drills</option>
-                  <option value={5000}>5,000 Drills</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bag Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={drillPacketCost}
-                  onInput={(e) => setDrillPacketCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-                />
-              </div>
+            {/* Optimize Bag Combinations Checkbox */}
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                id="optimize-bags-checkbox"
+                type="checkbox"
+                checked={optimizeBagsCost}
+                onChange={(e) => setOptimizeBagsCost((e.target as HTMLInputElement).checked)}
+                className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
+              />
+              <label htmlFor="optimize-bags-checkbox" className="text-xs font-semibold text-slate-300 cursor-pointer">
+                Optimize bag sizes (Adaptive)
+              </label>
             </div>
+
+            {optimizeBagsCost ? (
+              <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Prices per Bag Size ($)</span>
+                <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-500 font-mono">200 qty</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={priceDb[200]}
+                      onInput={(e) => updatePriceDb(200, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-500 font-mono">500 qty</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={priceDb[500]}
+                      onInput={(e) => updatePriceDb(500, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-500 font-mono">1k qty</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={priceDb[1000]}
+                      onInput={(e) => updatePriceDb(1000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-500 font-mono">2k qty</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={priceDb[2000]}
+                      onInput={(e) => updatePriceDb(2000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Bag Size</label>
+                  <select
+                    value={drillBagSize}
+                    onChange={(e) => setDrillBagSize(parseInt((e.target as HTMLSelectElement).value, 10))}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[26px]"
+                  >
+                    <option value={200}>200 Drills</option>
+                    <option value={1000}>1,000 Drills</option>
+                    <option value={2000}>2,000 Drills</option>
+                    <option value={5000}>5,000 Drills</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bag Price ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={drillPacketCost}
+                    onInput={(e) => setDrillPacketCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
@@ -1257,7 +1430,7 @@ export function App() {
                       Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th className="py-1.5 px-2 text-right">Safety</th>
-                    <th className="py-1.5 px-2 text-right text-ellipsis overflow-hidden truncate max-w-[60px]" title={`Bags of size ${drillBagSize}`}>Bags ({drillBagSize})</th>
+                    <th className="py-1.5 px-2 text-right text-ellipsis overflow-hidden truncate max-w-[70px]" title={optimizeBagsCost ? 'Optimized combinations of 200, 500, 1000, 2000 bags' : `Bags of size ${drillBagSize}`}>{optimizeBagsCost ? 'Bags (Opt)' : `Bags (${drillBagSize})`}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1296,8 +1469,17 @@ export function App() {
                         </td>
                         <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
                         <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
-                        <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono">
-                          {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
+                        <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono text-[11px]">
+                          {optimizeBagsCost ? (
+                            <div className="flex flex-col items-end leading-tight">
+                              <span className="text-[10px] text-slate-300">{row.bagsText}</span>
+                              <span className="text-[9px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
+                            </div>
+                          ) : (
+                            <>
+                              {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
+                            </>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1334,7 +1516,7 @@ export function App() {
                   <th className="p-2 border border-gray-300">Color Name</th>
                   <th className="p-2 text-right border border-gray-300">Exact Dots</th>
                   <th className="p-2 text-right border border-gray-300">Safety Marg. (+10%)</th>
-                  <th className="p-2 text-right border border-gray-300">Recommended {drillBagSize}-Drill Packets</th>
+                  <th className="p-2 text-right border border-gray-300">{optimizeBagsCost ? 'Recommended Purchase Packs' : `Recommended ${drillBagSize}-Drill Packets`}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1354,7 +1536,11 @@ export function App() {
                     <td className="p-2 text-right border border-gray-300">{row.count}</td>
                     <td className="p-2 text-right border border-gray-300">{row.safety}</td>
                     <td className="p-2 text-right font-bold border border-gray-300">
-                      {row.packets} pack(s) ({row.packets * drillBagSize} drills)
+                      {optimizeBagsCost ? (
+                        <span>{row.bagsText} ({row.purchase} drills)</span>
+                      ) : (
+                        <span>{row.packets} pack(s) ({row.packets * drillBagSize} drills)</span>
+                      )}
                     </td>
                   </tr>
                 ))}
