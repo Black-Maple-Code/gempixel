@@ -5,7 +5,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 
 export function calculateSafetyPurchase(exactCount: number): { safety: number; packets: number; purchase: number } {
-  const safety = Math.ceil(exactCount * 1.1);
+  const safety = Math.ceil(Math.round(exactCount * 110) / 100);
   const packets = Math.ceil(safety / 200);
   const purchase = packets * 200;
   return { safety, packets, purchase };
@@ -15,7 +15,7 @@ export function App() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [cols, setCols] = useState(40);
   const [rows, setRows] = useState(30);
-  
+
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('40');
   const [heightInput, setHeightInput] = useState<string>('30');
