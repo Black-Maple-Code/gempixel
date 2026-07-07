@@ -270,7 +270,8 @@ export function App() {
 
   const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
 
-  const [controlTab, setControlTab] = useState<'files' | 'size' | 'quote'>('files');
+  const [wizardStep, setWizardStep] = useState<number>(1);
+  const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain'>('cover');
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
   const [drillType, setDrillType] = useState<'standard' | 'ab' | 'glow' | 'crystal'>('standard');
@@ -1051,6 +1052,48 @@ export function App() {
           </button>
         </div>
 
+        {/* Wizard Progress Track Header */}
+        <div className="flex items-center justify-between px-3 py-2 shrink-0 relative border-b border-slate-800/40 pb-4 no-print select-none">
+          {/* Connector Line Background */}
+          <div className="absolute top-[22px] left-8 right-8 h-0.5 bg-slate-800 z-0" />
+          {/* Active Progress Line */}
+          <div 
+            className="absolute top-[22px] left-8 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
+            style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
+          />
+          
+          {[1, 2, 3, 4].map((step) => {
+            const isActive = wizardStep === step;
+            const isCompleted = wizardStep > step;
+            const labels = ['Upload', 'Size', 'Palette', 'Quote'];
+            const label = labels[step - 1];
+            
+            return (
+              <div key={step} className="flex flex-col items-center gap-1.5 z-10">
+                <button
+                  onClick={() => {
+                    setWizardStep(step);
+                  }}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? 'bg-slate-900 border-2 border-indigo-500 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] backdrop-blur-md'
+                      : isCompleted
+                      ? 'bg-indigo-600 text-white border border-indigo-500'
+                      : 'bg-slate-950 border border-slate-800 text-slate-500'
+                  }`}
+                  title={label}
+                >
+                  {step}
+                </button>
+                <span className={`text-[8px] font-bold uppercase tracking-wider ${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+
         {/* My Commissions Portfolio Drawer */}
         <div className="border-b border-slate-800/60 pb-3 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center">
@@ -1143,30 +1186,8 @@ export function App() {
           )}
         </div>
 
-        {/* Sidebar Tabs */}
-        <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-0.5 rounded border border-slate-850/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
-          {(['files', 'size', 'quote'] as const).map(tab => {
-            let label = 'Files';
-            if (tab === 'size') label = 'Size';
-            if (tab === 'quote') label = 'Quote';
-            return (
-              <button
-                key={tab}
-                onClick={() => setControlTab(tab)}
-                className={`py-1.5 rounded transition-all cursor-pointer text-center font-bold ${
-                  controlTab === tab
-                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tab Contents */}
-        {controlTab === 'files' && (
+        {/* Wizard Step Contents */}
+        {wizardStep === 1 && (
           <div className="flex flex-col gap-4">
             {/* File Upload / Dropzone */}
             <div className="flex flex-col gap-1.5">
@@ -1247,43 +1268,24 @@ export function App() {
               </div>
             )}
 
-            {/* Base Kit Selector */}
+            {/* Image Fit Option */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fit/Crop Mode</label>
               <select
-                value={selectedBaseKit}
+                value={imageFitMode}
                 onChange={(e) => {
-                  setSelectedBaseKit((e.target as HTMLSelectElement).value as any);
-                  setExcludedColors(new Set()); // Reset exclusions on kit change
+                  setImageFitMode((e.target as HTMLSelectElement).value as any);
                 }}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
               >
-                <option value="all">All DMC Palette</option>
-                <option value="100">Art Dot 100 Kit</option>
-                <option value="200">Art Dot 200 Kit</option>
-              </select>
-            </div>
-
-            {/* Drill Type Selector */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Type (Finish)</label>
-              <select
-                value={drillType}
-                onChange={(e) => {
-                  setDrillType((e.target as HTMLSelectElement).value as any);
-                }}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
-              >
-                <option value="standard">Standard Resin</option>
-                <option value="ab">AB (Aurora Borealis)</option>
-                <option value="glow">Glow-in-the-Dark</option>
-                <option value="crystal">Crystal / Rhinestone</option>
+                <option value="cover">Center Crop (Cover)</option>
+                <option value="contain">Fit to Grid (Contain)</option>
               </select>
             </div>
           </div>
         )}
 
-        {controlTab === 'size' && (
+        {wizardStep === 2 && (
           <div className="flex flex-col gap-4">
             {/* Canvas Preset Size */}
             <div className="flex flex-col gap-1">
@@ -1378,7 +1380,155 @@ export function App() {
           </div>
         )}
 
-        {controlTab === 'quote' && (
+        {wizardStep === 3 && (
+          <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+            {/* Base Kit Selector */}
+            <div className="flex flex-col gap-1 shrink-0">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
+              <select
+                value={selectedBaseKit}
+                onChange={(e) => {
+                  setSelectedBaseKit((e.target as HTMLSelectElement).value as any);
+                  setExcludedColors(new Set()); // Reset exclusions on kit change
+                }}
+                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+              >
+                <option value="all">All DMC Palette</option>
+                <option value="100">Art Dot 100 Kit</option>
+                <option value="200">Art Dot 200 Kit</option>
+              </select>
+            </div>
+
+            {/* Drill Type Selector */}
+            <div className="flex flex-col gap-1 shrink-0">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Type (Finish)</label>
+              <select
+                value={drillType}
+                onChange={(e) => {
+                  setDrillType((e.target as HTMLSelectElement).value as any);
+                }}
+                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+              >
+                <option value="standard">Standard Resin</option>
+                <option value="ab">AB (Aurora Borealis)</option>
+                <option value="glow">Glow-in-the-Dark</option>
+                <option value="crystal">Crystal / Rhinestone</option>
+              </select>
+            </div>
+
+            {/* Collapsible Sub-palette selection checklist */}
+            <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
+              <button
+                onClick={() => setExcludeListOpen(!excludeListOpen)}
+                className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
+                  <span className="font-semibold text-slate-400 uppercase tracking-wider">Exclude Colors</span>
+                  {excludedColors.size > 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
+                  )}
+                </div>
+                {excludeListOpen && (
+                  <div className="flex gap-2 text-[10px]" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={handleSelectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                      All
+                    </button>
+                    <span className="text-slate-700 select-none">|</span>
+                    <button onClick={handleDeselectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                      None
+                    </button>
+                  </div>
+                )}
+              </button>
+              
+              {excludeListOpen && (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <p className="text-[9px] text-slate-500 leading-normal">Uncheck colors to exclude them from matching.</p>
+                  <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto border border-slate-850 p-1 rounded bg-slate-950/60 scrollbar-thin">
+                    {baseCandidates.map(c => {
+                      const isExcluded = excludedColors.has(c.dmc);
+                      return (
+                        <label
+                          key={c.dmc}
+                          className="flex items-center gap-1 cursor-pointer hover:bg-slate-850 p-0.5 rounded text-[10px] select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!isExcluded}
+                            onChange={() => toggleColorExclusion(c.dmc)}
+                            className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-2.5 w-2.5 cursor-pointer"
+                          />
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                          <span className="font-mono text-slate-350 truncate" title={c.name}>{c.dmc}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* DMC Legend List Table */}
+            <div className="flex flex-col gap-1.5 flex-1 overflow-hidden min-h-[150px] no-print">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Supply List</label>
+              <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 scrollbar-thin">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[9px] uppercase tracking-wider font-semibold">
+                    <tr>
+                      <th className="py-1 px-1 w-6 text-center">Col</th>
+                      <th className="py-1 px-1 w-10 text-center">DMC</th>
+                      <th className="py-1 px-1 text-right">Exact</th>
+                      <th className="py-1 px-1 text-right">Safety</th>
+                      <th className="py-1 px-1 text-right">Bags</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedMatches.map(row => {
+                      const isHighlighted = highlightedColor === row.code;
+                      return (
+                        <tr
+                          key={row.code}
+                          onClick={() => handleRowClick(row.code)}
+                          className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
+                            isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
+                          }`}
+                        >
+                          <td className="py-1 px-1 flex justify-center">
+                            <span
+                              className="block w-2 h-2 rounded-full border border-slate-850 shadow-sm"
+                              style={{ backgroundColor: row.hex }}
+                            />
+                          </td>
+                          <td className="py-1 px-1 font-mono font-bold text-center text-slate-200 text-[10px]">
+                            {row.code}
+                          </td>
+                          <td className="py-1 px-1 text-right text-slate-400 font-mono">{row.count}</td>
+                          <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
+                          <td className="py-1 px-1 text-right font-bold text-slate-350 font-mono text-[9px]">
+                            {optimizeBagsCost ? row.bagsText : row.packets}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {sortedMatches.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-6 text-slate-500 text-xs">
+                          No matching colors. Load an image to compute.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {wizardStep === 4 && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Base Price ($)</label>
@@ -1653,6 +1803,32 @@ export function App() {
             </div>
           </div>
         )}
+
+        {/* Wizard Footer Navigation */}
+        <div className="flex gap-2 shrink-0 no-print pt-2 border-t border-slate-800/60">
+          {wizardStep > 1 ? (
+            <button
+              onClick={() => setWizardStep(prev => prev - 1)}
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded text-xs font-semibold flex items-center justify-center transition-all cursor-pointer"
+            >
+              Back
+            </button>
+          ) : (
+            <div className="flex-1" />
+          )}
+          {wizardStep < 4 ? (
+            <button
+              id="wizard-next-btn"
+              onClick={() => setWizardStep(prev => prev + 1)}
+              disabled={wizardStep === 1 && !image && !activeProjectId}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-2 rounded text-xs font-semibold flex items-center justify-center transition-all cursor-pointer"
+            >
+              Next
+            </button>
+          ) : (
+            <div className="flex-1" />
+          )}
+        </div>
 
         {/* Sidebar Footer Actions */}
         <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
