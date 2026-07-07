@@ -188,7 +188,7 @@ export function App() {
   });
   const [canvasTemplate, setCanvasTemplate] = useState<string>(() => {
     return localStorage.getItem('gempixel_canvas_template') || 
-           'https://www.heartfuldiamonds.com/products/custom-diamond-painting-kit?width={width}&height={height}&shape={shape}';
+           'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
   });
 
   useEffect(() => {
@@ -1702,27 +1702,27 @@ export function App() {
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Custom Canvas Printing</span>
                 <div className="flex flex-col gap-2">
                   <a
-                    href="https://www.heartfuldiamonds.com/products/custom-diamond-painting-kit"
+                    href="https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
                   >
                     <div>
-                      <span className="font-semibold block">Heartful Diamonds Custom Kits</span>
-                      <span className="text-[10px] text-slate-500">Premium printing with multiple canvas sizes & drill counts.</span>
+                      <span className="font-semibold block">ADiamondPainting Custom Prints</span>
+                      <span className="text-[10px] text-slate-500">Factory-direct printing with poured glue and drop-shipping support.</span>
                     </div>
                     <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
                   </a>
                   
                   <a
-                    href="https://paintwithdiamonds.com/products/custom-paint-with-diamonds-kit"
+                    href="https://pandacraftysteam.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
                   >
                     <div>
-                      <span className="font-semibold block">Paint With Diamonds Custom Prints</span>
-                      <span className="text-[10px] text-slate-500">Affordable custom canvases with fast shipping options.</span>
+                      <span className="font-semibold block">Panda Crafty Sourcing</span>
+                      <span className="text-[10px] text-slate-500">High-quality OEM factory manufacturing for custom canvases and kits.</span>
                     </div>
                     <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
                   </a>
