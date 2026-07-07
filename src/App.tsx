@@ -248,7 +248,7 @@ export function App() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
-  const [commissionsDrawerOpen, setCommissionsDrawerOpen] = useState(true);
+  const [commissionsDrawerOpen, setCommissionsDrawerOpen] = useState(false);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');

@@ -303,6 +303,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+
       // Verify project row exists in Left Sidebar switcher
       const projectRow = container.querySelector('.group.relative') as HTMLDivElement;
       expect(projectRow).toBeTruthy();
@@ -347,6 +352,10 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Re-render to see the project switcher row again
       render(null, container);
       render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Toggle Commissions drawer open again
+      (Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions')) as HTMLButtonElement).click();
       await new Promise(r => setTimeout(r, 10));
 
       // Click delete button ('×') inside project row
@@ -418,6 +427,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.setItem('gempixel_project_test-project-999', JSON.stringify(mockProjectData));
 
       render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Click project row to load configuration
@@ -537,6 +551,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+
       // Click to load project
       const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
       expect(rowBtn).toBeTruthy();
@@ -613,6 +632,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+
       // Click to load project
       const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
       expect(rowBtn).toBeTruthy();
@@ -681,6 +705,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.setItem('gempixel_project_test-project-save', JSON.stringify(mockProjectData));
 
       render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Toggle Commissions drawer open
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Click to load project
