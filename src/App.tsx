@@ -4,7 +4,7 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
-import { compileCanvasPartnerUrl } from './engine/checkout';
+import { compileCanvasPartnerUrl, compileShopifyCartLink } from './engine/checkout';
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
@@ -180,10 +180,24 @@ export function App() {
     setPriceDb(prev => ({ ...prev, [qty]: val }));
   };
 
+  const [affiliateTag, setAffiliateTag] = useState<string>(() => {
+    return localStorage.getItem('gempixel_affiliate_tag') || '';
+  });
+  const [affiliateApp, setAffiliateApp] = useState<'ref' | 'rfsn' | 'none'>(() => {
+    return (localStorage.getItem('gempixel_affiliate_app') as any) || 'ref';
+  });
   const [canvasTemplate, setCanvasTemplate] = useState<string>(() => {
     return localStorage.getItem('gempixel_canvas_template') || 
            'https://www.heartfuldiamonds.com/products/custom-diamond-painting-kit?width={width}&height={height}&shape={shape}';
   });
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_affiliate_tag', affiliateTag);
+  }, [affiliateTag]);
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_affiliate_app', affiliateApp);
+  }, [affiliateApp]);
 
   useEffect(() => {
     localStorage.setItem('gempixel_canvas_template', canvasTemplate);
@@ -718,6 +732,12 @@ export function App() {
   const artistProfitExact = laborMarkupExact;
   const artistProfitSafety = laborMarkupSafety;
 
+  const [checkoutWarning, setCheckoutWarning] = useState<{
+    url: string;
+    isUrlTooLong: boolean;
+    unmappedItems: Array<{ dmcCode: string; handle: string }>;
+  } | null>(null);
+
   const handleCanvasOrder = () => {
     const url = compileCanvasPartnerUrl({
       baseUrlTemplate: canvasTemplate,
@@ -726,6 +746,26 @@ export function App() {
       shape: drillStyle
     });
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShopifyCheckout = () => {
+    if (!matchResult) return;
+    const items = Object.entries(matchResult.counts).map(([code, count]) => {
+      const safety = Math.ceil(Math.round(count * 110) / 100);
+      return {
+        dmcCode: code,
+        shape: drillStyle,
+        requiredCount: safety
+      };
+    });
+
+    const result = compileShopifyCartLink(items, affiliateTag, affiliateApp);
+    
+    if (result.isUrlTooLong || result.unmappedItems.length > 0) {
+      setCheckoutWarning(result);
+    } else {
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -1185,6 +1225,17 @@ export function App() {
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Partnerships & Ordering</span>
               
               <div className="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60">
+                {/* Shopify Cart Integration */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={handleShopifyCheckout}
+                    disabled={!matchResult}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+                  >
+                    <span>Order Drills from Diamond Drills USA</span>
+                  </button>
+                </div>
+
                 {/* Canvas integration */}
                 <div className="flex flex-col gap-1">
                   <button
@@ -1199,6 +1250,28 @@ export function App() {
                 <details className="text-[11px] text-slate-400 mt-1 cursor-pointer">
                   <summary className="font-semibold text-[10px] uppercase text-indigo-400 select-none">Affiliate & Partner Settings</summary>
                   <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-850">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Affiliate Tag</label>
+                      <input
+                        type="text"
+                        value={affiliateTag}
+                        onChange={(e) => setAffiliateTag((e.target as HTMLInputElement).value)}
+                        placeholder="e.g. gempixel"
+                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500">Tracking Engine</label>
+                      <select
+                        value={affiliateApp}
+                        onChange={(e) => setAffiliateApp((e.target as HTMLSelectElement).value as any)}
+                        className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200"
+                      >
+                        <option value="ref">Ref/Referral (ref=...)</option>
+                        <option value="rfsn">Refersion (rfsn=...)</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-[9px] uppercase tracking-wide text-slate-500">Canvas Base URL Template</label>
                       <input
@@ -1746,6 +1819,96 @@ export function App() {
           <span className="text-[9px] uppercase tracking-wide">Supply List</span>
         </button>
       </nav>
+
+      {/* Checkout Warning Modal */}
+      {checkoutWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
+            {/* Top Close Button */}
+            <button
+              onClick={() => setCheckoutWarning(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer transition-colors p-1 rounded-full hover:bg-slate-800/60"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div>
+              <h3 className="text-base font-bold text-white bg-gradient-to-r from-red-400 to-amber-400 bg-clip-text text-transparent">
+                Checkout Warnings & Fallbacks
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Review issues before proceeding to checkout at Diamond Drills USA.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+              {checkoutWarning.isUrlTooLong && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-200">
+                  <span className="font-bold block mb-1">⚠️ Cart Link Too Long</span>
+                  The compiled cart permalink exceeds 2,000 characters. Shopify's server may reject it with a "414 URI Too Long" error. You can still try the link, or order colors individually using the links below.
+                </div>
+              )}
+
+              {checkoutWarning.unmappedItems.length > 0 && (
+                <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-850 flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Unmapped Colors ({checkoutWarning.unmappedItems.length})
+                  </span>
+                  <p className="text-[11px] text-slate-400">
+                    These colors are not mapped in the database. Please search or add them manually:
+                  </p>
+                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
+                    {checkoutWarning.unmappedItems.map((item) => (
+                      <div key={item.dmcCode} className="flex items-center justify-between bg-slate-900/60 p-2 rounded border border-slate-800 text-xs">
+                        <span className="font-mono font-bold text-slate-200">DMC {item.dmcCode}</span>
+                        <div className="flex gap-2">
+                          <a
+                            href={`https://diamonddrillsusa.com/products/${item.handle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
+                          >
+                            Product Page ↗
+                          </a>
+                          <span className="text-slate-700">|</span>
+                          <a
+                            href={`https://diamonddrillsusa.com/search?q=dmc+${item.dmcCode}+${drillStyle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
+                          >
+                            Search ↗
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2.5 mt-2 border-t border-slate-850 pt-3">
+              <button
+                onClick={() => {
+                  window.open(checkoutWarning.url, '_blank', 'noopener,noreferrer');
+                  setCheckoutWarning(null);
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors text-center"
+              >
+                Proceed to Shopify Cart anyway
+              </button>
+              <button
+                onClick={() => setCheckoutWarning(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
