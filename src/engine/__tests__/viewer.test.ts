@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 import { CanvasViewer } from '../viewer';
 
+/**
+ * Unit tests for CanvasViewer verifying viewport interaction, panning,
+ * zoom centering, and offscreen double-buffering / drill style drawing logic.
+ */
+
 // Mock Canvas and Context for Node environment
 class MockCanvas {
   public width = 800;
