@@ -559,10 +559,21 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Toggle to Original Photo
     originalPhotoBtn!.dispatchEvent(new Event('click', { bubbles: true }));
 
-    // Should hide canvas and render original reference image preview full size
+    // Should hide canvas (add hidden class) and display reference image
     await vi.waitFor(() => {
-      expect(container.querySelector('canvas')).toBeNull();
+      const canvasEl = container.querySelector('canvas');
+      expect(canvasEl).not.toBeNull();
+      expect(canvasEl!.className).toContain('hidden');
       expect(container.querySelector('img[alt="Original reference full size"]')).not.toBeNull();
+    });
+
+    // Toggle back to Grid View
+    gridViewBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    await vi.waitFor(() => {
+      const canvasEl = container.querySelector('canvas');
+      expect(canvasEl).not.toBeNull();
+      expect(canvasEl!.className).not.toContain('hidden');
     });
 
     HTMLCanvasElement.prototype.getContext = originalGetContext;

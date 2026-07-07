@@ -128,9 +128,9 @@ export function App() {
     };
   }, []);
 
-  // Initialize CanvasViewer when canvas is rendered (depends on image or view mode)
+  // Initialize CanvasViewer when canvas is rendered (depends on image)
   useEffect(() => {
-    if (canvasRef.current) {
+    if (canvasRef.current && image) {
       if (!viewerRef.current) {
         viewerRef.current = new CanvasViewer(canvasRef.current);
       }
@@ -140,18 +140,18 @@ export function App() {
         viewerRef.current = null;
       }
     }
-  }, [image, viewportMode]);
+  }, [image]);
 
   // Synchronize viewer data when canvas, matches, or styles change
   useEffect(() => {
-    if (viewerRef.current && matchResult && activeCandidates.length > 0 && viewportMode === 'grid') {
+    if (viewerRef.current && matchResult && activeCandidates.length > 0) {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
       viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
     }
-  }, [image, viewportMode, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
@@ -806,15 +806,18 @@ export function App() {
         )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
           {image ? (
-            viewportMode === 'grid' ? (
+            <>
               <canvas
                 ref={canvasRef}
                 width={800}
                 height={600}
-                className="shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none"
+                className={`shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none ${
+                  viewportMode === 'grid' ? '' : 'hidden'
+                }`}
               />
-            ) : (
-              <div className="relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print">
+              <div className={`relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print ${
+                viewportMode === 'reference' ? '' : 'hidden'
+              }`}>
                 <img
                   src={image.src}
                   alt="Original reference full size"
@@ -822,7 +825,7 @@ export function App() {
                 />
                 <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
               </div>
-            )
+            </>
           ) : (
             <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
               <span className="text-lg font-bold text-slate-350">No Image Loaded</span>
