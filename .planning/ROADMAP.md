@@ -22,11 +22,11 @@ GemPixel is a client-side utility web application designed for diamond painting 
   1. The program matches arbitrary sRGB colors to the nearest DMC/Art Dot code using CIEDE2000 color distance.
   2. The system loads static lists for both Art Dot 100-color and Art Dot 200-color manufacturer indexes.
   3. Automated test suite verifies correct matching results and color conversions within acceptable tolerances.
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Implement CIELAB color conversion and CIEDE2000 distance logic
-- [ ] 01-02: Compile and test static Art Dot 100/200 color indexes
+- [ ] 01-01-PLAN.md — Scaffold config (Vite/TS/Vitest) and implement core sRGB-to-CIELAB, blending, caching, and CIEDE2000 math.
+- [ ] 01-02-PLAN.md — Compile static reference indexes for Art Dot 100 and 200 color kits and implement data integrity tests.
 
 ### Phase 2: Client-side Engine & Worker Architecture
 **Goal**: Load images client-side, downsample/fit to size, and execute color matching on a background Web Worker with caching.
