@@ -221,8 +221,15 @@ export class CanvasViewer {
       // 2. Draw highlighted cells fully opaque
       this.ctx.globalAlpha = 1.0;
       const cellSize = 16;
-      for (let row = 0; row < this.gridHeight; row++) {
-        for (let col = 0; col < this.gridWidth; col++) {
+      const scaledCellSize = cellSize * this.scale;
+
+      const startCol = Math.max(0, Math.floor(-this.offsetX / scaledCellSize));
+      const endCol = Math.min(this.gridWidth, Math.ceil((this.canvas.width - this.offsetX) / scaledCellSize));
+      const startRow = Math.max(0, Math.floor(-this.offsetY / scaledCellSize));
+      const endRow = Math.min(this.gridHeight, Math.ceil((this.canvas.height - this.offsetY) / scaledCellSize));
+
+      for (let row = startRow; row < endRow; row++) {
+        for (let col = startCol; col < endCol; col++) {
           const code = this.cellMatches[row * this.gridWidth + col];
           if (code === this.highlightedColor) {
             const color = this.colorMap.get(code) || '#2D3748';

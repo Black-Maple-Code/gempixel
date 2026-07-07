@@ -76,6 +76,8 @@ export function App() {
     }
   });
 
+  const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
+
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set());
@@ -89,6 +91,7 @@ export function App() {
   const viewerRef = useRef<CanvasViewer | null>(null);
   const clientRef = useRef<MatcherClient | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const lastFitImageRef = useRef<HTMLImageElement | null>(null);
 
   // Determine base catalog candidate list
   const baseCandidates = selectedBaseKit === 'all'
@@ -150,6 +153,12 @@ export function App() {
       viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
+
+      // Automatically fit to container by default on first load of a new image
+      if (lastFitImageRef.current !== image) {
+        viewerRef.current.fitToContainer();
+        lastFitImageRef.current = image;
+      }
     }
   }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows]);
 
@@ -285,13 +294,22 @@ export function App() {
   // Helper to extract pixels from image
   const getImagePixels = (img: HTMLImageElement): { pixels: Uint8ClampedArray; width: number; height: number } => {
     const canvas = document.createElement('canvas');
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+
+    // Performance optimization: downscale huge images to a maximum of 2000px before pixel processing
+    const maxDimension = 2000;
+    if (w > maxDimension || h > maxDimension) {
+      const scale = maxDimension / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get 2d context for image pixels');
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, w, h);
     const imageData = ctx.getImageData(0, 0, w, h);
     return {
       pixels: imageData.data,
@@ -579,30 +597,41 @@ export function App() {
         {/* Recent Uploads */}
         {recentImages.length > 0 && (
           <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0 no-print">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recent Uploads</span>
-            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
-              {recentImages.map(imgEntry => (
-                <div
-                  key={imgEntry.id}
-                  onClick={() => loadRecentImage(imgEntry)}
-                  className="relative w-10 h-10 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-indigo-500/75 group shrink-0 overflow-hidden transition-all"
-                  title={imgEntry.name}
-                >
-                  <img
-                    src={imgEntry.dataUrl}
-                    alt={imgEntry.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    onClick={(e) => deleteRecentImage(imgEntry.id, e)}
-                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-slate-950/80 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
-                    title="Delete Image"
+            <button
+              onClick={() => setRecentUploadsOpen(!recentUploadsOpen)}
+              className="w-full flex justify-between items-center text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
+            >
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recentUploadsOpen ? 'rotate-90' : ''}`}>▶</span>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recent Uploads</span>
+              </div>
+              <span className="text-[9px] text-slate-500 font-medium">({recentImages.length})</span>
+            </button>
+            {recentUploadsOpen && (
+              <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
+                {recentImages.map(imgEntry => (
+                  <div
+                    key={imgEntry.id}
+                    onClick={() => loadRecentImage(imgEntry)}
+                    className="relative w-10 h-10 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-indigo-500/75 group shrink-0 overflow-hidden transition-all"
+                    title={imgEntry.name}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <img
+                      src={imgEntry.dataUrl}
+                      alt={imgEntry.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={(e) => deleteRecentImage(imgEntry.id, e)}
+                      className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-slate-950/80 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
+                      title="Delete Image"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

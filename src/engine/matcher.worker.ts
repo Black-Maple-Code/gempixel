@@ -45,6 +45,7 @@ async function runMatching(
   const matches: string[] = new Array(totalPixels);
   const counts: Record<string, number> = {};
 
+
   for (let r = 0; r < numRows; r++) {
     if (isAborted) {
       return;
@@ -75,10 +76,12 @@ async function runMatching(
       counts[matchedCode] = (counts[matchedCode] || 0) + 1;
     }
 
-    const percent = Math.round(((r + 1) / numRows) * 100);
-    ctx.postMessage({ kind: 'progress', percent });
-
-    await yieldToEventLoop();
+    const yieldInterval = Math.max(1, Math.floor(numRows / 20));
+    if ((r + 1) % yieldInterval === 0 || r === numRows - 1) {
+      const percent = Math.round(((r + 1) / numRows) * 100);
+      ctx.postMessage({ kind: 'progress', percent });
+      await yieldToEventLoop();
+    }
   }
 
   if (isAborted) {
