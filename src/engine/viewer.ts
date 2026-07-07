@@ -23,6 +23,7 @@ export class CanvasViewer {
   private gridHeight = 0;
   private cellMatches: string[] = [];
   private colorMap = new Map<string, string>(); // maps DMC code to hex string
+  private highlightedColor: string | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -157,6 +158,11 @@ export class CanvasViewer {
     this.draw();
   }
 
+  public setHighlightedColor(code: string | null) {
+    this.highlightedColor = code;
+    this.draw();
+  }
+
   public redrawOffscreen() {
     if (this.gridWidth <= 0 || this.gridHeight <= 0) {
       this.offscreenCanvas.width = 1;
@@ -202,10 +208,50 @@ export class CanvasViewer {
       return;
     }
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.drawImage(
-      this.offscreenCanvas,
-      0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height,
-      this.offsetX, this.offsetY, this.offscreenCanvas.width * this.scale, this.offscreenCanvas.height * this.scale
-    );
+
+    if (this.highlightedColor) {
+      // 1. Draw entire offscreen canvas dimmed
+      this.ctx.globalAlpha = 0.2;
+      this.ctx.drawImage(
+        this.offscreenCanvas,
+        0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height,
+        this.offsetX, this.offsetY, this.offscreenCanvas.width * this.scale, this.offscreenCanvas.height * this.scale
+      );
+
+      // 2. Draw highlighted cells fully opaque
+      this.ctx.globalAlpha = 1.0;
+      const cellSize = 16;
+      for (let row = 0; row < this.gridHeight; row++) {
+        for (let col = 0; col < this.gridWidth; col++) {
+          const code = this.cellMatches[row * this.gridWidth + col];
+          if (code === this.highlightedColor) {
+            const color = this.colorMap.get(code) || '#2D3748';
+            this.ctx.fillStyle = color;
+
+            const destX = this.offsetX + col * cellSize * this.scale;
+            const destY = this.offsetY + row * cellSize * this.scale;
+            const destW = cellSize * this.scale;
+            const destH = cellSize * this.scale;
+
+            if (this.drillStyle === 'square') {
+              this.ctx.fillRect(destX, destY, destW, destH);
+            } else {
+              this.ctx.beginPath();
+              this.ctx.arc(destX + destW / 2, destY + destH / 2, 0.45 * destW, 0, Math.PI * 2);
+              this.ctx.fill();
+            }
+          }
+        }
+      }
+    } else {
+      // Draw everything normally
+      this.ctx.globalAlpha = 1.0;
+      this.ctx.drawImage(
+        this.offscreenCanvas,
+        0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height,
+        this.offsetX, this.offsetY, this.offscreenCanvas.width * this.scale, this.offscreenCanvas.height * this.scale
+      );
+    }
+    this.ctx.globalAlpha = 1.0; // Reset
   }
 }
