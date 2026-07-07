@@ -65,6 +65,7 @@ class MockCanvas {
 }
 
 let originalCreateElement: any;
+let createdCanvases: MockCanvas[] = [];
 
 beforeAll(() => {
   originalCreateElement = globalThis.document?.createElement;
@@ -73,7 +74,9 @@ beforeAll(() => {
   (globalThis as any).document = {
     createElement: vi.fn().mockImplementation((tag: string) => {
       if (tag === 'canvas') {
-        return new MockCanvas();
+        const c = new MockCanvas();
+        createdCanvases.push(c);
+        return c;
       }
       return {};
     })
@@ -94,6 +97,7 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    createdCanvases = [];
     canvas = new MockCanvas();
     viewer = new CanvasViewer(canvas as any);
   });
@@ -202,5 +206,61 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
     viewer.setDrillStyle('round');
     expect(canvas.mockContext.clearRect).toHaveBeenCalled();
     expect(canvas.mockContext.drawImage).toHaveBeenCalled();
+  });
+
+  it('should correctly allocate offscreen canvas size and draw square/round drills', () => {
+    // Find the created offscreen canvas (the first canvas created inside the describe block, which happens during beforeEach instantiation of CanvasViewer)
+    // Note: CanvasViewer constructor instantiates an offscreen canvas by calling document.createElement('canvas')
+    const offscreenCanvas = createdCanvases[0];
+    expect(offscreenCanvas).toBeDefined();
+
+    const colorMap = new Map<string, string>();
+    colorMap.set('310', '#000000');
+    colorMap.set('BLANC', '#FFFFFF');
+
+    // Set 2x3 grid
+    viewer.setData(2, 3, ['310', 'BLANC', 'BLANC', '310', '310', 'BLANC'], colorMap);
+
+    // Must-have: Offscreen canvas allocates size proportional to cell coordinates (cellSize = 16)
+    expect(offscreenCanvas.width).toBe(2 * 16); // cols * 16
+    expect(offscreenCanvas.height).toBe(3 * 16); // rows * 16
+
+    // Must-have: Square drills draw as filled rectangles covering cells completely
+    // 1 for background + 6 cells = 7 calls to fillRect
+    expect(offscreenCanvas.mockContext.fillRect).toHaveBeenCalledTimes(7);
+    // The first fillRect should be background slate
+    expect(offscreenCanvas.mockContext.fillRect).toHaveBeenNthCalledWith(1, 0, 0, 32, 48);
+    // The second fillRect should be the first cell
+    expect(offscreenCanvas.mockContext.fillRect).toHaveBeenNthCalledWith(2, 0, 0, 16, 16);
+
+    // Switch to round drill style
+    offscreenCanvas.mockContext.fillRect.mockClear();
+    offscreenCanvas.mockContext.arc.mockClear();
+    offscreenCanvas.mockContext.fill.mockClear();
+
+    viewer.setDrillStyle('round');
+
+    // Must-have: Round drill cells render as filled circles showing the backing slate color through corner gaps
+    // 1 background fillRect
+    expect(offscreenCanvas.mockContext.fillRect).toHaveBeenCalledTimes(1);
+    // 6 circles drawn
+    expect(offscreenCanvas.mockContext.arc).toHaveBeenCalledTimes(6);
+    expect(offscreenCanvas.mockContext.fill).toHaveBeenCalledTimes(6);
+    // Circle at col=0, row=0 should be centered at (8, 8) with radius 7.2 (0.45 * 16)
+    expect(offscreenCanvas.mockContext.arc).toHaveBeenNthCalledWith(1, 8, 8, 7.2, 0, Math.PI * 2);
+
+    // Must-have: Offscreen buffer redraws only when grid dimensions, style selections, or palette colors change (not on zoom/pan)
+    offscreenCanvas.mockContext.fillRect.mockClear();
+    offscreenCanvas.mockContext.arc.mockClear();
+
+    // Trigger zoom
+    canvas.dispatchEvent('wheel', { clientX: 210, clientY: 220, deltaY: -100 });
+    // Trigger pan
+    canvas.dispatchEvent('pointerdown', { clientX: 100, clientY: 100, button: 0, pointerType: 'mouse', pointerId: 1 });
+    canvas.dispatchEvent('pointermove', { clientX: 120, clientY: 130 });
+
+    // Verify no redraws happened on offscreen canvas
+    expect(offscreenCanvas.mockContext.fillRect).not.toHaveBeenCalled();
+    expect(offscreenCanvas.mockContext.arc).not.toHaveBeenCalled();
   });
 });

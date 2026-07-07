@@ -34,20 +34,31 @@ export function App() {
   const clientRef = useRef<MatcherClient | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
-  // Initialize MatcherClient and CanvasViewer
+  // Initialize MatcherClient
   useEffect(() => {
     // Instantiate client with Vite worker URL syntax
     clientRef.current = new MatcherClient(new URL('./engine/matcher.worker.ts', import.meta.url));
 
-    if (canvasRef.current) {
-      viewerRef.current = new CanvasViewer(canvasRef.current);
-    }
-
     return () => {
       clientRef.current?.terminate();
       viewerRef.current?.destroy();
+      viewerRef.current = null;
     };
   }, []);
+
+  // Initialize CanvasViewer when canvas is rendered (depends on image)
+  useEffect(() => {
+    if (canvasRef.current) {
+      if (!viewerRef.current) {
+        viewerRef.current = new CanvasViewer(canvasRef.current);
+      }
+    } else {
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+    }
+  }, [image]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
