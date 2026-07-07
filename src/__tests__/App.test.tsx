@@ -490,5 +490,149 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Should be back on Step 3
       expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeTruthy();
     });
+
+    it('supports auto-substitution UI toggles and threshold settings in Step 4', async () => {
+      const mockProjectSummary = {
+        id: 'test-project-sub',
+        name: 'Substitution Project',
+        thumbnail: '',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+      const mockProjectData = {
+        id: 'test-project-sub',
+        name: 'Substitution Project',
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        dimensions: { cols: 80, rows: 53 },
+        unit: 'grid',
+        excludedColors: [],
+        drillStyle: 'square',
+        selectedBaseKit: 'all',
+        drillType: 'standard',
+        canvasBaseCost: 15,
+        drillPacketCost: 0.25,
+        drillBagSize: 200,
+        laborFee: 25,
+        markupType: 'fixed',
+        optimizeBagsCost: true,
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [0, 1]
+      };
+
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-project-sub', JSON.stringify(mockProjectData));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click to load project
+      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(rowBtn).toBeTruthy();
+      rowBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Progress to Step 4
+      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      expect(nextBtn.disabled).toBe(false);
+
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
+      await new Promise(r => setTimeout(r, 10));
+
+      // Locate Auto-substitute checkbox
+      const subCheckbox = container.querySelector('#substitute-colors-checkbox') as HTMLInputElement;
+      expect(subCheckbox).toBeTruthy();
+      expect(subCheckbox.checked).toBe(false); // Default false
+
+      // Check the checkbox
+      subCheckbox.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Threshold input should render now
+      const thresholdInput = Array.from(container.querySelectorAll('input[type="number"]')).find(i => (i as HTMLInputElement).value === '20') as HTMLInputElement;
+      expect(thresholdInput).toBeTruthy();
+
+      // Change threshold
+      thresholdInput.value = '50';
+      thresholdInput.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 10));
+
+      expect(thresholdInput.value).toBe('50');
+    });
+
+    it('renders logged unmapped colors lists and handles clear action in settings', async () => {
+      // Pre-seed local storage log & project
+      localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(['939', '3843']));
+      const mockProjectSummary = {
+        id: 'test-project-unmapped',
+        name: 'Unmapped Project',
+        thumbnail: '',
+        dateModified: new Date().toISOString(),
+        dateCreated: new Date().toISOString()
+      };
+      const mockProjectData = {
+        id: 'test-project-unmapped',
+        name: 'Unmapped Project',
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        dimensions: { cols: 80, rows: 53 },
+        unit: 'grid',
+        excludedColors: [],
+        drillStyle: 'square',
+        selectedBaseKit: 'all',
+        drillType: 'standard',
+        canvasBaseCost: 15,
+        drillPacketCost: 0.25,
+        drillBagSize: 200,
+        laborFee: 25,
+        markupType: 'fixed',
+        optimizeBagsCost: true,
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [0, 1]
+      };
+
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
+      localStorage.setItem('gempixel_project_test-project-unmapped', JSON.stringify(mockProjectData));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Click to load project
+      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(rowBtn).toBeTruthy();
+      rowBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Go to Step 4
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
+      await new Promise(r => setTimeout(r, 10));
+
+      // Open the Settings expander
+      const summaryEl = container.querySelector('summary') as HTMLElement;
+      expect(summaryEl.textContent).toContain('Affiliate & Partner Settings');
+
+      // Assert logged colors are visible
+      expect(container.textContent).toContain('939');
+      expect(container.textContent).toContain('3843');
+
+      // Click Clear Log
+      const clearBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Clear Log') as HTMLButtonElement;
+      expect(clearBtn).toBeTruthy();
+      clearBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Logged colors list should be cleared
+      expect(container.textContent).toContain('No unmapped colors logged.');
+      expect(localStorage.getItem('gempixel_unmapped_colors_log')).toBeNull();
+    });
   });
 });

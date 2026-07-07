@@ -116,3 +116,75 @@ export function matchPixelGrid(
 
   return { codes, counts };
 }
+
+/**
+ * Calculates the CIEDE2000 distance between two CIELAB coordinates.
+ */
+export function getColorDistance(lab1: LabCoordinates, lab2: LabCoordinates): number {
+  return ciede2000(
+    { mode: 'lab', ...lab1 },
+    { mode: 'lab', ...lab2 }
+  );
+}
+
+/**
+ * Substitutes low-count matched colors with the closest higher-count matched colors.
+ * - gridCodes: 1D array of active grid DMC codes
+ * - counts: DMC code counts dictionary
+ * - activeCandidates: complete active DMC_PALETTE list containing CIELAB coordinates
+ * - threshold: counts <= threshold are substituted
+ */
+export function substituteLowCountColors(
+  gridCodes: string[],
+  counts: Record<string, number>,
+  activeCandidates: DmcColor[],
+  threshold: number
+): { codes: string[]; counts: Record<string, number> } {
+  // 1. Identify low-count colors (counts <= threshold) and high-count colors (> threshold)
+  const lowCountCodes = Object.keys(counts).filter(code => counts[code] > 0 && counts[code] <= threshold);
+  const highCountCodes = Object.keys(counts).filter(code => counts[code] > threshold);
+
+  // If there are no high-count colors to substitute into, do nothing
+  if (highCountCodes.length === 0 || lowCountCodes.length === 0) {
+    return { codes: [...gridCodes], counts: { ...counts } };
+  }
+
+  // 2. Pre-locate candidate objects for distance math
+  const codeToColorMap = new Map<string, DmcColor>();
+  activeCandidates.forEach(c => codeToColorMap.set(c.dmc, c));
+
+  // Map each low-count code to its nearest high-count code
+  const substitutionMap = new Map<string, string>();
+  for (const lowCode of lowCountCodes) {
+    const lowColor = codeToColorMap.get(lowCode);
+    if (!lowColor) continue;
+
+    let minDistance = Infinity;
+    let closestHighCode = highCountCodes[0];
+
+    for (const highCode of highCountCodes) {
+      const highColor = codeToColorMap.get(highCode);
+      if (!highColor) continue;
+
+      const dist = getColorDistance(lowColor.lab, highColor.lab);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestHighCode = highCode;
+      }
+    }
+    substitutionMap.set(lowCode, closestHighCode);
+  }
+
+  // 3. Process grid replacement and update counts
+  const newCodes = gridCodes.map(code => {
+    const sub = substitutionMap.get(code);
+    return sub ? sub : code;
+  });
+
+  const newCounts: Record<string, number> = {};
+  newCodes.forEach(code => {
+    newCounts[code] = (newCounts[code] || 0) + 1;
+  });
+
+  return { codes: newCodes, counts: newCounts };
+}

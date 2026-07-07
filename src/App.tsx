@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
+import { substituteLowCountColors } from './engine/color';
 import { MatcherClient } from './engine/worker-client';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
@@ -281,7 +282,30 @@ export function App() {
   
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [matchResult, setMatchResult] = useState<{ matches: string[]; counts: Record<string, number> } | null>(null);
+  const [rawMatchResult, setRawMatchResult] = useState<{ matches: string[]; counts: Record<string, number> } | null>(null);
+  const [enableSubstitution, setEnableSubstitution] = useState<boolean>(() => {
+    return localStorage.getItem('gempixel_enable_substitution') === 'true';
+  });
+  const [substitutionThreshold, setSubstitutionThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem('gempixel_substitution_threshold');
+    return saved ? parseInt(saved, 10) : 20;
+  });
+  const [unmappedLog, setUnmappedLog] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_enable_substitution', enableSubstitution.toString());
+  }, [enableSubstitution]);
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_substitution_threshold', substitutionThreshold.toString());
+  }, [substitutionThreshold]);
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
   const [drillBagSize, setDrillBagSize] = useState<number>(200);
@@ -360,12 +384,12 @@ export function App() {
       restoredMatches.forEach(code => {
         counts[code] = (counts[code] || 0) + 1;
       });
-      setMatchResult({
+      setRawMatchResult({
         matches: restoredMatches,
         counts
       });
     } else {
-      setMatchResult(null);
+      setRawMatchResult(null);
     }
   };
 
@@ -396,7 +420,7 @@ export function App() {
       1000: 1.80,
       2000: 3.20
     });
-    setMatchResult(null);
+    setRawMatchResult(null);
   };
 
   const handleSaveProject = (name: string) => {
@@ -464,8 +488,22 @@ export function App() {
     ? DMC_PALETTE
     : DMC_PALETTE.filter(c => c.kits.includes(selectedBaseKit));
 
-  // Determine active candidates based on sub-palette exclusion checklist
   const activeCandidates = baseCandidates.filter(c => !excludedColors.has(c.dmc));
+
+  const matchResult = useMemo(() => {
+    if (!rawMatchResult) return null;
+    if (!enableSubstitution) return rawMatchResult;
+    const sub = substituteLowCountColors(
+      rawMatchResult.matches,
+      rawMatchResult.counts,
+      activeCandidates,
+      substitutionThreshold
+    );
+    return {
+      matches: sub.codes,
+      counts: sub.counts
+    };
+  }, [rawMatchResult, enableSubstitution, substitutionThreshold, activeCandidates]);
 
   // Persist recent image list to localStorage, popping oldest if quota exceeded
   useEffect(() => {
@@ -722,7 +760,7 @@ export function App() {
         (pct) => setProgress(pct),
         (result) => {
           setLoading(false);
-          setMatchResult(result);
+          setRawMatchResult(result);
         },
         cols
       );
@@ -1018,6 +1056,14 @@ export function App() {
 
     const result = compileShopifyCartLink(items, affiliateTag, affiliateApp);
     
+    if (result.unmappedItems.length > 0) {
+      const savedLog = JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
+      const newCodes = result.unmappedItems.map(item => item.dmcCode);
+      const updatedLog = Array.from(new Set([...savedLog, ...newCodes]));
+      localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(updatedLog));
+      setUnmappedLog(updatedLog);
+    }
+    
     if (result.isUrlTooLong || result.unmappedItems.length > 0) {
       setCheckoutWarning(result);
     } else {
@@ -1155,7 +1201,7 @@ export function App() {
                             setProjectsRegistry(updated);
                             if (activeProjectId === project.id) {
                               setActiveProjectId(null);
-                              setMatchResult(null);
+                              setRawMatchResult(null);
                             }
                           }
                         }}
@@ -1660,6 +1706,37 @@ export function App() {
               </div>
             </div>
 
+            {/* Color Substitution Option */}
+            <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 mt-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="substitute-colors-checkbox"
+                  type="checkbox"
+                  checked={enableSubstitution}
+                  onChange={(e) => setEnableSubstitution((e.target as HTMLInputElement).checked)}
+                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
+                />
+                <label htmlFor="substitute-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
+                  Auto-substitute low-count colors
+                </label>
+              </div>
+              {enableSubstitution && (
+                <div className="flex flex-col gap-1 mt-1 pl-5">
+                  <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={substitutionThreshold}
+                    onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
+                    Colors with counts at or below this number are automatically merged into the most similar color already in the canvas layout.
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Quoting Breakdown card */}
             <div className="flex flex-col gap-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Price Estimation</span>
@@ -1796,6 +1873,35 @@ export function App() {
                         onChange={(e) => setCanvasTemplate((e.target as HTMLInputElement).value)}
                         className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono"
                       />
+                    </div>
+                    {/* Logged Unmapped Colors List */}
+                    <div className="flex flex-col gap-1 pt-2 border-t border-slate-850">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Logged Unmapped Colors</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            localStorage.removeItem('gempixel_unmapped_colors_log');
+                            setUnmappedLog([]);
+                          }}
+                          className="text-[9px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"
+                        >
+                          Clear Log
+                        </button>
+                      </div>
+                      <div className="bg-slate-950/60 p-2 rounded border border-slate-850/60 max-h-24 overflow-y-auto text-[10px] font-mono text-slate-350">
+                        {unmappedLog.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {unmappedLog.map(code => (
+                              <span key={code} className="bg-slate-800 px-1 rounded border border-slate-700 select-all">
+                                {code}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 italic select-none">No unmapped colors logged.</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </details>

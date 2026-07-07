@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { rgbToLab, blendAlpha, matchColor, matchPixelGrid, clearCache } from '../color';
+import { rgbToLab, blendAlpha, matchColor, matchPixelGrid, clearCache, substituteLowCountColors } from '../color';
 import { DmcColor } from '../types';
 
 describe('Color Engine Math & Matching', () => {
@@ -172,6 +172,54 @@ describe('Color Engine Math & Matching', () => {
         "310": 2,
         "BLANC": 2
       });
+    });
+  });
+
+  describe('substituteLowCountColors', () => {
+    it('substitutes low-count colors with closest high-count color based on CIEDE2000', () => {
+      const gridCodes = ["310", "310", "310", "150"]; // "150" is low count (only 1 occurrence)
+      const counts = { "310": 3, "150": 1 };
+
+      const candidate150: DmcColor = {
+        dmc: "150",
+        name: "Dusty Rose",
+        hex: "#E5C8D4",
+        r: 229, g: 200, b: 212,
+        lab: { l: 83, a: 11, b: -2 },
+        kits: ["100"]
+      };
+      
+      const candidate310: DmcColor = {
+        dmc: "310",
+        name: "Black",
+        hex: "#000000",
+        r: 0, g: 0, b: 0,
+        lab: { l: 0, a: 0, b: 0 },
+        kits: ["100"]
+      };
+
+      const candidates = [candidate150, candidate310];
+
+      const result = substituteLowCountColors(gridCodes, counts, candidates, 2);
+
+      // "150" count is 1 (<= threshold 2), so it is substituted with the closest high-count color ("310")
+      expect(result.codes).toEqual(["310", "310", "310", "310"]);
+      expect(result.counts).toEqual({ "310": 4 });
+    });
+
+    it('does nothing if there are no high-count colors to substitute into', () => {
+      const gridCodes = ["310", "150"];
+      const counts = { "310": 1, "150": 1 };
+      const candidates: DmcColor[] = [
+        { dmc: "310", name: "Black", hex: "#000000", r: 0, g: 0, b: 0, lab: { l: 0, a: 0, b: 0 }, kits: ["100" as const] },
+        { dmc: "150", name: "Pink", hex: "#FF0000", r: 255, g: 0, b: 0, lab: { l: 53, a: 80, b: 67 }, kits: ["100" as const] }
+      ];
+
+      const result = substituteLowCountColors(gridCodes, counts, candidates, 2);
+
+      // Both are <= 2, so no high-count candidates exist. Nothing is substituted.
+      expect(result.codes).toEqual(["310", "150"]);
+      expect(result.counts).toEqual({ "310": 1, "150": 1 });
     });
   });
 });
