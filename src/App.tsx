@@ -160,6 +160,7 @@ export function App() {
       viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
+      viewerRef.current.setDrillType(drillType);
 
       // Automatically fit to container by default on first load of a new image
       if (lastFitImageRef.current !== image) {
@@ -167,7 +168,7 @@ export function App() {
         lastFitImageRef.current = image;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {

@@ -10,6 +10,7 @@ import { DMC_PALETTE } from '../engine/palette';
 const mockSetData = vi.fn();
 const mockSetDrillStyle = vi.fn();
 const mockSetHighlightedColor = vi.fn();
+const mockSetDrillType = vi.fn();
 const mockFitToContainer = vi.fn();
 const mockDestroy = vi.fn();
 
@@ -20,6 +21,7 @@ vi.mock('../engine/viewer', () => {
         setData: mockSetData,
         setDrillStyle: mockSetDrillStyle,
         setHighlightedColor: mockSetHighlightedColor,
+        setDrillType: mockSetDrillType,
         fitToContainer: mockFitToContainer,
         destroy: mockDestroy,
       };

@@ -19,6 +19,7 @@ vi.mock('../engine/viewer', () => {
       setData = vi.fn();
       setDrillStyle = vi.fn();
       setHighlightedColor = vi.fn();
+      setDrillType = vi.fn();
       destroy = vi.fn();
     }
   };

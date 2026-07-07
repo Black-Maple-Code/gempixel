@@ -24,6 +24,7 @@ export class CanvasViewer {
   private cellMatches: string[] = [];
   private colorMap = new Map<string, string>(); // maps DMC code to hex string
   private highlightedColor: string | null = null;
+  private drillType: 'standard' | 'ab' | 'glow' | 'crystal' = 'standard';
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -163,6 +164,63 @@ export class CanvasViewer {
     this.draw();
   }
 
+  public setDrillType(type: 'standard' | 'ab' | 'glow' | 'crystal') {
+    this.drillType = type;
+    this.redrawOffscreen();
+    this.draw();
+  }
+
+  private drawCellFinish(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    style: 'square' | 'round',
+    type: 'standard' | 'ab' | 'glow' | 'crystal'
+  ) {
+    if (type === 'ab') {
+      const grad = ctx.createLinearGradient(x, y, x + size, y + size);
+      grad.addColorStop(0, 'rgba(255, 180, 200, 0.25)'); // pink shimmer
+      grad.addColorStop(0.5, 'rgba(180, 220, 255, 0.2)'); // blue shimmer
+      grad.addColorStop(1, 'rgba(180, 255, 180, 0.25)'); // green shimmer
+      ctx.fillStyle = grad;
+      if (style === 'square') {
+        ctx.fillRect(x, y, size, size);
+      } else {
+        ctx.beginPath();
+        ctx.arc(x + size / 2, y + size / 2, 0.45 * size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'glow') {
+      const grad = ctx.createRadialGradient(
+        x + size / 2, y + size / 2, 1,
+        x + size / 2, y + size / 2, 0.45 * size
+      );
+      grad.addColorStop(0, 'rgba(230, 255, 200, 0.45)'); // Bright luminous core
+      grad.addColorStop(0.5, 'rgba(150, 255, 150, 0.2)'); // Greenish mid-glow
+      grad.addColorStop(1, 'rgba(100, 255, 100, 0.05)'); // Soft outer edge
+      ctx.fillStyle = grad;
+      if (style === 'square') {
+        ctx.fillRect(x, y, size, size);
+      } else {
+        ctx.beginPath();
+        ctx.arc(x + size / 2, y + size / 2, 0.45 * size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'crystal') {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.beginPath();
+      ctx.arc(
+        x + 0.35 * size,
+        y + 0.35 * size,
+        0.15 * size,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+
   public redrawOffscreen() {
     if (this.gridWidth <= 0 || this.gridHeight <= 0) {
       this.offscreenCanvas.width = 1;
@@ -198,6 +256,7 @@ export class CanvasViewer {
           );
           ctx.fill();
         }
+        this.drawCellFinish(ctx, col * cellSize, row * cellSize, cellSize, this.drillStyle, this.drillType);
       }
     }
   }
@@ -247,6 +306,7 @@ export class CanvasViewer {
               this.ctx.arc(destX + destW / 2, destY + destH / 2, 0.45 * destW, 0, Math.PI * 2);
               this.ctx.fill();
             }
+            this.drawCellFinish(this.ctx, destX, destY, destW, this.drillStyle, this.drillType);
           }
         }
       }
