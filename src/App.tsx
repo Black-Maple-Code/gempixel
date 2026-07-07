@@ -1368,7 +1368,7 @@ export function App() {
         </div>
 
         {/* Legend table */}
-        <div className="p-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
+        <div className="px-2 py-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
           <button
             onClick={() => setSupplyListOpen(!supplyListOpen)}
             className="w-full flex justify-between items-center py-2.5 hover:bg-slate-850/30 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none no-print mb-2 border border-slate-850/50 p-2 rounded bg-slate-950/20 shrink-0"
@@ -1403,34 +1403,34 @@ export function App() {
                   <tr>
                     <th 
                       onClick={() => handleHeaderClick('color')}
-                      className="py-1.5 px-2 w-8 text-center cursor-pointer hover:text-slate-200 transition-colors"
+                      className="py-1.5 px-1 w-6 text-center cursor-pointer hover:text-slate-200 transition-colors"
                       title="Sort by Color Hue"
                     >
                       Color{sortBy === 'color' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th 
                       onClick={() => handleHeaderClick('code')}
-                      className="py-1.5 px-2 w-12 text-center cursor-pointer hover:text-slate-200 transition-colors"
+                      className="py-1.5 px-1 w-10 text-center cursor-pointer hover:text-slate-200 transition-colors"
                       title="Sort by DMC Code"
                     >
                       DMC{sortBy === 'code' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th 
                       onClick={() => handleHeaderClick('name')}
-                      className="py-1.5 px-2 truncate max-w-[100px] cursor-pointer hover:text-slate-200 transition-colors"
+                      className="py-1.5 px-1 truncate max-w-[75px] cursor-pointer hover:text-slate-200 transition-colors"
                       title="Sort by Color Name"
                     >
                       Name{sortBy === 'name' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th 
                       onClick={() => handleHeaderClick('quantity')}
-                      className="py-1.5 px-2 text-right cursor-pointer hover:text-slate-200 transition-colors"
+                      className="py-1.5 px-1 text-right cursor-pointer hover:text-slate-200 transition-colors"
                       title="Sort by Quantity Needed"
                     >
                       Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
-                    <th className="py-1.5 px-2 text-right">Safety</th>
-                    <th className="py-1.5 px-2 text-right text-ellipsis overflow-hidden truncate max-w-[70px]" title={optimizeBagsCost ? 'Optimized combinations of 200, 500, 1000, 2000 bags' : `Bags of size ${drillBagSize}`}>{optimizeBagsCost ? 'Bags (Opt)' : `Bags (${drillBagSize})`}</th>
+                    <th className="py-1.5 px-1 text-right">Safety</th>
+                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title={optimizeBagsCost ? 'Optimized combinations of 200, 500, 1000, 2000 bags' : `Bags of size ${drillBagSize}`}>{optimizeBagsCost ? 'Bags (Opt)' : `Bags (${drillBagSize})`}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1444,40 +1444,40 @@ export function App() {
                           isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
                         }`}
                       >
-                        <td className="py-1 px-2 flex justify-center">
+                        <td className="py-1 px-1 flex justify-center">
                           <span
-                            className="block w-3 h-3 rounded-full border border-slate-850 shadow-sm"
+                            className="block w-2.5 h-2.5 rounded-full border border-slate-850 shadow-sm"
                             style={{ backgroundColor: row.hex }}
                           />
                         </td>
-                        <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">
+                        <td className="py-1 px-1 font-mono font-bold text-center text-slate-200 text-[10px]">
                           {row.code}
                           {drillType !== 'standard' && (
-                            <span className={`ml-1 text-[8px] font-sans px-1 rounded-sm ${
+                            <span className={`ml-0.5 text-[7px] font-sans px-0.5 rounded-sm ${
                               drillType === 'ab'
                                 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                                 : drillType === 'glow'
                                 ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                                 : 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
                             }`}>
-                              {drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'GLOW' : 'CRYSTAL'}
+                              {drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'GLOW' : 'XTAL'}
                             </span>
                           )}
                         </td>
-                        <td className="py-1 px-2 text-slate-400 truncate max-w-[100px] text-[11px]" title={row.name}>
+                        <td className="py-1 px-1 text-slate-450 truncate max-w-[75px] text-[10px]" title={row.name}>
                           {row.name}
                         </td>
-                        <td className="py-1 px-2 text-right text-slate-400 font-mono">{row.count}</td>
-                        <td className="py-1 px-2 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
-                        <td className="py-1 px-2 text-right font-bold text-slate-300 font-mono text-[11px]">
+                        <td className="py-1 px-1 text-right text-slate-400 font-mono text-[10px]">{row.count}</td>
+                        <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono text-[10px]">{row.safety}</td>
+                        <td className="py-1 px-1 text-right font-bold text-slate-300 font-mono text-[9.5px]">
                           {optimizeBagsCost ? (
-                            <div className="flex flex-col items-end leading-tight">
-                              <span className="text-[10px] text-slate-300">{row.bagsText}</span>
-                              <span className="text-[9px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
+                            <div className="flex flex-col items-end leading-none">
+                              <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
+                              <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
                             </div>
                           ) : (
                             <>
-                              {row.packets} <span className="text-[9px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
+                              {row.packets} <span className="text-[8px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
                             </>
                           )}
                         </td>
