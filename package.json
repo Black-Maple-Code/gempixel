@@ -1,0 +1,20 @@
+{
+  "name": "gempixel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "culori": "^4.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.0"
+  }
+}
