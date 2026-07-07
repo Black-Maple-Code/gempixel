@@ -1,0 +1,118 @@
+import { useMode, modeRgb, modeXyz65, modeLab, modeLab65, converter, differenceCiede2000 } from 'culori/fn';
+import { LabCoordinates, DmcColor } from './types';
+
+// Register color spaces to build the conversion path
+useMode(modeRgb);
+useMode(modeXyz65);
+useMode(modeLab);
+useMode(modeLab65);
+
+// Prepare automatic conversion to lab and difference ciede2000
+const toLab = converter('lab');
+const ciede2000 = differenceCiede2000();
+
+// Cache mapping raw RGB integers to matched DMC colors
+const matchCache = new Map<number, DmcColor>();
+
+/**
+ * Clears the in-memory color matching cache.
+ */
+export function clearCache(): void {
+  matchCache.clear();
+}
+
+/**
+ * Converts standard sRGB [0-255] coordinates to CIELAB L/a/b coordinates.
+ */
+export function rgbToLab(r: number, g: number, b: number): LabCoordinates {
+  const result = toLab({ mode: 'rgb', r: r / 255, g: g / 255, b: b / 255 });
+  return {
+    l: result.l !== undefined ? result.l : 0,
+    a: result.a !== undefined ? result.a : 0,
+    b: result.b !== undefined ? result.b : 0
+  };
+}
+
+/**
+ * Blends a transparent or semi-transparent pixel with a solid white background (#FFFFFF).
+ */
+export function blendAlpha(r: number, g: number, b: number, a: number): { r: number; g: number; b: number } {
+  const aNormalized = a / 255;
+  const rBlended = r * aNormalized + 255 * (1 - aNormalized);
+  const gBlended = g * aNormalized + 255 * (1 - aNormalized);
+  const bBlended = b * aNormalized + 255 * (1 - aNormalized);
+  return {
+    r: Math.round(rBlended),
+    g: Math.round(gBlended),
+    b: Math.round(bBlended)
+  };
+}
+
+/**
+ * Matches an RGB color to the nearest active DMC color candidate using CIEDE2000 distance.
+ * Implements caching and stable tie-breaking.
+ */
+export function matchColor(
+  r: number,
+  g: number,
+  b: number,
+  activeCandidates: DmcColor[]
+): DmcColor {
+  const key = (r << 16) + (g << 8) + b;
+  const cached = matchCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const pixelLab = rgbToLab(r, g, b);
+  let minDistance = Infinity;
+  let bestMatch: DmcColor | null = null;
+
+  for (const candidate of activeCandidates) {
+    const dist = ciede2000(
+      { mode: 'lab', ...pixelLab },
+      { mode: 'lab', ...candidate.lab }
+    );
+    // Strict inequality (<) resolves color ties stably by choosing the first encountered candidate
+    if (dist < minDistance) {
+      minDistance = dist;
+      bestMatch = candidate;
+    }
+  }
+
+  if (!bestMatch) {
+    throw new Error('No active candidates provided for color matching.');
+  }
+
+  matchCache.set(key, bestMatch);
+  return bestMatch;
+}
+
+/**
+ * Processes a flat Uint8ClampedArray of RGBA pixel values, mapping each pixel to the nearest active candidate.
+ * Returns a flat array of matched codes and the aggregated count summary object.
+ */
+export function matchPixelGrid(
+  pixels: Uint8ClampedArray,
+  candidates: DmcColor[]
+): { codes: string[]; counts: Record<string, number> } {
+  clearCache(); // D-03: clear cache at the start of each matching run
+
+  const codes: string[] = [];
+  const counts: Record<string, number> = {};
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+    const a = pixels[i + 3];
+
+    const blended = blendAlpha(r, g, b, a);
+    const matched = matchColor(blended.r, blended.g, blended.b, candidates);
+
+    codes.push(matched.dmc);
+    counts[matched.dmc] = (counts[matched.dmc] || 0) + 1;
+  }
+
+  return { codes, counts };
+}
