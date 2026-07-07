@@ -68,14 +68,14 @@ Plans:
   2. User can toggle between Square and Round drill styles and immediately see the visual representation update.
   3. Canvas rendering remains smooth (60 FPS during zoom/pan) even for large grid dimensions (e.g. 100x100).
 
-**Plans**: TBD
+**Plans**: 0/2 plans complete
 
 **UI hint**: yes
 
 Plans:
 
-- [ ] 03-01: Build interactive HTML5 Canvas viewport renderer with mouse/pointer matrix transformation support
-- [ ] 03-02: Add Square and Round drill rendering styles with offscreen double-buffering optimizations
+- [ ] 03-01-PLAN.md — Build interactive HTML5 Canvas viewport renderer with mouse/pointer matrix transformation support.
+- [ ] 03-02-PLAN.md — Add Square and Round drill rendering styles with offscreen double-buffering optimizations.
 
 ### Phase 4: Supply Planning, Customization & Exports
 
