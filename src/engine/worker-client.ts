@@ -1,0 +1,45 @@
+import { DmcColor } from './types';
+
+export class MatcherClient {
+  private worker: Worker;
+  private currentPaletteHash: string = '';
+
+  constructor(workerUrl: URL | string) {
+    this.worker = new Worker(workerUrl, { type: 'module' });
+  }
+
+  public match(
+    pixels: Uint8ClampedArray,
+    candidates: DmcColor[],
+    onProgress: (percent: number) => void,
+    onComplete: (result: { matches: string[]; counts: Record<string, number> }) => void,
+    cols?: number
+  ): void {
+    const paletteHash = candidates.map((c) => c.dmc).sort().join(',');
+    const clearCache = paletteHash !== this.currentPaletteHash;
+    this.currentPaletteHash = paletteHash;
+
+    this.worker.postMessage({ kind: 'abort' });
+    this.worker.postMessage({
+      kind: 'match',
+      pixels,
+      candidates,
+      clearCache,
+      cols,
+    });
+
+    this.worker.onmessage = (e) => {
+      if (e.data.kind === 'progress') {
+        onProgress(e.data.percent);
+      } else if (e.data.kind === 'result') {
+        onComplete({ matches: e.data.matches, counts: e.data.counts });
+      } else if (e.data.kind === 'error') {
+        console.error('Worker error:', e.data.error);
+      }
+    };
+  }
+
+  public terminate(): void {
+    this.worker.terminate();
+  }
+}
