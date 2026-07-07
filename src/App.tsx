@@ -81,6 +81,7 @@ export function App() {
   const [controlTab, setControlTab] = useState<'files' | 'size' | 'quote'>('files');
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
+  const [drillType, setDrillType] = useState<'standard' | 'ab' | 'glow' | 'crystal'>('standard');
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set());
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
   const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
@@ -185,6 +186,14 @@ export function App() {
       if (!heightFocused) setHeightInput((rows / 10).toString());
     }
   }, [cols, rows, unit]);
+
+  // Synchronize drillPacketCost defaults when drillType changes
+  useEffect(() => {
+    if (drillType === 'standard') setDrillPacketCost(0.25);
+    else if (drillType === 'ab') setDrillPacketCost(0.35);
+    else if (drillType === 'glow') setDrillPacketCost(0.45);
+    else if (drillType === 'crystal') setDrillPacketCost(0.50);
+  }, [drillType]);
 
   // Handle changes to unit selector
   const handleUnitChange = (newUnit: 'cm' | 'inch' | 'grid') => {
@@ -711,6 +720,23 @@ export function App() {
                 <option value="200">Art Dot 200 Kit</option>
               </select>
             </div>
+
+            {/* Drill Type Selector */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Type (Finish)</label>
+              <select
+                value={drillType}
+                onChange={(e) => {
+                  setDrillType((e.target as HTMLSelectElement).value as any);
+                }}
+                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+              >
+                <option value="standard">Standard Resin</option>
+                <option value="ab">AB (Aurora Borealis)</option>
+                <option value="glow">Glow-in-the-Dark</option>
+                <option value="crystal">Crystal / Rhinestone</option>
+              </select>
+            </div>
           </div>
         )}
 
@@ -1192,7 +1218,20 @@ export function App() {
                             style={{ backgroundColor: row.hex }}
                           />
                         </td>
-                        <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">{row.code}</td>
+                        <td className="py-1 px-2 font-mono font-bold text-center text-slate-200">
+                          {row.code}
+                          {drillType !== 'standard' && (
+                            <span className={`ml-1 text-[8px] font-sans px-1 rounded-sm ${
+                              drillType === 'ab'
+                                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                : drillType === 'glow'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                            }`}>
+                              {drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'GLOW' : 'CRYSTAL'}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-1 px-2 text-slate-400 truncate max-w-[100px] text-[11px]" title={row.name}>
                           {row.name}
                         </td>
@@ -1248,7 +1287,10 @@ export function App() {
                         style={{ backgroundColor: row.hex }}
                       />
                     </td>
-                    <td className="p-2 font-mono font-bold border border-gray-300">{row.code}</td>
+                    <td className="p-2 font-mono font-bold border border-gray-300">
+                      {row.code}
+                      {drillType !== 'standard' ? ' ' + (drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'Glow' : 'Crystal') : ''}
+                    </td>
                     <td className="p-2 border border-gray-300">{row.name}</td>
                     <td className="p-2 text-right border border-gray-300">{row.count}</td>
                     <td className="p-2 text-right border border-gray-300">{row.safety}</td>

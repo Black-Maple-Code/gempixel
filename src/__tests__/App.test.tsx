@@ -185,4 +185,29 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(asides[0].className).not.toContain('w-0');
     expect(asides[1].className).toContain('w-0');
   });
+
+  it('updates default drill packet cost when drill type changes', async () => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 0));
+
+    // Files tab is active by default. Let's find the drill type select dropdown.
+    const selects = container.querySelectorAll('select');
+    const drillTypeSelect = selects[1] as HTMLSelectElement;
+    expect(drillTypeSelect).toBeTruthy();
+
+    // Select 'ab' drill type
+    drillTypeSelect.value = 'ab';
+    drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+
+    // Now switch to 'Quote' tab to check packet price
+    const buttons = container.querySelectorAll('button');
+    const quoteTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'quote');
+    quoteTab?.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const inputs = container.querySelectorAll('input[type="number"]');
+    const packetCostInput = inputs[1] as HTMLInputElement;
+    expect(packetCostInput.value).toBe('0.35'); // AB price is 0.35
+  });
 });
