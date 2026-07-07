@@ -14,12 +14,12 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 
 - Map each pixel/grid cell to the nearest available DMC color from selected color indexes using RGB/Lab color distance formulas (Validated in Phase 01: Core Engine & Color Mathematics).
 - Support Art Dot 100-color and 200-color manufacturer indexes (Validated in Phase 01: Core Engine & Color Mathematics).
+- Load local images (JPEG, PNG, etc.) in-browser (Validated in Phase 02: Client-side Engine & Worker Architecture).
+- Specify canvas size using two modes: direct grid dimensions (rows/cols) or physical dimensions (cm/inches) with standard density calculations (2.5mm per dot, 10 dots/inch) (Validated in Phase 02: Client-side Engine & Worker Architecture).
 
 ### Active
 
-- [ ] Load local images (JPEG, PNG, etc.) in-browser.
 - [ ] Render a pixelated grid representation of the image.
-- [ ] Specify canvas size using two modes: direct grid dimensions (rows/cols) or physical dimensions (cm/inches) with standard density calculations (2.5mm per dot, 10 dots/inch).
 - [ ] Support custom sub-palette selection/filtering (allowing the artist to include or exclude specific colors from matching).
 - [ ] Display a supply specification report showing required color codes, names, and exact quantities of dots needed.
 - [ ] Enable visual inspection of the grid with zoom/pan and custom styling (square vs. round drill representation).
@@ -44,10 +44,14 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Client-side processing | Fast, secure, zero server maintenance costs. | — Pending |
-| Multi-resizing modes | Supports both canvas purchasing (cm/inches) and detailed planning (rows/cols). | — Pending |
+| Client-side processing | Fast, secure, zero server maintenance costs. | — Ingested and scaled entirely client-side (Phase 02) |
+| Multi-resizing modes | Supports both canvas purchasing (cm/inches) and detailed planning (rows/cols). | — Physical size to dot formulas implemented (Phase 02) |
 | Art Dot Kit Indexing | Direct mapping to 100/200 sets to match user's physical inventory. | — Compiled statically (Phase 01) |
 | Color space conversions & distance | Use manually registered Culori modes, sRGB -> XYZ -> Lab, 24-bit bitwise cache, and CIEDE2000 distance. | — Implemented in color.ts (Phase 01) |
+| Sizing Mapping Mode | Crop/Cover mode centered on image | — Implemented in ingest.ts (Phase 02) |
+| Downsampling Algorithm | Box Sampling (Area Averaging) for accurate color representation | — Implemented in ingest.ts (Phase 02) |
+| Concurrency Engine | Single persistent Web Worker with batching and abort signaling | — Implemented in matcher.worker.ts (Phase 02) |
+| RGBA Match Cache | Persisted across dimension changes, cleared only on palette edits | — Implemented in worker-client.ts (Phase 02) |
 
 ## Evolution
 
@@ -67,4 +71,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 01 completion*
+*Last updated: 2026-07-07 after Phase 02 completion*
