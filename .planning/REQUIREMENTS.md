@@ -16,8 +16,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Color Matching Engine
 
-- [ ] **ENGINE-01**: Map sRGB pixels from the source image to the CIELAB color space.
-- [ ] **ENGINE-02**: Match sRGB pixels to the nearest DMC catalog color using the CIEDE2000 color distance formula.
+- [x] **ENGINE-01**: Map sRGB pixels from the source image to the CIELAB color space.
+- [x] **ENGINE-02**: Match sRGB pixels to the nearest DMC catalog color using the CIEDE2000 color distance formula.
 - [ ] **ENGINE-03**: Process matching loops asynchronously using Web Workers to prevent UI thread lockups.
 - [ ] **ENGINE-04**: Implement an RGBA-to-DMC match lookup cache to bypass redundant distance checks on similar colors.
 
@@ -63,8 +63,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | INGEST-02 | Phase 2 | Pending |
 | INGEST-03 | Phase 2 | Pending |
 | INGEST-04 | Phase 2 | Pending |
-| ENGINE-01 | Phase 1 | Pending |
-| ENGINE-02 | Phase 1 | Pending |
+| ENGINE-01 | Phase 1 | Complete |
+| ENGINE-02 | Phase 1 | Complete |
 | ENGINE-03 | Phase 2 | Pending |
 | ENGINE-04 | Phase 2 | Pending |
 | PALETTE-01 | Phase 1 | Pending |
@@ -78,6 +78,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | REPORT-03 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 17 total
 - Mapped to phases: 17
 - Unmapped: 0 ✓
