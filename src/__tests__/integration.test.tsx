@@ -391,9 +391,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
-    // 3. Switch to Size tab and find sizing inputs
-    const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
-    sizeTab?.dispatchEvent(new Event('click', { bubbles: true }));
+    // 3. Navigate to Step 2 using the Next button
+    const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+    nextBtn?.dispatchEvent(new Event('click', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
     const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
@@ -416,9 +416,22 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Switch to Size tab first
-    const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.toLowerCase() === 'size');
-    sizeTab?.dispatchEvent(new Event('click', { bubbles: true }));
+    // Load a mock image first to enable the wizard Next button
+    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
+    const file = new File([''], 'test.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for image onload
+    await vi.waitFor(() => {
+      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtn).not.toBeNull();
+      expect(nextBtn.disabled).toBe(false);
+    });
+
+    // Navigate to Step 2
+    const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+    nextBtn?.dispatchEvent(new Event('click', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
     // Query standard size preset select element
