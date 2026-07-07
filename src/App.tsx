@@ -474,20 +474,20 @@ export function App() {
           leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
         }`}
       >
-        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2.5">
-            <img src={logoUrl} alt="GemPixel Logo" className="w-8 h-8 rounded border border-slate-700 shadow shadow-indigo-500/20 object-cover" />
+        <div className="flex justify-between items-center border-b border-slate-800/60 pb-3">
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt="GemPixel Logo" className="w-10 h-10 rounded-lg object-contain shadow-lg shadow-indigo-500/10 shrink-0" />
             <div>
-              <h1 className="text-lg font-bold text-indigo-400 tracking-wide leading-none font-pixel">GemPixel</h1>
-              <p className="text-[9px] text-slate-400 mt-1">Diamond Painting Planner</p>
+              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent leading-none">GemPixel</h1>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium tracking-wide">Diamond Painting Planner</p>
             </div>
           </div>
           <button
             onClick={() => setLeftPanelCollapsed(true)}
-            className="p-1.5 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
+            className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center border border-transparent hover:border-slate-700/30"
             title="Collapse Sidebar"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
