@@ -452,11 +452,6 @@ export function App() {
     setSaveModalOpen(false);
   };
 
-  // Temporarily bypass unused locals warnings for Task 1 commit
-  if (false) {
-    console.log(saveModalOpen, saveProjectName, setSaveProjectName, commissionsDrawerOpen, setCommissionsDrawerOpen, loadProject, resetWorkspace, handleSaveProject);
-  }
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<CanvasViewer | null>(null);
   const clientRef = useRef<MatcherClient | null>(null);
@@ -1133,6 +1128,17 @@ export function App() {
                   <span className="text-[10px] text-slate-500 text-center block py-2 italic">No commissions saved yet.</span>
                 )}
               </div>
+              <button
+                id="save-project-btn"
+                onClick={() => {
+                  setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
+                  setSaveModalOpen(true);
+                }}
+                disabled={!matchResult}
+                className="w-full bg-slate-950/80 hover:bg-slate-850 disabled:bg-slate-950/20 disabled:text-slate-600 text-indigo-400 hover:text-indigo-300 disabled:border-slate-900 border border-slate-800 rounded py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                <span>Save Current Commission</span>
+              </button>
             </div>
           )}
         </div>
@@ -2272,6 +2278,44 @@ export function App() {
               </button>
               <button
                 onClick={() => setCheckoutWarning(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Save Project Modal */}
+      {saveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
+            <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              Save Current Commission
+            </h3>
+            <p className="text-[11px] text-slate-400">
+              Enter a name to save this project layout configuration locally.
+            </p>
+            <input
+              type="text"
+              id="save-project-name-input"
+              value={saveProjectName}
+              onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
+              placeholder="e.g. Commission Layout 1"
+              className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              autoFocus
+            />
+            <div className="flex gap-2.5 mt-2">
+              <button
+                id="save-project-submit"
+                onClick={() => handleSaveProject(saveProjectName)}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+              >
+                Save
+              </button>
+              <button
+                id="save-project-cancel"
+                onClick={() => setSaveModalOpen(false)}
                 className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
               >
                 Cancel
