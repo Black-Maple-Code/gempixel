@@ -10,6 +10,8 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 2: Client-side Engine & Worker Architecture** - Load images client-side, downsample/fit to size, and execute color matching on a background Web Worker with caching. (completed 2026-07-07)
 - [x] **Phase 3: Canvas Viewer & Zoom/Pan Interaction** - Implement high-performance interactive grid preview canvas with zoom, pan, and custom drill styles. (completed 2026-07-07)
 - [x] **Phase 4: Supply Planning, Customization & Exports** - Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF. (completed 2026-07-07)
+- [ ] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters.
+- [ ] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey.
 
 ## Phase Details
 
@@ -111,3 +113,50 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Client-side Engine & Worker Architecture | 2/2 | Complete    | 2026-07-07 |
 | 3. Canvas Viewer & Zoom/Pan Interaction | 2/2 | Complete    | 2026-07-07 |
 | 4. Supply Planning, Customization & Exports | 3/3 | Complete    | 2026-07-07 |
+
+### Phase 5: Supply Partnerships & Checkout Integration
+
+**Goal**: Integrate canvas provider sizing redirect links and Diamond Drills USA affiliate shopping cart generation.
+**Mode**: standard
+**Depends on**: Phase 4
+**Requirements**: PARTNER-01, PARTNER-02
+**Success Criteria** (what must be TRUE):
+  1. User can choose a partner canvas supplier and see an "Order Sticky Canvas" button that opens their site pre-filled with the active canvas rows, columns, and layout dimensions.
+  2. User can view a "Buy Custom Drills Cart" link that compiles all exact drill sizes and quantities into a single referral cart at Diamond Drills USA for easy checkout.
+
+**Plans**: 0/2 plans complete
+
+Plans:
+- [ ] 05-01-PLAN.md — Build canvas partner redirect link integrations passing sizing parameters.
+- [ ] 05-02-PLAN.md — Implement Diamond Drills USA shopping cart link compiler with affiliate referral tracking.
+
+### Phase 6: Commission Workspace & Streamlined Artist UX
+
+**Goal**: Implement local portfolio workspace tracking, save custom commissions (metadata, files, configurations), and clean up sidebar input hierarchy.
+**Mode**: standard
+**Depends on**: Phase 5
+**Requirements**: ARTIST-01, ARTIST-02
+**Success Criteria** (what must be TRUE):
+  1. User can view a "My Commissions" sidebar dashboard listing saved projects with names, custom client quotes, and date added.
+  2. All commission metadata and palette customization states are stored locally and persist across page reloads.
+  3. Sidebar controls are consolidated into a clean 4-step wizard: (1) Upload, (2) Canvas Size & Style, (3) Legend & Palette, (4) Quoting & Ordering.
+
+**Plans**: 0/2 plans complete
+
+Plans:
+- [ ] 06-01-PLAN.md — Build local storage database and project switcher for multiple commission projects.
+- [ ] 06-02-PLAN.md — Redesign sidebar controls into a simplified 4-step wizard workflow.
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Core Engine & Color Mathematics | 2/2 | Complete    | 2026-07-07 |
+| 2. Client-side Engine & Worker Architecture | 2/2 | Complete    | 2026-07-07 |
+| 3. Canvas Viewer & Zoom/Pan Interaction | 2/2 | Complete    | 2026-07-07 |
+| 4. Supply Planning, Customization & Exports | 3/3 | Complete    | 2026-07-07 |
+| 5. Supply Partnerships & Checkout Integration | 0/2 | Pending     | — |
+| 6. Commission Workspace & Streamlined Artist UX | 0/2 | Pending     | — |

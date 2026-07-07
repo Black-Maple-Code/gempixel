@@ -23,13 +23,15 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 
 ### Active
 
-*(All core milestone requirements validated)*
+**Milestone v2.0: supply-partnerships-checkout-and-artist-UX**
+- [ ] Direct Canvas Ordering Partnership: Provide a way for artists to order custom sticky-glue canvases matching their project layout/dimensions from partnered canvas suppliers.
+- [ ] Custom Drill Cart Checkout: Compile and export direct affiliate/purchase cart links to Diamond Drills USA for the exact optimized bags (200, 500, 1000, 2000 sizes) of drills required for the canvas.
+- [ ] Streamlined Commission Journey: Simplify and restructure UI panels, inputs, and navigation to optimize the workflow of a professional diamond art artist quoting a commission.
 
 ### Out of Scope
 
 - [ ] Server-side processing or user accounts — keep the utility lightweight and run entirely client-side.
 - [ ] AI-based color enhancement or style generation — stick to clean mathematical color matching.
-- [ ] Direct purchase integration — supply count lists should be exported or copied, not purchased inside the app.
 
 ## Context
 
@@ -57,6 +59,7 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | Zoom Anchor | Cursor-centered offset updates | — Implemented in viewer.ts (Phase 03) |
 | Viewport Rendering | Double-buffered offscreen canvas blitted to screen | — Implemented in viewer.ts (Phase 03) |
 | Grid Gaps Backing | Slate Gray `#2D3748` drawn behind cells | — Implemented in viewer.ts (Phase 03) |
+| Direct Cart & Canvas Partnerships | Integrate direct affiliate cart building and custom canvas ordering links to monetize the tool while maintaining client-side execution. | — Planned in Milestone v2.0 |
 
 ## Evolution
 
@@ -76,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 04 completion*
+*Last updated: 2026-07-07 after Milestone v2.0 planning*

@@ -39,13 +39,17 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **REPORT-02**: Add a configurable safety margin (default +10% to +15%) to exact counts and round counts to recommend purchase packaging units.
 - [x] **REPORT-03**: User can export the supply list and grid details as a clean, printable PDF using native browser print media formatting.
 
-## v2 Requirements
+## Milestone v2.0 Requirements: Partnerships & Artist UX
 
-### Advanced Logic
+### ordering & partnerships
 
-- **ENGINE-05**: Confetti reduction pass (median noise-reduction filter) to smooth isolated single pixels.
-- **PALETTE-04**: Custom palette import/export via JSON files.
-- **VIEW-04**: Render symbol overlays on individual grid cells when zoomed in high enough (Level-of-Detail).
+- [ ] **PARTNER-01**: User can select canvas options and generate custom links to canvas suppliers (with sizing/dimensions parameters passed) to order sticky-glue canvas prints matching the layout.
+- [ ] **PARTNER-02**: User can build and export an optimized cart link to Diamond Drills USA containing the exact combination of drill bags needed, integrating partner affiliate tracking.
+
+### commission artist experience
+
+- [ ] **ARTIST-01**: User can save and manage multiple custom commission projects locally (via localStorage) to quickly switch layouts, quotes, and progress.
+- [ ] **ARTIST-02**: Refactor sidebar controls and input layouts into a streamlined step-by-step workflow to guide the artist from image ingestion -> design preview -> quoting -> supply ordering.
 
 ## Out of Scope
 
@@ -53,7 +57,7 @@ Requirements for initial release. Each maps to roadmap phases.
 |---------|--------|
 | Server-side accounts & storage | Keeps client-side lightweight, low overhead, and private. |
 | Drawing canvas & brush tools | The app is a pattern generator; users can edit images before upload. |
-| E-Commerce integrations | Defer to direct printout checklist. |
+| In-app payment processing | Redirect to external partner checkout pages with affiliate/partner links. |
 
 ## Traceability
 
@@ -76,13 +80,18 @@ Requirements for initial release. Each maps to roadmap phases.
 | REPORT-01 | Phase 4 | Complete |
 | REPORT-02 | Phase 4 | Complete |
 | REPORT-03 | Phase 4 | Complete |
+| PARTNER-01 | Phase 5 | Pending |
+| PARTNER-02 | Phase 5 | Pending |
+| ARTIST-01 | Phase 6 | Pending |
+| ARTIST-02 | Phase 6 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 17 total
-- Mapped to phases: 17
+- Milestone v1.0 requirements: 17 total (17 complete)
+- Milestone v2.0 requirements: 4 total (0 complete)
+- Mapped to phases: 21
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-06 after roadmap creation*
+*Last updated: 2026-07-07 after Milestone v2.0 planning*
