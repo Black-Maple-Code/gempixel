@@ -1622,9 +1622,13 @@ export function App() {
                       onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
                       className="flex-1 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded appearance-none"
                     />
-                    <span className="text-[10px] font-bold font-mono text-slate-200 bg-slate-900 border border-slate-800/80 px-2 py-0.5 rounded shrink-0 min-w-[2.5rem] text-center shadow-inner">
-                      {substitutionThreshold}
-                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={substitutionThreshold}
+                      onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                      className="bg-slate-900 border border-slate-800/80 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0 w-14 text-center shadow-inner"
+                    />
                   </div>
                   <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
                     Fills colors with counts below threshold into their closest color.
