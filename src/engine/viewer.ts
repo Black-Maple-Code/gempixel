@@ -228,7 +228,12 @@ export class CanvasViewer {
       return;
     }
 
-    const cellSize = 16;
+    let cellSize = 16;
+    const maxDimension = 2048;
+    if (this.gridWidth * cellSize > maxDimension || this.gridHeight * cellSize > maxDimension) {
+      cellSize = Math.max(2, Math.floor(maxDimension / Math.max(this.gridWidth, this.gridHeight)));
+    }
+
     this.offscreenCanvas.width = this.gridWidth * cellSize;
     this.offscreenCanvas.height = this.gridHeight * cellSize;
 
@@ -268,19 +273,20 @@ export class CanvasViewer {
     }
     this.ctx.imageSmoothingEnabled = false;
 
+    const virtualCellSize = 16;
+    const scaledCellSize = virtualCellSize * this.scale;
+
     if (this.highlightedColor) {
       // 1. Draw entire offscreen canvas dimmed
       this.ctx.globalAlpha = 0.2;
       this.ctx.drawImage(
         this.offscreenCanvas,
         0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height,
-        this.offsetX, this.offsetY, this.offscreenCanvas.width * this.scale, this.offscreenCanvas.height * this.scale
+        this.offsetX, this.offsetY, this.gridWidth * virtualCellSize * this.scale, this.gridHeight * virtualCellSize * this.scale
       );
 
       // 2. Draw highlighted cells fully opaque
       this.ctx.globalAlpha = 1.0;
-      const cellSize = 16;
-      const scaledCellSize = cellSize * this.scale;
 
       const startCol = Math.max(0, Math.floor(-this.offsetX / scaledCellSize));
       const endCol = Math.min(this.gridWidth, Math.ceil((this.canvas.width - this.offsetX) / scaledCellSize));
@@ -294,10 +300,10 @@ export class CanvasViewer {
             const color = this.colorMap.get(code) || '#2D3748';
             this.ctx.fillStyle = color;
 
-            const destX = this.offsetX + col * cellSize * this.scale;
-            const destY = this.offsetY + row * cellSize * this.scale;
-            const destW = cellSize * this.scale;
-            const destH = cellSize * this.scale;
+            const destX = this.offsetX + col * virtualCellSize * this.scale;
+            const destY = this.offsetY + row * virtualCellSize * this.scale;
+            const destW = virtualCellSize * this.scale;
+            const destH = virtualCellSize * this.scale;
 
             if (this.drillStyle === 'square') {
               this.ctx.fillRect(destX, destY, destW, destH);
@@ -316,7 +322,7 @@ export class CanvasViewer {
       this.ctx.drawImage(
         this.offscreenCanvas,
         0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height,
-        this.offsetX, this.offsetY, this.offscreenCanvas.width * this.scale, this.offscreenCanvas.height * this.scale
+        this.offsetX, this.offsetY, this.gridWidth * virtualCellSize * this.scale, this.gridHeight * virtualCellSize * this.scale
       );
     }
     this.ctx.globalAlpha = 1.0; // Reset

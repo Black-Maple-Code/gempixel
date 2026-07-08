@@ -58,13 +58,18 @@ export function matchColor(
   b: number,
   activeCandidates: DmcColor[]
 ): DmcColor {
-  const key = (r << 16) + (g << 8) + b;
+  // Quantize RGB values to multiples of 4 to maximize cache hit rate and optimize matching speed
+  const rQ = r & 0xFC;
+  const gQ = g & 0xFC;
+  const bQ = b & 0xFC;
+  const key = (rQ << 16) + (gQ << 8) + bQ;
+
   const cached = matchCache.get(key);
   if (cached) {
     return cached;
   }
 
-  const pixelLab = rgbToLab(r, g, b);
+  const pixelLab = rgbToLab(rQ, gQ, bQ);
   let minDistance = Infinity;
   let bestMatch: DmcColor | null = null;
 

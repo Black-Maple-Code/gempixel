@@ -61,13 +61,17 @@ async function runMatching(
       const bVal = pixels[idx + 2];
       const aVal = pixels[idx + 3];
 
-      // Key = (R * 16777216) + (G * 65536) + (B * 256) + A
-      const cacheKey = rVal * 16777216 + gVal * 65536 + bVal * 256 + aVal;
+      // Blend alpha and quantize to multiples of 4 to maximize cache hit rate
+      const blended = blendAlpha(rVal, gVal, bVal, aVal);
+      const rQ = blended.r & 0xFC;
+      const gQ = blended.g & 0xFC;
+      const bQ = blended.b & 0xFC;
+
+      const cacheKey = (rQ << 16) + (gQ << 8) + bQ;
       let matchedCode = rgbaCache.get(cacheKey);
 
       if (matchedCode === undefined) {
-        const blended = blendAlpha(rVal, gVal, bVal, aVal);
-        const matchedColor = matchColor(blended.r, blended.g, blended.b, candidates);
+        const matchedColor = matchColor(rQ, gQ, bQ, candidates);
         matchedCode = matchedColor.dmc;
         rgbaCache.set(cacheKey, matchedCode);
       }
