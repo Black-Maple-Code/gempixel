@@ -330,6 +330,7 @@ export function App() {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [excludeListOpen, setExcludeListOpen] = useState(false);
+  const [recsOpen, setRecsOpen] = useState(true);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
@@ -1304,30 +1305,57 @@ export function App() {
         {/* Wizard Step Contents */}
         {wizardStep === 1 && (
           <div className="flex flex-col gap-4">
-            {/* File Upload / Dropzone */}
-            <div className="flex flex-col gap-1.5">
+            {/* File Ingestion */}
+            <div className="flex flex-col gap-1.5 shrink-0">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Load Image</label>
-              <div
-                ref={dropZoneRef}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[90px] ${
-                  isDragOver
-                    ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
-                    : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
-                }`}
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                <span className="text-[11px] text-slate-400 leading-relaxed max-w-[200px]">Drag & Drop Image or Click to Browse</span>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
+              {image ? (
+                <div className="flex items-center justify-between bg-slate-950/40 border border-slate-850 rounded-lg p-2 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded bg-slate-800 overflow-hidden shrink-0 border border-slate-800 flex items-center justify-center">
+                      <img src={image.src} alt="Uploaded thumbnail" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] text-slate-350 font-bold truncate leading-none">{imageName || 'Loaded Photo'}</div>
+                      <div className="text-[8px] text-slate-500 mt-1 font-semibold">{image.naturalWidth} x {image.naturalHeight} px</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    className="text-[9px] text-indigo-400 hover:text-indigo-300 font-bold border border-indigo-500/20 px-2 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-all cursor-pointer"
+                  >
+                    Replace
+                  </button>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              ) : (
+                <div
+                  ref={dropZoneRef}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[90px] ${
+                    isDragOver
+                      ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
+                      : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
+                  }`}
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                  <span className="text-[11px] text-slate-400 leading-relaxed max-w-[200px]">Drag & Drop Image or Click to Browse</span>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Recent Uploads */}
@@ -1417,67 +1445,74 @@ export function App() {
 
             {/* Recommended Canvas Sizes (PrintKK matching) */}
             {image && (
-              <div className="flex flex-col gap-1.5 bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Recommended PrintKK Sizes</span>
-                  <span className="text-[9px] text-slate-500 font-semibold">Closest aspect ratio</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {(() => {
-                    const imgW = image.width;
-                    const imgH = image.height;
-                    const imgRatio = imgW / imgH;
-                    const isLandscape = imgRatio >= 1;
+              <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
+                <button
+                  onClick={() => setRecsOpen(!recsOpen)}
+                  className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recsOpen ? 'rotate-90' : ''}`}>▶</span>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Recommended PrintKK Sizes</span>
+                  </div>
+                </button>
+                {recsOpen && (
+                  <div className="mt-2.5 flex flex-col gap-1.5">
+                    {(() => {
+                      const imgW = image.width;
+                      const imgH = image.height;
+                      const imgRatio = imgW / imgH;
+                      const isLandscape = imgRatio >= 1;
 
-                    const PRINTKK_BASE_SIZES = [
-                      { w: 30, h: 40 }, // 12" x 16"
-                      { w: 40, h: 50 }, // 16" x 20"
-                      { w: 50, h: 70 }, // 20" x 28"
-                      { w: 100, h: 150 } // 40" x 60"
-                    ];
+                      const PRINTKK_BASE_SIZES = [
+                        { w: 30, h: 40 }, // 12" x 16"
+                        { w: 40, h: 50 }, // 16" x 20"
+                        { w: 50, h: 70 }, // 20" x 28"
+                        { w: 100, h: 150 } // 40" x 60"
+                      ];
 
-                    const list = PRINTKK_BASE_SIZES.map(sz => {
-                      const width = isLandscape ? Math.max(sz.w, sz.h) : Math.min(sz.w, sz.h);
-                      const height = isLandscape ? Math.min(sz.w, sz.h) : Math.max(sz.w, sz.h);
-                      const ratio = width / height;
-                      const diff = Math.abs(imgRatio - ratio) / imgRatio;
-                      const matchPct = Math.max(0, Math.min(100, Math.round((1 - diff) * 100)));
-                      return { width, height, matchPct, diff };
-                    });
+                      const list = PRINTKK_BASE_SIZES.map(sz => {
+                        const width = isLandscape ? Math.max(sz.w, sz.h) : Math.min(sz.w, sz.h);
+                        const height = isLandscape ? Math.min(sz.w, sz.h) : Math.max(sz.w, sz.h);
+                        const ratio = width / height;
+                        const diff = Math.abs(imgRatio - ratio) / imgRatio;
+                        const matchPct = Math.max(0, Math.min(100, Math.round((1 - diff) * 100)));
+                        return { width, height, matchPct, diff };
+                      });
 
-                    const top3 = list.sort((a, b) => a.diff - b.diff).slice(0, 3);
+                      const top3 = list.sort((a, b) => a.diff - b.diff).slice(0, 3);
 
-                    return top3.map((sz, idx) => {
-                      const isSelected = selectedPreset === 'custom' && unit === 'cm' && parseInt(widthInput) === sz.width && parseInt(heightInput) === sz.height;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            setSelectedPreset('custom');
-                            setUnit('cm');
-                            setWidthInput(sz.width.toString());
-                            setHeightInput(sz.height.toString());
-                            setCols(Math.max(1, Math.round(sz.width * 4)));
-                            setRows(Math.max(1, Math.round(sz.height * 4)));
-                          }}
-                          className={`w-full py-1.5 px-2 rounded text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
-                            isSelected
-                              ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50'
-                              : 'bg-slate-950/60 text-slate-300 border-slate-850 hover:bg-slate-900/60 hover:text-slate-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold">{sz.width} x {sz.height} cm</span>
-                            <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
-                          </div>
-                          <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                            {sz.matchPct}% Match
-                          </span>
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
+                      return top3.map((sz, idx) => {
+                        const isSelected = selectedPreset === 'custom' && unit === 'cm' && parseInt(widthInput) === sz.width && parseInt(heightInput) === sz.height;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setSelectedPreset('custom');
+                              setUnit('cm');
+                              setWidthInput(sz.width.toString());
+                              setHeightInput(sz.height.toString());
+                              setCols(Math.max(1, Math.round(sz.width * 4)));
+                              setRows(Math.max(1, Math.round(sz.height * 4)));
+                            }}
+                            className={`w-full py-1.5 px-2 rounded text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
+                              isSelected
+                                ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50'
+                                : 'bg-slate-950/60 text-slate-300 border-slate-850 hover:bg-slate-900/60 hover:text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold">{sz.width} x {sz.height} cm</span>
+                              <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
+                            </div>
+                            <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              {sz.matchPct}% Match
+                            </span>
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2106,31 +2141,7 @@ export function App() {
           </div>
         )}
 
-        {/* Wizard Footer Navigation */}
-        <div className="flex gap-2 shrink-0 no-print pt-2 border-t border-slate-800/60">
-          {wizardStep > 1 ? (
-            <button
-              onClick={() => setWizardStep(prev => prev - 1)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded text-xs font-semibold flex items-center justify-center transition-all cursor-pointer"
-            >
-              Back
-            </button>
-          ) : (
-            <div className="flex-1" />
-          )}
-          {wizardStep < 4 ? (
-            <button
-              id="wizard-next-btn"
-              onClick={() => setWizardStep(prev => prev + 1)}
-              disabled={wizardStep === 1 && !image && !activeProjectId}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-2 rounded text-xs font-semibold flex items-center justify-center transition-all cursor-pointer"
-            >
-              Next
-            </button>
-          ) : (
-            <div className="flex-1" />
-          )}
-        </div>
+
 
         {/* Sidebar Footer Actions */}
         <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
@@ -2160,8 +2171,20 @@ export function App() {
       {/* Main Canvas Area */}
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
         {/* Top Header Bar for Wizard Progress Stepper */}
-        <div className="bg-slate-900/40 border-b border-slate-800/60 py-3 px-4 flex items-center justify-center select-none no-print shrink-0 z-30">
-          <div className="flex items-center justify-between w-full max-w-lg relative">
+        <div className="bg-slate-900/40 border-b border-slate-800/60 py-3 px-4 flex items-center justify-between select-none no-print shrink-0 z-30">
+          {/* Back Button */}
+          <div className="w-20 flex justify-start">
+            {wizardStep > 1 && (
+              <button
+                onClick={() => setWizardStep(prev => prev - 1)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer active:scale-95 border border-slate-700/50"
+              >
+                Back
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between w-full max-w-md relative">
             {/* Connector Line Background */}
             <div className="absolute top-[18px] left-10 right-10 h-0.5 bg-slate-800 z-0" />
             {/* Active Progress Line */}
@@ -2201,6 +2224,20 @@ export function App() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Next Button */}
+          <div className="w-20 flex justify-end">
+            {wizardStep < 4 && (
+              <button
+                id="wizard-next-btn"
+                onClick={() => setWizardStep(prev => prev + 1)}
+                disabled={wizardStep === 1 && !image && !activeProjectId}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer active:scale-95 border border-indigo-500/25"
+              >
+                Next
+              </button>
+            )}
           </div>
         </div>
 
