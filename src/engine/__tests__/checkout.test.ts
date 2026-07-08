@@ -52,6 +52,16 @@ describe('Checkout and Sizing Integration', () => {
       expect(result.unmappedItems[0].dmcCode).toBe('9999');
       expect(result.unmappedItems[0].handle).toContain('dmc-9999-round');
     });
+
+    it('gracefully falls back to 200 bags if bulk size variant IDs are missing', () => {
+      const items = [
+        { dmcCode: '367', shape: 'square' as const, requiredCount: 1200 } // > 800 (normally bulk)
+      ];
+
+      const result = compileShopifyCartLink(items, '', 'none');
+      expect(result.unmappedItems.length).toBe(0);
+      expect(result.url).toContain('29699663593554:6');
+    });
   });
 
   describe('Canvas Partner URL Compiler', () => {

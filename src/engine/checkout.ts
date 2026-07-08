@@ -77,28 +77,72 @@ export function compileShopifyCartLink(
   const cartTokens: string[] = [];
 
   for (const item of items) {
-    const optimized = optimizeBags(item.requiredCount);
     const mapping = DRILL_VARIANTS[item.dmcCode]?.[item.shape];
 
-    if (!mapping) {
+    if (!mapping || Object.keys(mapping).length === 0) {
       const handle = `dmc-${item.dmcCode}-${item.shape}-5d-diamond-painting-drills`;
       unmappedItems.push({ dmcCode: item.dmcCode, handle });
       continue;
     }
 
-    const sizes: Array<keyof VariantMapping> = [200, 500, 1000, 2000];
-    for (const size of sizes) {
-      const qtyKey = `qty${size}` as keyof OptimizedBags;
-      const qty = optimized[qtyKey];
-      const variantId = mapping[size];
+    // Determine available sizes sorted descending
+    const availableSizes = Object.keys(mapping)
+      .map(Number)
+      .filter(size => mapping[size as keyof VariantMapping] !== undefined)
+      .sort((a, b) => b - a);
 
-      if (qty > 0 && variantId) {
-        cartTokens.push(`${variantId}:${qty}`);
-      } else if (qty > 0 && !variantId) {
-        // Fallback for missing bag size variants in static lookup
-        const handle = `dmc-${item.dmcCode}-${item.shape}-5d-diamond-painting-drills`;
-        unmappedItems.push({ dmcCode: item.dmcCode, handle });
+    let remaining = item.requiredCount;
+    const resolvedTokens: Array<{ variantId: number; qty: number }> = [];
+
+    // If total <= 800 and 200 size is available, use it directly (separating dye lots)
+    if (remaining <= 800 && availableSizes.includes(200)) {
+      const variantId = mapping[200]!;
+      resolvedTokens.push({ variantId, qty: Math.ceil(remaining / 200) });
+      remaining = 0;
+    } else {
+      // Greedily pack with bulk sizes first
+      for (const size of availableSizes) {
+        if (size === 200) continue;
+        const variantId = mapping[size as keyof VariantMapping]!;
+        const qty = Math.floor(remaining / size);
+        if (qty > 0) {
+          resolvedTokens.push({ variantId, qty });
+          remaining = remaining % size;
+        }
       }
+
+      // Handle remainder using smallest bulk size or 200 pack
+      if (remaining > 0) {
+        const bulkSizes = availableSizes.filter(s => s > 200).sort((a, b) => a - b);
+        if (bulkSizes.length > 0) {
+          const fitSize = bulkSizes.find(s => s >= remaining) || bulkSizes[bulkSizes.length - 1];
+          const variantId = mapping[fitSize as keyof VariantMapping]!;
+          const existing = resolvedTokens.find(t => t.variantId === variantId);
+          if (existing) {
+            existing.qty += 1;
+          } else {
+            resolvedTokens.push({ variantId, qty: 1 });
+          }
+        } else if (availableSizes.includes(200)) {
+          const variantId = mapping[200]!;
+          const qty = Math.ceil(remaining / 200);
+          const existing = resolvedTokens.find(t => t.variantId === variantId);
+          if (existing) {
+            existing.qty += qty;
+          } else {
+            resolvedTokens.push({ variantId, qty });
+          }
+        } else {
+          // No available size can cover it, report as unmapped
+          const handle = `dmc-${item.dmcCode}-${item.shape}-5d-diamond-painting-drills`;
+          unmappedItems.push({ dmcCode: item.dmcCode, handle });
+        }
+      }
+    }
+
+    // Add resolved tokens to cart
+    for (const token of resolvedTokens) {
+      cartTokens.push(`${token.variantId}:${token.qty}`);
     }
   }
 
