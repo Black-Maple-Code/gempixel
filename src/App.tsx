@@ -140,25 +140,25 @@ export const PRINTKK_CANVAS_PRICES: Record<string, {
     label: '12" × 16"',
     ratio: '3:4',
     productPriceUSD: 2.87,
-    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-3-4.html',
+    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting',
   },
   '4:5': {
     label: '16" × 20"',
     ratio: '4:5',
     productPriceUSD: 4.42,
-    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-4-5.html',
+    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-four-five',
   },
   '5:7': {
     label: '20" × 28"',
     ratio: '5:7',
     productPriceUSD: 7.74,
-    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-5-7.html',
+    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-five-seven',
   },
   '2:3': {
     label: '40" × 60"',
     ratio: '2:3',
     productPriceUSD: 24.76,
-    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-2-3.html',
+    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-two-three',
   },
 };
 
@@ -1210,7 +1210,7 @@ export function App() {
 
 
         {/* My Commissions Portfolio Drawer */}
-        <div className="border-b border-slate-800/60 pb-3 flex flex-col gap-2 shrink-0">
+        <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center">
             <button
               onClick={() => setCommissionsDrawerOpen(!commissionsDrawerOpen)}
@@ -1561,7 +1561,7 @@ export function App() {
         )}
 
         {wizardStep === 2 && (
-          <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+          <div className="flex flex-col gap-3.5">
             {/* Base Kit Selector */}
             <div className="flex flex-col gap-1 shrink-0">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
@@ -1684,9 +1684,9 @@ export function App() {
             </div>
 
             {/* DMC Legend List Table */}
-            <div className="flex flex-col gap-1.5 flex-1 overflow-hidden min-h-[150px] no-print">
+            <div className="flex flex-col gap-1.5 no-print">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Supply List</label>
-              <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 scrollbar-thin">
+              <div className="border border-slate-850 rounded bg-slate-950/30 max-h-80 overflow-y-auto scrollbar-thin">
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[9px] uppercase tracking-wider font-semibold">
                     <tr>
@@ -1744,7 +1744,7 @@ export function App() {
             {/* Canvas Base Price ($) and shipping estimate */}
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Base Price ($)</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Price ($)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -1910,13 +1910,13 @@ export function App() {
 
               {(() => {
                 const matched = getMatchingPrintKKPrice(parseFloat(widthInput), parseFloat(heightInput), unit);
-                const printKKUrl = matched ? matched.productUrl : 'https://www.printkk.com/product/search?keyword=diy%20painting';
+                const printKKUrl = matched ? matched.productUrl : 'https://www.printkk.com/product/info/diy-diamond-painting';
                 return (
                   <a
                     href={printKKUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full bg-slate-850 hover:bg-slate-800 text-slate-200 hover:text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98 text-center block"
+                    className="w-full bg-slate-900 hover:bg-slate-850 text-indigo-400 hover:text-indigo-300 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border border-indigo-500/80 cursor-pointer active:scale-98 text-center block shadow-lg shadow-indigo-500/5"
                   >
                     <span>🖼️ Order Canvas from PrintKK</span>
                   </a>
