@@ -1168,48 +1168,6 @@ export function App() {
           </button>
         </div>
 
-        {/* Wizard Progress Track Header */}
-        <div className="flex items-center justify-between px-3 py-2 shrink-0 relative border-b border-slate-800/40 pb-4 no-print select-none">
-          {/* Connector Line Background */}
-          <div className="absolute top-[22px] left-8 right-8 h-0.5 bg-slate-800 z-0" />
-          {/* Active Progress Line */}
-          <div 
-            className="absolute top-[22px] left-8 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
-            style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
-          />
-          
-          {[1, 2, 3, 4].map((step) => {
-            const isActive = wizardStep === step;
-            const isCompleted = wizardStep > step;
-            const labels = ['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'];
-            const label = labels[step - 1];
-            
-            return (
-              <div key={step} className="flex flex-col items-center gap-1.5 z-10">
-                <button
-                  onClick={() => {
-                    setWizardStep(step);
-                  }}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? 'bg-slate-900 border-2 border-indigo-500 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] backdrop-blur-md'
-                      : isCompleted
-                      ? 'bg-indigo-600 text-white border border-indigo-500'
-                      : 'bg-slate-950 border border-slate-800 text-slate-500'
-                  }`}
-                  title={label}
-                >
-                  {step}
-                </button>
-                <span className={`text-[8px] font-bold uppercase tracking-wider ${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
-                  {label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-
         {/* My Commissions Portfolio Drawer */}
         <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center">
@@ -2203,17 +2161,15 @@ export function App() {
                 <div key={step} className="flex flex-col items-center gap-1 z-10 w-24">
                   <button
                     onClick={() => {
-                      if (activeProjectId || image) {
-                        setWizardStep(step);
-                      }
+                      setWizardStep(step);
                     }}
-                    disabled={!activeProjectId && !image && step > 1}
+                    title={label}
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border cursor-pointer select-none ${
                       isActive
                         ? 'bg-slate-900 border-2 border-indigo-500 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] backdrop-blur-md scale-105'
                         : isCompleted
                         ? 'bg-indigo-600 text-white border border-indigo-500 hover:bg-indigo-500'
-                        : 'bg-slate-950 border border-slate-800 text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-900'
+                        : 'bg-slate-950 border border-slate-800 text-slate-500 hover:bg-slate-900'
                     }`}
                   >
                     {step}
