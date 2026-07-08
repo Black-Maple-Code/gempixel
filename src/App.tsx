@@ -113,16 +113,27 @@ export function deleteProjectFromStorage(id: string) {
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
-  { name: '20 x 25 cm', value: '20x25-cm', width: 20, height: 25, unit: 'cm' },
+  // PrintKK Standard cm sizes
   { name: '30 x 30 cm', value: '30x30-cm', width: 30, height: 30, unit: 'cm' },
   { name: '30 x 40 cm', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
+  { name: '40 x 40 cm', value: '40x40-cm', width: 40, height: 40, unit: 'cm' },
   { name: '40 x 50 cm', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
+  { name: '40 x 60 cm', value: '40x60-cm', width: 40, height: 60, unit: 'cm' },
+  { name: '50 x 50 cm', value: '50x50-cm', width: 50, height: 50, unit: 'cm' },
   { name: '50 x 70 cm', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
+  { name: '60 x 60 cm', value: '60x60-cm', width: 60, height: 60, unit: 'cm' },
+  { name: '60 x 80 cm', value: '60x80-cm', width: 60, height: 80, unit: 'cm' },
+  { name: '60 x 90 cm', value: '60x90-cm', width: 60, height: 90, unit: 'cm' },
+  { name: '70 x 100 cm', value: '70x100-cm', width: 70, height: 100, unit: 'cm' },
+  { name: '80 x 100 cm', value: '80x100-cm', width: 80, height: 100, unit: 'cm' },
+  { name: '80 x 120 cm', value: '80x120-cm', width: 80, height: 120, unit: 'cm' },
+  // Standard inch sizes
   { name: '8 x 10 inch', value: '8x10-inch', width: 8, height: 10, unit: 'inch' },
   { name: '12 x 12 inch', value: '12x12-inch', width: 12, height: 12, unit: 'inch' },
   { name: '12 x 16 inch', value: '12x16-inch', width: 12, height: 16, unit: 'inch' },
   { name: '16 x 20 inch', value: '16x20-inch', width: 16, height: 20, unit: 'inch' },
   { name: '20 x 28 inch', value: '20x28-inch', width: 20, height: 28, unit: 'inch' },
+  // Grid size presets
   { name: '40 x 30 grid', value: '40x30-grid', width: 40, height: 30, unit: 'grid' },
   { name: '80 x 53 grid', value: '80x53-grid', width: 80, height: 53, unit: 'grid' },
   { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
@@ -1346,6 +1357,81 @@ export function App() {
                 ))}
               </select>
             </div>
+
+            {/* Recommended Canvas Sizes (PrintKK matching) */}
+            {image && (
+              <div className="flex flex-col gap-1.5 bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Recommended PrintKK Sizes</span>
+                  <span className="text-[9px] text-slate-500 font-semibold">Closest aspect ratio</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {(() => {
+                    const imgW = image.width;
+                    const imgH = image.height;
+                    const imgRatio = imgW / imgH;
+                    const isLandscape = imgRatio >= 1;
+
+                    const PRINTKK_BASE_SIZES = [
+                      { w: 30, h: 30 },
+                      { w: 30, h: 40 },
+                      { w: 40, h: 40 },
+                      { w: 40, h: 50 },
+                      { w: 40, h: 60 },
+                      { w: 50, h: 50 },
+                      { w: 50, h: 70 },
+                      { w: 60, h: 60 },
+                      { w: 60, h: 80 },
+                      { w: 60, h: 90 },
+                      { w: 70, h: 100 },
+                      { w: 80, h: 100 },
+                      { w: 80, h: 120 }
+                    ];
+
+                    const list = PRINTKK_BASE_SIZES.map(sz => {
+                      const width = isLandscape ? Math.max(sz.w, sz.h) : Math.min(sz.w, sz.h);
+                      const height = isLandscape ? Math.min(sz.w, sz.h) : Math.max(sz.w, sz.h);
+                      const ratio = width / height;
+                      const diff = Math.abs(imgRatio - ratio) / imgRatio;
+                      const matchPct = Math.max(0, Math.min(100, Math.round((1 - diff) * 100)));
+                      return { width, height, matchPct, diff };
+                    });
+
+                    const top3 = list.sort((a, b) => a.diff - b.diff).slice(0, 3);
+
+                    return top3.map((sz, idx) => {
+                      const isSelected = selectedPreset === 'custom' && unit === 'cm' && parseInt(widthInput) === sz.width && parseInt(heightInput) === sz.height;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSelectedPreset('custom');
+                            setUnit('cm');
+                            setWidthInput(sz.width.toString());
+                            setHeightInput(sz.height.toString());
+                            setCols(Math.max(1, Math.round(sz.width * 4)));
+                            setRows(Math.max(1, Math.round(sz.height * 4)));
+                          }}
+                          className={`w-full py-1.5 px-2 rounded text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50'
+                              : 'bg-slate-950/60 text-slate-300 border-slate-850 hover:bg-slate-900/60 hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold">{sz.width} x {sz.height} cm</span>
+                            <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
+                          </div>
+                          <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {sz.matchPct}% Match
+                          </span>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
 
             {/* Sizing Units & Inputs */}
             <div className="flex flex-col gap-1.5">

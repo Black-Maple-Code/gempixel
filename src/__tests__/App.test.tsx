@@ -831,5 +831,70 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtnAfterReset).toBeTruthy();
       expect(nextBtnAfterReset.disabled).toBe(true);
     });
+
+    it('displays Recommended PrintKK Sizes in Step 2 and allows selecting them', async () => {
+      // Stub FileReader and Image
+      const mockReader = {
+        readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+          if (this.onload) {
+            this.onload({ target: { result: 'data:image/png;base64,mock' } });
+          }
+        }),
+      };
+      vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+      const mockImageInstance = {
+        naturalWidth: 300,
+        naturalHeight: 400,
+        width: 300,
+        height: 400,
+        set src(_val: string) {
+          if (this.onload) {
+            setTimeout(() => this.onload(), 0);
+          }
+        },
+        onload: null as any,
+      };
+      vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Upload mock image to unlock wizard progression
+      const file = new File([''], 'scenery.jpg', { type: 'image/jpeg' });
+      const uploadInput = container.querySelector('#file-upload') as HTMLInputElement;
+      Object.defineProperty(uploadInput, 'files', { value: [file] });
+      uploadInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 15));
+
+      // Go to Step 2
+      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      nextBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Check that Recommended PrintKK Sizes heading exists
+      expect(container.textContent).toContain('Recommended PrintKK Sizes');
+
+      // Top recommendation should be "30 x 40 cm" with "100% Match"
+      expect(container.textContent).toContain('30 x 40 cm');
+      expect(container.textContent).toContain('100% Match');
+
+      // Click the "30 x 40 cm" recommendation button
+      const recBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('30 x 40 cm')) as HTMLButtonElement;
+      expect(recBtn).toBeTruthy();
+      recBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Verify dimensions are applied
+      const numberInputs = container.querySelectorAll('input[type="number"]');
+      const widthInput = numberInputs[0] as HTMLInputElement;
+      const heightInput = numberInputs[1] as HTMLInputElement;
+      expect(widthInput.value).toBe('30');
+      expect(heightInput.value).toBe('40');
+
+      // Cleanup globals
+      vi.unstubAllGlobals();
+    });
   });
 });
