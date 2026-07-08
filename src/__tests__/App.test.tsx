@@ -560,7 +560,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Threshold input should render now
-      const thresholdInput = Array.from(container.querySelectorAll('input[type="number"]')).find(i => (i as HTMLInputElement).value === '20') as HTMLInputElement;
+      const thresholdInput = Array.from(container.querySelectorAll('input[type="range"]')).find(i => (i as HTMLInputElement).value === '20') as HTMLInputElement;
       expect(thresholdInput).toBeTruthy();
 
       // Change threshold

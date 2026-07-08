@@ -1611,15 +1611,21 @@ export function App() {
                 </label>
               </div>
               {enableSubstitution && (
-                <div className="flex flex-col gap-1 mt-1 pl-5">
+                <div className="flex flex-col gap-1 mt-1.5 pl-5 select-none">
                   <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={substitutionThreshold}
-                    onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
-                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="500"
+                      value={substitutionThreshold}
+                      onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                      className="flex-1 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded appearance-none"
+                    />
+                    <span className="text-[10px] font-bold font-mono text-slate-200 bg-slate-900 border border-slate-800/80 px-2 py-0.5 rounded shrink-0 min-w-[2.5rem] text-center shadow-inner">
+                      {substitutionThreshold}
+                    </span>
+                  </div>
                   <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
                     Fills colors with counts below threshold into their closest color.
                   </span>
