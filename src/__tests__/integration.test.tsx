@@ -391,11 +391,6 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
-    // 3. Navigate to Step 2 using the Next button
-    const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-    nextBtn?.dispatchEvent(new Event('click', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-
     const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
     const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
 
@@ -429,13 +424,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(nextBtn.disabled).toBe(false);
     });
 
-    // Navigate to Step 2
-    const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-    nextBtn?.dispatchEvent(new Event('click', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-
     // Query standard size preset select element
-    const presetSelect = container.querySelector('select') as HTMLSelectElement;
+    const presetSelect = container.querySelector('#preset-size-select') as HTMLSelectElement;
     expect(presetSelect).not.toBeNull();
 
     // Select standard size preset: '30x40-cm' (width: 30, height: 40, unit: cm)

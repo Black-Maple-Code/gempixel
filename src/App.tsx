@@ -130,6 +130,78 @@ export const STANDARD_SIZES = [
   { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
 ];
 
+export const PRINTKK_CANVAS_PRICES: Record<string, {
+  label: string;
+  ratio: string;
+  productPriceUSD: number;
+  productUrl: string;
+}> = {
+  '3:4': {
+    label: '12" × 16"',
+    ratio: '3:4',
+    productPriceUSD: 2.87,
+    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-3-4.html',
+  },
+  '4:5': {
+    label: '16" × 20"',
+    ratio: '4:5',
+    productPriceUSD: 4.42,
+    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-4-5.html',
+  },
+  '5:7': {
+    label: '20" × 28"',
+    ratio: '5:7',
+    productPriceUSD: 7.74,
+    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-5-7.html',
+  },
+  '2:3': {
+    label: '40" × 60"',
+    ratio: '2:3',
+    productPriceUSD: 24.76,
+    productUrl: 'https://www.printkk.com/product/diy-diamond-painting-no-frame-2-3.html',
+  },
+};
+
+export function getMatchingPrintKKPrice(width: number, height: number, unit: string): { label: string; ratio: string; productPriceUSD: number; productUrl: string } | null {
+  if (unit === 'grid') return null;
+  
+  let w = width;
+  let h = height;
+  if (unit === 'inch') {
+    w = width * 2.54;
+    h = height * 2.54;
+  }
+
+  const smaller = Math.min(w, h);
+  const larger = Math.max(w, h);
+  if (larger === 0) return null;
+  const ratio = smaller / larger;
+
+  const baseRatios = [
+    { key: '3:4', val: 3/4 },
+    { key: '4:5', val: 4/5 },
+    { key: '5:7', val: 5/7 },
+    { key: '2:3', val: 2/3 }
+  ];
+
+  let best = baseRatios[0];
+  let minDiff = Math.abs(ratio - best.val);
+  for (let i = 1; i < baseRatios.length; i++) {
+    const diff = Math.abs(ratio - baseRatios[i].val);
+    if (diff < minDiff) {
+      minDiff = diff;
+      best = baseRatios[i];
+    }
+  }
+
+  if (minDiff / ratio <= 0.03) {
+    return PRINTKK_CANVAS_PRICES[best.key];
+  }
+
+  return null;
+}
+
+
 export function calculateSafetyPurchase(exactCount: number, bagSize: number = 200): { safety: number; packets: number; purchase: number } {
   const safety = Math.ceil(Math.round(exactCount * 110) / 100);
   const packets = Math.ceil(safety / bagSize);
@@ -309,10 +381,9 @@ export function App() {
     localStorage.setItem('gempixel_substitution_threshold', substitutionThreshold.toString());
   }, [substitutionThreshold]);
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
+  const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
   const [drillBagSize, setDrillBagSize] = useState<number>(200);
-  const [laborFee, setLaborFee] = useState(25.0);
-  const [markupType, setMarkupType] = useState<'fixed' | 'percent'>('fixed');
   const [optimizeBagsCost, setOptimizeBagsCost] = useState(true);
   const [priceDb, setPriceDb] = useState<Record<200 | 500 | 1000 | 2000, number>>({
     200: 0.60,
@@ -351,6 +422,17 @@ export function App() {
     localStorage.setItem('gempixel_canvas_template', canvasTemplate);
   }, [canvasTemplate]);
 
+  useEffect(() => {
+    const w = parseFloat(widthInput);
+    const h = parseFloat(heightInput);
+    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+      const matched = getMatchingPrintKKPrice(w, h, unit);
+      if (matched) {
+        setCanvasBaseCost(matched.productPriceUSD);
+      }
+    }
+  }, [widthInput, heightInput, unit]);
+
   const loadProject = (id: string) => {
     const project = loadProjectFromStorage(id);
     if (!project) return;
@@ -368,7 +450,6 @@ export function App() {
     setHighlightedColor(null);
     setCanvasBaseCost(project.kitBaseCost ?? 15.0);
     setDrillPacketCost(project.drillPacketCost ?? 0.25);
-    setLaborFee(project.laborMarkup ?? 25.0);
     setCanvasTemplate(project.canvasTemplate || '');
     setAffiliateTag(project.affiliateTag || '');
     setAffiliateApp(project.affiliateApp || 'ref');
@@ -412,10 +493,9 @@ export function App() {
     setExcludedColors(new Set());
     setHighlightedColor(null);
     setCanvasBaseCost(15.0);
+    setCanvasShippingEstimate(8.0);
     setDrillPacketCost(0.25);
     setDrillBagSize(200);
-    setLaborFee(25.0);
-    setMarkupType('fixed');
     setOptimizeBagsCost(true);
     setPriceDb({
       200: 0.60,
@@ -460,7 +540,7 @@ export function App() {
       drillStyle,
       selectedBaseKit,
       safetyMargin: 10,
-      laborMarkup: laborFee,
+      laborMarkup: 0,
       kitBaseCost: canvasBaseCost,
       drillPacketCost,
       excludedDmcCodes: Array.from(excludedColors),
@@ -1019,24 +1099,12 @@ export function App() {
     });
 
   // Calculator derivations
-  const totalExactDrills = Object.values(matchResult?.counts || {}).reduce((acc, val) => acc + val, 0);
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
   const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
 
-  const exactDrillCost = sortedMatches.reduce((acc, row) => acc + row.costExact, 0);
   const safetyDrillCost = sortedMatches.reduce((acc, row) => acc + row.costSafety, 0);
 
-  const suppliesCostExact = canvasBaseCost + exactDrillCost;
-  const suppliesCostSafety = canvasBaseCost + safetyDrillCost;
-
-  const laborMarkupExact = markupType === 'fixed' ? laborFee : (suppliesCostExact * laborFee / 100);
-  const laborMarkupSafety = markupType === 'fixed' ? laborFee : (suppliesCostSafety * laborFee / 100);
-
-  const totalQuoteExact = suppliesCostExact + laborMarkupExact;
-  const totalQuoteSafety = suppliesCostSafety + laborMarkupSafety;
-
-  const artistProfitExact = laborMarkupExact;
-  const artistProfitSafety = laborMarkupSafety;
+  const totalCostSafety = canvasBaseCost + canvasShippingEstimate + safetyDrillCost;
 
   const [checkoutWarning, setCheckoutWarning] = useState<{
     url: string;
@@ -1106,13 +1174,13 @@ export function App() {
           {/* Active Progress Line */}
           <div 
             className="absolute top-[22px] left-8 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
-            style={{ width: `${((wizardStep - 1) / 4) * 80}%` }}
+            style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
           />
           
-          {[1, 2, 3, 4, 5].map((step) => {
+          {[1, 2, 3, 4].map((step) => {
             const isActive = wizardStep === step;
             const isCompleted = wizardStep > step;
-            const labels = ['Upload', 'Size', 'Palette', 'Quote', 'Save'];
+            const labels = ['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'];
             const label = labels[step - 1];
             
             return (
@@ -1329,15 +1397,14 @@ export function App() {
                 <option value="contain">Fit to Grid (Contain)</option>
               </select>
             </div>
-          </div>
-        )}
 
-        {wizardStep === 2 && (
-          <div className="flex flex-col gap-4">
+            {/* Separator */}
+            <div className="h-px bg-slate-800/40 my-1 no-print" />
             {/* Canvas Preset Size */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Preset Size</label>
               <select
+                id="preset-size-select"
                 value={selectedPreset}
                 onChange={handlePresetChange}
                 className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
@@ -1493,7 +1560,7 @@ export function App() {
           </div>
         )}
 
-        {wizardStep === 3 && (
+        {wizardStep === 2 && (
           <div className="flex flex-col gap-4 flex-1 overflow-hidden">
             {/* Base Kit Selector */}
             <div className="flex flex-col gap-1 shrink-0">
@@ -1527,6 +1594,37 @@ export function App() {
                 <option value="glow">Glow-in-the-Dark</option>
                 <option value="crystal">Crystal / Rhinestone</option>
               </select>
+            </div>
+
+            {/* Color Substitution Option */}
+            <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 mt-1 shrink-0">
+              <div className="flex items-center gap-2">
+                <input
+                  id="substitute-colors-checkbox"
+                  type="checkbox"
+                  checked={enableSubstitution}
+                  onChange={(e) => setEnableSubstitution((e.target as HTMLInputElement).checked)}
+                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
+                />
+                <label htmlFor="substitute-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
+                  Auto-substitute low-count colors
+                </label>
+              </div>
+              {enableSubstitution && (
+                <div className="flex flex-col gap-1 mt-1 pl-5">
+                  <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={substitutionThreshold}
+                    onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
+                    Fills colors with counts below threshold into their closest color.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Collapsible Sub-palette selection checklist */}
@@ -1641,18 +1739,32 @@ export function App() {
           </div>
         )}
 
-        {wizardStep === 4 && (
+        {wizardStep === 3 && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Base Price ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={canvasBaseCost}
-                onInput={(e) => setCanvasBaseCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-              />
+            {/* Canvas Base Price ($) and shipping estimate */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Base Price ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={canvasBaseCost}
+                  onInput={(e) => setCanvasBaseCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Est. Shipping ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={canvasShippingEstimate}
+                  onInput={(e) => setCanvasShippingEstimate(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                />
+              </div>
             </div>
 
             {/* Optimize Bag Combinations Checkbox */}
@@ -1748,170 +1860,69 @@ export function App() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Labor Fee</label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={laborFee}
-                  onInput={(e) => setLaborFee(parseFloat((e.target as HTMLInputElement).value) || 0)}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fee Type</label>
-                <select
-                  value={markupType}
-                  onChange={(e) => setMarkupType((e.target as HTMLSelectElement).value as any)}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[26px]"
-                >
-                  <option value="fixed">Fixed ($)</option>
-                  <option value="percent">Percent (%)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Color Substitution Option */}
-            <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 mt-1">
-              <div className="flex items-center gap-2">
-                <input
-                  id="substitute-colors-checkbox"
-                  type="checkbox"
-                  checked={enableSubstitution}
-                  onChange={(e) => setEnableSubstitution((e.target as HTMLInputElement).checked)}
-                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
-                />
-                <label htmlFor="substitute-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
-                  Auto-substitute low-count colors
-                </label>
-              </div>
-              {enableSubstitution && (
-                <div className="flex flex-col gap-1 mt-1 pl-5">
-                  <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={substitutionThreshold}
-                    onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
-                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                  <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
-                    Colors with counts at or below this number are automatically merged into the most similar color already in the canvas layout.
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Quoting Breakdown card */}
+            {/* Quoting Cost Breakdown card */}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Price Estimation</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cost Estimate</span>
               
               <div className="flex flex-col gap-3 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/60 text-[11px] text-slate-350">
                 <div className="text-slate-400 font-bold border-b border-slate-850/50 pb-1.5 mb-1.5 flex justify-between">
-                  <span>Commission Models</span>
-                  <span className="text-[9px] text-indigo-400 font-medium normal-case">Canvas included</span>
+                  <span>Price Breakdown</span>
+                  <span className="text-[9px] text-indigo-400 font-medium normal-case font-mono">{totalSafetyDrills.toLocaleString()} pcs</span>
                 </div>
                 
-                {/* Exact Count Model */}
-                <div className="flex flex-col gap-1.5 mb-2 pb-2.5 border-b border-slate-850/30">
-                  <div className="flex justify-between items-baseline">
-                    <span className="font-bold text-slate-200">Exact Drill Count ({totalExactDrills.toLocaleString()} pcs)</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center bg-slate-900/40 p-1.5 rounded border border-slate-850/40 my-1">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
-                      <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteExact.toFixed(2)}</span>
-                    </div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Profit</span>
-                      <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitExact.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-500">
-                    <span>Material Costs (Canvas + Drills):</span>
-                    <span className="font-semibold text-slate-400 font-mono">${suppliesCostExact.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Safety Bags Model */}
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-baseline">
-                    <span className="font-bold text-slate-200">Safety Bags Model ({totalSafetyDrills.toLocaleString()} pcs)</span>
+                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-400">
+                    <span>Canvas (Product Cost):</span>
+                    <span className="font-semibold text-slate-300 font-mono">${canvasBaseCost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-400">
+                    <span>Canvas (Est. Shipping):</span>
+                    <span className="font-semibold text-slate-300 font-mono">${canvasShippingEstimate.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-400">
+                    <span>Drills ({totalPackets} bag(s)):</span>
+                    <span className="font-semibold text-slate-300 font-mono">${safetyDrillCost.toFixed(2)}</span>
                   </div>
                   
-                  <div className="flex justify-between items-center bg-slate-900/40 p-1.5 rounded border border-slate-850/40 my-1">
+                  <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded border border-slate-850/40 my-1">
                     <div className="flex flex-col">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
-                      <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteSafety.toFixed(2)}</span>
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Total Cost</span>
+                      <span className="text-sm font-bold text-emerald-400 font-mono">
+                        ${totalCostSafety.toFixed(2)}
+                      </span>
                     </div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Profit</span>
-                      <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitSafety.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between text-[10px] pl-1.5 text-slate-500">
-                    <span>Material Costs ({totalPackets} bag(s) of {drillBagSize}):</span>
-                    <span className="font-semibold text-slate-400 font-mono">${suppliesCostSafety.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-          </div>
-        )}
-
-        {wizardStep === 5 && (
-          <div className="flex flex-col gap-4">
-            {/* Section A: Summary */}
-            <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex flex-col gap-2.5">
-              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Commission Summary</span>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
-                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Dimensions</span>
-                  <span className="font-bold text-slate-200">{cols} x {rows} {unit}</span>
-                </div>
-                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
-                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Palette Size</span>
-                  <span className="font-bold text-slate-200">{matchResult ? Object.keys(matchResult.counts).length : 0} Colors</span>
-                </div>
-                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
-                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Drill Style</span>
-                  <span className="font-bold text-slate-200 capitalize">{drillStyle} / {drillType}</span>
-                </div>
-                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
-                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Required Drills</span>
-                  <span className="font-bold text-slate-200">{totalSafetyDrills.toLocaleString()} pcs</span>
-                </div>
-              </div>
-
-              {/* Pricing summary */}
-              <div className="flex justify-between items-center bg-slate-900/80 p-2 rounded border border-slate-800 mt-1">
-                <div className="flex flex-col">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Client Quote</span>
-                  <span className="text-sm font-bold text-emerald-400 font-mono">${totalQuoteSafety.toFixed(2)}</span>
-                </div>
-                <div className="flex flex-col text-right">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Artist Net Profit</span>
-                  <span className="text-sm font-bold text-sky-400 font-mono">${artistProfitSafety.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Section B: Order & Print Actions */}
+            {/* Order & Print Actions */}
             <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Checkout & Actions</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order & Actions</span>
+              
               <button
                 onClick={handleShopifyCheckout}
                 disabled={!matchResult}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
               >
-                <span>Order Drills from Diamond Drills USA</span>
+                <span>🛒 Order Drills from Diamond Drills USA</span>
               </button>
+
+              {(() => {
+                const matched = getMatchingPrintKKPrice(parseFloat(widthInput), parseFloat(heightInput), unit);
+                const printKKUrl = matched ? matched.productUrl : 'https://www.printkk.com/product/search?keyword=diy%20painting';
+                return (
+                  <a
+                    href={printKKUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-slate-850 hover:bg-slate-800 text-slate-200 hover:text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98 text-center block"
+                  >
+                    <span>🖼️ Order Canvas from PrintKK</span>
+                  </a>
+                );
+              })()}
+
               <button
                 onClick={printReport}
                 disabled={!matchResult}
@@ -1920,67 +1931,11 @@ export function App() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                <span>Export / Print PDF</span>
+                <span>🖨️ Print Supply Report</span>
               </button>
             </div>
 
-            {/* Section C: Portfolio Saving Form */}
-            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850/60 flex flex-col gap-2.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Save Commission</span>
-              <div className="flex flex-col gap-1.5">
-                <input
-                  type="text"
-                  id="step5-save-name-input"
-                  value={saveProjectName}
-                  onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
-                  placeholder="e.g. Commission Layout 1"
-                  className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
-                />
-                
-                <div className="flex gap-2">
-                  {activeProjectId ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          handleSaveProject(saveProjectName);
-                          showSaveSuccess();
-                        }}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
-                      >
-                        Update
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleSaveProject(saveProjectName, true);
-                          showSaveSuccess();
-                        }}
-                        className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
-                      >
-                        Save as Copy
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        handleSaveProject(saveProjectName);
-                        showSaveSuccess();
-                      }}
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
-                    >
-                      Save to My Commissions
-                    </button>
-                  )}
-                </div>
-
-                {saveSuccessMsg && (
-                  <span className="text-[10px] text-emerald-400 font-semibold text-center block mt-0.5">
-                    ✓ {saveSuccessMsg}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Section D: Affiliate & settings configurations */}
+            {/* Affiliate & settings configurations */}
             <details className="text-[11px] text-slate-400 cursor-pointer bg-slate-950/20 p-2 rounded border border-slate-850/40">
               <summary className="font-semibold text-[10px] uppercase text-indigo-400 select-none">Affiliate & Partner Settings</summary>
               <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-850">
@@ -2037,6 +1992,97 @@ export function App() {
                 </div>
               </div>
             </details>
+          </div>
+        )}
+
+        {wizardStep === 4 && (
+          <div className="flex flex-col gap-4">
+            {/* Section A: Summary */}
+            <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex flex-col gap-2.5">
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Commission Summary</span>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Dimensions</span>
+                  <span className="font-bold text-slate-200">{cols} x {rows} {unit}</span>
+                </div>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Palette Size</span>
+                  <span className="font-bold text-slate-200">{matchResult ? Object.keys(matchResult.counts).length : 0} Colors</span>
+                </div>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Drill Style</span>
+                  <span className="font-bold text-slate-200 capitalize">{drillStyle} / {drillType}</span>
+                </div>
+                <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
+                  <span className="text-[9px] text-slate-500 uppercase font-semibold">Required Drills</span>
+                  <span className="font-bold text-slate-200">{totalSafetyDrills.toLocaleString()} pcs</span>
+                </div>
+              </div>
+
+              {/* Pricing summary */}
+              <div className="flex justify-between items-center bg-slate-900/80 p-2 rounded border border-slate-800 mt-1">
+                <div className="flex flex-col">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Total Cost</span>
+                  <span className="text-sm font-bold text-emerald-400 font-mono">${totalCostSafety.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Portfolio Saving Form */}
+            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850/60 flex flex-col gap-2.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Save Commission</span>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="text"
+                  id="step4-save-name-input"
+                  value={saveProjectName}
+                  onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
+                  placeholder="e.g. Commission Layout 1"
+                  className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
+                />
+                
+                <div className="flex gap-2">
+                  {activeProjectId ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleSaveProject(saveProjectName);
+                          showSaveSuccess();
+                        }}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                      >
+                        Update
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSaveProject(saveProjectName, true);
+                          showSaveSuccess();
+                        }}
+                        className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                      >
+                        Save as Copy
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleSaveProject(saveProjectName);
+                        showSaveSuccess();
+                      }}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
+                    >
+                      Save to My Commissions
+                    </button>
+                  )}
+                </div>
+
+                {saveSuccessMsg && (
+                  <span className="text-[10px] text-emerald-400 font-semibold text-center block mt-0.5">
+                    ✓ {saveSuccessMsg}
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* Start Over / Reset button */}
             <div className="mt-2 pt-2 border-t border-slate-800/60 no-print">
@@ -2062,7 +2108,7 @@ export function App() {
           ) : (
             <div className="flex-1" />
           )}
-          {wizardStep < 5 ? (
+          {wizardStep < 4 ? (
             <button
               id="wizard-next-btn"
               onClick={() => setWizardStep(prev => prev + 1)}

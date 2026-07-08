@@ -48,22 +48,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(heading).toBeTruthy();
     expect(heading?.textContent).toBe('GemPixel');
 
-    // Click 'Size' tab to render sizing inputs
-    const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
-    expect(sizeTab).toBeTruthy();
-    sizeTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    // Verify input fields for sizing exist
+    // Verify input fields for sizing exist in Step 1
     const numberInputs = container.querySelectorAll('input[type="number"]');
     expect(numberInputs.length).toBe(2);
 
-    // Verify file input exists (it's in the 'files' tab, let's switch back)
-    const filesTab = Array.from(buttons).find(b => b.title === 'Upload' || b.textContent?.toLowerCase() === 'files');
-    filesTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
+    // Verify file input exists in Step 1
     const fileInput = container.querySelector('input[type="file"]');
     expect(fileInput).toBeTruthy();
   });
@@ -133,9 +122,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Click 'Quote' tab
+    // Click 'Cost & Order' tab
     const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
     expect(quoteTab).toBeTruthy();
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
@@ -149,18 +138,18 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     // Verify calculator input fields exist
     const inputs = container.querySelectorAll('input[type="number"]');
-    expect(inputs.length).toBe(3); // Canvas base price, DMC packet cost, Labor fee
+    expect(inputs.length).toBe(3); // Canvas base price, Est. Shipping, Bag Price
     const canvasCostInput = inputs[0] as HTMLInputElement;
-    const packetCostInput = inputs[1] as HTMLInputElement;
-    const laborFeeInput = inputs[2] as HTMLInputElement;
+    const shippingEstimateInput = inputs[1] as HTMLInputElement;
+    const packetCostInput = inputs[2] as HTMLInputElement;
 
     expect(canvasCostInput.value).toBe('15');
+    expect(shippingEstimateInput.value).toBe('8');
     expect(packetCostInput.value).toBe('0.25');
-    expect(laborFeeInput.value).toBe('25');
 
-    // Canvas base cost: $15, drills cost: $0 (no matchResult), labor fee: $25 (fixed) -> Quote: $40
+    // Canvas base cost: $15, shipping: $8, drills cost: $0 (no matchResult) -> Total Cost: $23.00
     const quoteSections = container.querySelectorAll('span');
-    const exactQuoteSpan = Array.from(quoteSections).find(s => s.textContent?.includes('$40.00'));
+    const exactQuoteSpan = Array.from(quoteSections).find(s => s.textContent?.includes('$23.00'));
     expect(exactQuoteSpan).toBeTruthy();
   });
 
@@ -199,9 +188,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Navigate to Palette (Step 3) to find the drill type select dropdown.
+    // Navigate to Palette & Optimize (Step 2) to find the drill type select dropdown.
     const buttons = container.querySelectorAll('button');
-    const paletteTab = Array.from(buttons).find(b => b.title === 'Palette');
+    const paletteTab = Array.from(buttons).find(b => b.title === 'Palette & Optimize' || b.textContent?.toLowerCase() === 'palette & optimize');
     expect(paletteTab).toBeTruthy();
     paletteTab?.click();
     await new Promise(r => setTimeout(r, 10));
@@ -215,8 +204,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
-    // Now switch to 'Quote' tab (Step 4) to check packet price
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
+    // Now switch to 'Cost & Order' tab (Step 3) to check packet price
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
@@ -228,7 +217,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     }
 
     const inputs = container.querySelectorAll('input[type="number"]');
-    const packetCostInput = inputs[1] as HTMLInputElement;
+    const packetCostInput = inputs[2] as HTMLInputElement;
     expect(packetCostInput.value).toBe('0.35'); // AB price is 0.35
   });
 
@@ -236,20 +225,21 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Click 'Quote' tab
+    // Click 'Cost & Order' tab
     const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Quote' || b.textContent?.toLowerCase() === 'quote');
+    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
+    expect(quoteTab).toBeTruthy();
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
     // By default, optimizeBagsCost is true, so we should see 6 number inputs:
-    // Canvas price, 200 qty, 500 qty, 1000 qty, 2000 qty, and Labor fee
+    // Canvas price, Est. Shipping, 200 qty, 500 qty, 1000 qty, and 2000 qty
     const inputs = container.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
-    expect((inputs[1] as HTMLInputElement).value).toBe('0.6'); // 200 qty default standard price
-    expect((inputs[2] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
-    expect((inputs[3] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
-    expect((inputs[4] as HTMLInputElement).value).toBe('3.2'); // 2000 qty default standard price
+    expect((inputs[2] as HTMLInputElement).value).toBe('0.6'); // 200 qty default standard price
+    expect((inputs[3] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
+    expect((inputs[4] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
+    expect((inputs[5] as HTMLInputElement).value).toBe('3.2'); // 2000 qty default standard price
   });
 
   describe('Commissions Workspace LocalStorage and Project Switching', () => {
@@ -447,23 +437,25 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtn).toBeTruthy();
       expect(nextBtn.disabled).toBe(false);
 
-      // Verify display isolation: Step 1 options are shown, but Step 2 (sizing) is not
+      // Verify display isolation: Step 1 options are shown, but Step 2 (Palette & kit) is not
       const selectElementsInitial = Array.from(container.querySelectorAll('select'));
       const initialPresetSelect = selectElementsInitial.find(s => s.value === 'custom');
-      expect(initialPresetSelect).toBeUndefined(); // Sizing preset in step 2 should not be rendered yet
+      expect(initialPresetSelect).toBeTruthy(); // Sizing preset is in Step 1 now
       expect(container.querySelector('input[id="file-upload"]')).toBeTruthy(); // Step 1 element
+      const initialKitSelect = selectElementsInitial.find(s => s.value === '200');
+      expect(initialKitSelect).toBeUndefined(); // Step 2 kit select not rendered yet
 
       // Progress to Step 2
       nextBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 2
-      // Verify display isolation: Step 2 options should be rendered, but Step 1 and Step 3 are not
-      expect(container.querySelector('input[id="file-upload"]')).toBeNull(); // Step 1 element should be isolated/hidden
-      expect(container.querySelector('input[data-field="width"]')).toBeTruthy(); // Step 2 width input
+      // Now on Step 2 (Palette & Optimize)
+      // Verify display isolation: Step 2 options should be rendered, but Step 1 (upload/sizing) is not
+      expect(container.querySelector('input[id="file-upload"]')).toBeNull(); // isolated
+      expect(container.querySelector('input[data-field="width"]')).toBeNull(); // isolated
       const selectElementsStep2 = Array.from(container.querySelectorAll('select'));
-      const step3KitSelect = selectElementsStep2.find(s => s.value === '200');
-      expect(step3KitSelect).toBeUndefined(); // Step 3 base kit selector not rendered yet
+      const step2KitSelect = selectElementsStep2.find(s => s.value === '200'); // Loaded project selectedBaseKit is '200'
+      expect(step2KitSelect).toBeTruthy();
 
       // Back button should be visible on step 2
       const backBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
@@ -474,47 +466,33 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       nextBtnStep2.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 3
-      // Verify display isolation: Step 3 options (base kit selector) rendered, Step 2 width input hidden
-      expect(container.querySelector('input[data-field="width"]')).toBeNull(); // Step 2 width input isolated
-      const kitSelect = Array.from(container.querySelectorAll('select')).find(s => s.value === '200');
-      expect(kitSelect).toBeTruthy(); // Step 3 selector
+      // Now on Step 3 (Cost & Order)
+      // Verify display isolation: Step 3 options rendered, Step 2 (DMC kit select) hidden
+      expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeUndefined(); // isolated
+      expect(container.querySelector('#optimize-bags-checkbox')).toBeTruthy(); // Step 3 checkbox
 
       // Progress to Step 4
       const nextBtnStep3 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
       nextBtnStep3.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 4
-      const selectElements = Array.from(container.querySelectorAll('select'));
-      const activeKitSelect = selectElements.find(s => s.value === '200');
-      expect(activeKitSelect).toBeUndefined(); // Step 3 selector isolated
+      // Now on Step 4 (Save)
+      // Verify next button is null (final step)
+      const nextBtnStep4 = container.querySelector('#wizard-next-btn');
+      expect(nextBtnStep4).toBeNull();
+      expect(container.querySelector('#step4-save-name-input')).toBeTruthy(); // save form
 
-      const numberInputs = Array.from(container.querySelectorAll('input[type="number"]'));
-      const canvasCostInput = numberInputs.find(i => (i as HTMLInputElement).value === '15');
-      expect(canvasCostInput).toBeTruthy(); // Step 4 Canvas cost input
-
-      // Click Next to go to Step 5
-      const nextBtnStep4 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtnStep4).toBeTruthy();
-      nextBtnStep4.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Next button should be hidden on Step 5
-      const nextBtnStep5 = container.querySelector('#wizard-next-btn');
-      expect(nextBtnStep5).toBeNull();
-
-      // Go back to Step 4
-      const backBtnStep5 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
-      backBtnStep5.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Now back on Step 4. Go back to Step 3
+      // Go back to Step 3
       const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
       backBtnStep4.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Should be back on Step 3
+      // Now back on Step 3. Go back to Step 2
+      const backBtnStep3 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      backBtnStep3.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Should be back on Step 2
       expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeTruthy();
     });
 
@@ -570,10 +548,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtn.disabled).toBe(false);
 
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
       await new Promise(r => setTimeout(r, 10));
 
       // Locate Auto-substitute checkbox
@@ -645,14 +619,10 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       rowBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Go to Step 5
+      // Go to Step 3
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
       await new Promise(r => setTimeout(r, 10));
 
       // Open the Settings expander
@@ -720,18 +690,16 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       rowBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Advance to Step 5
+      // Advance to Step 4
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
       await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
-      await new Promise(r => setTimeout(r, 10));
 
-      // Locate inline name input in Step 5
-      const nameInput = container.querySelector('#step5-save-name-input') as HTMLInputElement;
+      // Locate inline name input in Step 4
+      const nameInput = container.querySelector('#step4-save-name-input') as HTMLInputElement;
       expect(nameInput).toBeTruthy();
       expect(nameInput.value).toBe('Initial Project Name');
 
@@ -807,14 +775,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       rowBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Advance to Step 5
+      // Advance to Step 4
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
       await new Promise(r => setTimeout(r, 10));
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 5
       await new Promise(r => setTimeout(r, 10));
 
       // Click Start New Commission / Reset button
@@ -866,12 +832,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       Object.defineProperty(uploadInput, 'files', { value: [file] });
       uploadInput.dispatchEvent(new Event('change', { bubbles: true }));
       await new Promise(r => setTimeout(r, 15));
-
-      // Go to Step 2
-      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtn).toBeTruthy();
-      nextBtn.click();
-      await new Promise(r => setTimeout(r, 10));
 
       // Check that Recommended PrintKK Sizes heading exists
       expect(container.textContent).toContain('Recommended PrintKK Sizes');
