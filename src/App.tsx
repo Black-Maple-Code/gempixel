@@ -2159,29 +2159,55 @@ export function App() {
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative flex flex-col min-w-0 print:block">
-        {/* Floating Center Mode Selector */}
-        {image && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print font-sans">
-            {(['grid', 'reference'] as const).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewportMode(mode)}
-                className={`text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded font-bold transition-all cursor-pointer ${
-                  viewportMode === mode
-                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {mode === 'grid' ? 'Grid View' : 'Original Photo'}
-              </button>
-            ))}
+        {/* Top Header Bar for Wizard Progress Stepper */}
+        <div className="bg-slate-900/40 border-b border-slate-800/60 py-3 px-4 flex items-center justify-center select-none no-print shrink-0 z-30">
+          <div className="flex items-center justify-between w-full max-w-lg relative">
+            {/* Connector Line Background */}
+            <div className="absolute top-[18px] left-10 right-10 h-0.5 bg-slate-800 z-0" />
+            {/* Active Progress Line */}
+            <div 
+              className="absolute top-[18px] left-10 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
+              style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
+            />
+            
+            {[1, 2, 3, 4].map((step) => {
+              const isActive = wizardStep === step;
+              const isCompleted = wizardStep > step;
+              const labels = ['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'];
+              const label = labels[step - 1];
+              
+              return (
+                <div key={step} className="flex flex-col items-center gap-1 z-10 w-24">
+                  <button
+                    onClick={() => {
+                      if (activeProjectId || image) {
+                        setWizardStep(step);
+                      }
+                    }}
+                    disabled={!activeProjectId && !image && step > 1}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border cursor-pointer select-none ${
+                      isActive
+                        ? 'bg-slate-900 border-2 border-indigo-500 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] backdrop-blur-md scale-105'
+                        : isCompleted
+                        ? 'bg-indigo-600 text-white border border-indigo-500 hover:bg-indigo-500'
+                        : 'bg-slate-950 border border-slate-800 text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-900'
+                    }`}
+                  >
+                    {step}
+                  </button>
+                  <span className={`text-[8px] font-bold uppercase tracking-wider text-center truncate w-full ${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {leftPanelCollapsed && (
           <button
             onClick={() => setLeftPanelCollapsed(false)}
-            className="absolute top-4 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
+            className="absolute top-16 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
             title="Expand Sidebar"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2193,7 +2219,7 @@ export function App() {
         {rightPanelCollapsed && (
           <button
             onClick={() => setRightPanelCollapsed(false)}
-            className="absolute top-4 right-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
+            className="absolute top-16 right-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
             title="Expand Workspace"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2222,6 +2248,24 @@ export function App() {
           </div>
         )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
+          {/* Floating Center Mode Selector */}
+          {image && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print font-sans">
+              {(['grid', 'reference'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewportMode(mode)}
+                  className={`text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded font-bold transition-all cursor-pointer ${
+                    viewportMode === mode
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {mode === 'grid' ? 'Grid View' : 'Original Photo'}
+                </button>
+              ))}
+            </div>
+          )}
           {(image || matchResult) ? (
             <>
               <canvas
