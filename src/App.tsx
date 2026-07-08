@@ -113,27 +113,17 @@ export function deleteProjectFromStorage(id: string) {
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
-  // PrintKK Standard cm sizes
-  { name: '30 x 30 cm', value: '30x30-cm', width: 30, height: 30, unit: 'cm' },
-  { name: '30 x 40 cm', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
-  { name: '40 x 40 cm', value: '40x40-cm', width: 40, height: 40, unit: 'cm' },
-  { name: '40 x 50 cm', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
-  { name: '40 x 60 cm', value: '40x60-cm', width: 40, height: 60, unit: 'cm' },
-  { name: '50 x 50 cm', value: '50x50-cm', width: 50, height: 50, unit: 'cm' },
-  { name: '50 x 70 cm', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
-  { name: '60 x 60 cm', value: '60x60-cm', width: 60, height: 60, unit: 'cm' },
-  { name: '60 x 80 cm', value: '60x80-cm', width: 60, height: 80, unit: 'cm' },
-  { name: '60 x 90 cm', value: '60x90-cm', width: 60, height: 90, unit: 'cm' },
-  { name: '70 x 100 cm', value: '70x100-cm', width: 70, height: 100, unit: 'cm' },
-  { name: '80 x 100 cm', value: '80x100-cm', width: 80, height: 100, unit: 'cm' },
-  { name: '80 x 120 cm', value: '80x120-cm', width: 80, height: 120, unit: 'cm' },
-  // Standard inch sizes
-  { name: '8 x 10 inch', value: '8x10-inch', width: 8, height: 10, unit: 'inch' },
-  { name: '12 x 12 inch', value: '12x12-inch', width: 12, height: 12, unit: 'inch' },
-  { name: '12 x 16 inch', value: '12x16-inch', width: 12, height: 16, unit: 'inch' },
-  { name: '16 x 20 inch', value: '16x20-inch', width: 16, height: 20, unit: 'inch' },
-  { name: '20 x 28 inch', value: '20x28-inch', width: 20, height: 28, unit: 'inch' },
-  // Grid size presets
+  // PrintKK Standard Sizes (12x16, 16x20, 20x28, 40x60 in)
+  { name: 'PrintKK 12 x 16 in (30 x 40 cm)', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
+  { name: 'PrintKK 16 x 12 in (40 x 30 cm)', value: '40x30-cm', width: 40, height: 30, unit: 'cm' },
+  { name: 'PrintKK 16 x 20 in (40 x 50 cm)', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
+  { name: 'PrintKK 20 x 16 in (50 x 40 cm)', value: '50x40-cm', width: 50, height: 40, unit: 'cm' },
+  { name: 'PrintKK 20 x 28 in (50 x 70 cm)', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
+  { name: 'PrintKK 28 x 20 in (70 x 50 cm)', value: '70x50-cm', width: 70, height: 50, unit: 'cm' },
+  { name: 'PrintKK 40 x 60 in (100 x 150 cm)', value: '100x150-cm', width: 100, height: 150, unit: 'cm' },
+  { name: 'PrintKK 60 x 40 in (150 x 100 cm)', value: '150x100-cm', width: 150, height: 100, unit: 'cm' },
+  
+  // Custom grids
   { name: '40 x 30 grid', value: '40x30-grid', width: 40, height: 30, unit: 'grid' },
   { name: '80 x 53 grid', value: '80x53-grid', width: 80, height: 53, unit: 'grid' },
   { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
@@ -1373,19 +1363,10 @@ export function App() {
                     const isLandscape = imgRatio >= 1;
 
                     const PRINTKK_BASE_SIZES = [
-                      { w: 30, h: 30 },
-                      { w: 30, h: 40 },
-                      { w: 40, h: 40 },
-                      { w: 40, h: 50 },
-                      { w: 40, h: 60 },
-                      { w: 50, h: 50 },
-                      { w: 50, h: 70 },
-                      { w: 60, h: 60 },
-                      { w: 60, h: 80 },
-                      { w: 60, h: 90 },
-                      { w: 70, h: 100 },
-                      { w: 80, h: 100 },
-                      { w: 80, h: 120 }
+                      { w: 30, h: 40 }, // 12" x 16"
+                      { w: 40, h: 50 }, // 16" x 20"
+                      { w: 50, h: 70 }, // 20" x 28"
+                      { w: 100, h: 150 } // 40" x 60"
                     ];
 
                     const list = PRINTKK_BASE_SIZES.map(sz => {
