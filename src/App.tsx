@@ -265,6 +265,7 @@ export function App() {
   const [recsOpen, setRecsOpen] = useState(true);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
+  const [zoomScale, setZoomScale] = useState(1.0);
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
@@ -629,11 +630,15 @@ export function App() {
     if (canvasRef.current && (image || matchResult)) {
       if (!viewerRef.current) {
         viewerRef.current = new CanvasViewer(canvasRef.current);
+        viewerRef.current.onZoomChange = (scale) => {
+          setZoomScale(scale);
+        };
       }
     } else {
       if (viewerRef.current) {
         viewerRef.current.destroy();
         viewerRef.current = null;
+        setZoomScale(1.0);
       }
     }
   }, [image, matchResult]);
@@ -2396,42 +2401,84 @@ export function App() {
           </button>
         )}
 
-        {/* Floating Zoom & Fit Controls */}
-        {(image || matchResult) && (viewportMode === 'grid' || viewportMode === 'symbols') && (
-          <div className="absolute bottom-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-1 shadow-xl backdrop-blur-md flex flex-col gap-1 no-print font-sans">
-            <button
-              onClick={() => {
-                if (viewerRef.current) {
-                  viewerRef.current.fitToContainer();
-                }
-              }}
-              className="text-[9px] uppercase tracking-wider px-2.5 py-1.5 rounded font-bold text-slate-350 hover:text-white bg-slate-800 hover:bg-slate-750 transition-all cursor-pointer flex items-center gap-1 border border-slate-700/50"
-              title="Fit Grid to Screen"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-              </svg>
-              <span>Zoom</span>
-            </button>
-          </div>
-        )}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
-          {/* Floating Center Mode Selector */}
+          {/* Floating Viewport HUD overlay */}
           {image && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print font-sans">
-              {(['grid', 'symbols', 'reference'] as const).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setViewportMode(mode)}
-                  className={`text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded font-bold transition-all cursor-pointer ${
-                    viewportMode === mode
-                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo'}
-                </button>
-              ))}
+            <div 
+              className="viewport-hud no-print"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex bg-slate-950/40 rounded-lg p-0.5 border border-slate-800/40">
+                {(['grid', 'symbols', 'reference'] as const).map(mode => {
+                  const isActive = viewportMode === mode;
+                  const label = mode === 'grid' ? 'Grid' : mode === 'symbols' ? 'Symbols' : 'Original';
+                  const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
+                  return (
+                    <div key={mode} className="tooltip-group">
+                      <button
+                        onClick={() => setViewportMode(mode)}
+                        className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-sky-500 text-white shadow shadow-sky-500/20'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                      <div className="tooltip-box">{tooltip}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Zoom controls */}
+              {(viewportMode === 'grid' || viewportMode === 'symbols') && (
+                <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
+                  <div className="tooltip-group">
+                    <button
+                      onClick={() => viewerRef.current?.zoomIn()}
+                      aria-label="Zoom In"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      ➕
+                    </button>
+                    <div className="tooltip-box">Zoom In</div>
+                  </div>
+
+                  <div className="tooltip-group">
+                    <button
+                      onClick={() => viewerRef.current?.zoomOut()}
+                      aria-label="Zoom Out"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      ➖
+                    </button>
+                    <div className="tooltip-box">Zoom Out</div>
+                  </div>
+
+                  <div className="tooltip-group">
+                    <button
+                      onClick={() => viewerRef.current?.fitToContainer()}
+                      aria-label="Fit Viewport"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      ⛶
+                    </button>
+                    <div className="tooltip-box">Fit to Screen</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Low zoom warning */}
+              {viewportMode === 'symbols' && zoomScale * 16 < 10 && (
+                <div className="tooltip-group flex items-center border-l border-slate-800 pl-3">
+                  <div className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-bold select-none cursor-default flex items-center gap-1 animate-pulse">
+                    ⚠️ Low Zoom
+                  </div>
+                  <div className="tooltip-box">Zoom in to view symbol overlays (disabled at &lt;10px cell size)</div>
+                </div>
+              )}
             </div>
           )}
           {(image || matchResult) ? (
