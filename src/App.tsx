@@ -270,9 +270,9 @@ export function App() {
   // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted + applied to <html>.
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
-      return (localStorage.getItem('gempixel_theme') as 'dark' | 'light') || 'dark';
+      return (localStorage.getItem('gempixel_theme') as 'dark' | 'light') || 'light';
     } catch {
-      return 'dark';
+      return 'light';
     }
   });
   useEffect(() => {
@@ -2334,45 +2334,33 @@ export function App() {
               Matched · {sortedMatches.length} colors
             </div>
           )}
-          {/* Theme skin toggle */}
-          <div className="flex items-center gap-0.5 bg-panel border border-border rounded-[11px] p-1.5">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setTheme('light')}
-              className={`flex-1 font-mono text-[13px] px-4 py-2 rounded-lg cursor-pointer transition-colors ${
-                theme === 'light' ? 'bg-accent text-on-accent font-bold' : 'text-muted hover:text-ink'
-              }`}
-            >
-              ☀ Light
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              className={`flex-1 font-mono text-[13px] px-4 py-2 rounded-lg cursor-pointer transition-colors ${
-                theme === 'dark' ? 'bg-accent text-on-accent font-bold' : 'text-muted hover:text-ink'
-              }`}
-            >
-              ☾ Dark
-            </button>
-          </div>
-          {matchResult && (
-            <button
-              onClick={printReport}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-950/20 active:scale-[0.98] transition-all cursor-pointer border border-indigo-500/20"
+              onClick={() => setResourcesModalOpen(true)}
+              className="flex-1 bg-panel hover:bg-border text-muted hover:text-ink py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-border active:scale-[0.98]"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
-              <span>Export / Print PDF</span>
+              <span>Artist Resources</span>
             </button>
-          )}
-          <button
-            onClick={() => setResourcesModalOpen(true)}
-            className="bg-slate-950/50 hover:bg-slate-800 text-slate-350 hover:text-white py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-850/80 active:scale-[0.98]"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            <span>Artist Resources</span>
-          </button>
+
+            {/* Simple light/dark pill toggle */}
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              aria-label="Toggle light or dark theme"
+              className="relative w-[58px] h-8 rounded-full bg-panel border border-border cursor-pointer shrink-0 transition-colors"
+            >
+              <span
+                className={`absolute top-[3px] h-6 w-6 rounded-full bg-accent text-on-accent flex items-center justify-center text-[12px] leading-none transition-all duration-200 ${
+                  theme === 'light' ? 'left-[3px]' : 'left-[27px]'
+                }`}
+              >
+                {theme === 'light' ? '☀' : '☾'}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
