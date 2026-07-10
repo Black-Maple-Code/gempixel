@@ -24,6 +24,9 @@ vi.mock('../engine/viewer', () => {
       destroy = vi.fn();
       setViewMode = vi.fn();
       setSymbolMap = vi.fn();
+      zoomIn = vi.fn();
+      zoomOut = vi.fn();
+      resetZoom = vi.fn();
     }
   };
 });
@@ -382,7 +385,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtn.disabled).toBe(true);
 
       // Back button should not be rendered on step 1
-      const backButtons = Array.from(container.querySelectorAll('button')).filter(b => b.textContent === 'Back');
+      const backButtons = Array.from(container.querySelectorAll('button')).filter(b => b.textContent === '< Back');
       expect(backButtons.length).toBe(0);
     });
 
@@ -460,7 +463,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(step2KitSelect).toBeTruthy();
 
       // Back button should be visible on step 2
-      const backBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      const backBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === '< Back') as HTMLButtonElement;
       expect(backBtn).toBeTruthy();
 
       // Progress to Step 3
@@ -485,12 +488,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(container.querySelector('#step4-save-name-input')).toBeTruthy(); // save form
 
       // Go back to Step 3
-      const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === '< Back') as HTMLButtonElement;
       backBtnStep4.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Now back on Step 3. Go back to Step 2
-      const backBtnStep3 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Back') as HTMLButtonElement;
+      const backBtnStep3 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === '< Back') as HTMLButtonElement;
       backBtnStep3.click();
       await new Promise(r => setTimeout(r, 10));
 

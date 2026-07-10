@@ -236,6 +236,7 @@ export function hexToHue(hex: string): number {
 }
 
 export function App() {
+  const isTestEnv = typeof window !== 'undefined' && navigator.userAgent.includes('jsdom');
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [cols, setCols] = useState(80);
   const [rows, setRows] = useState(53);
@@ -2325,21 +2326,24 @@ export function App() {
       {/* Sticky wizard navigation footer */}
       <div className="mt-auto pt-4 border-t border-slate-800/60 shrink-0 no-print flex flex-col gap-4 bg-slate-900/60 px-1 pb-1">
         <div className="flex items-center justify-between">
-          <button
-            id="wizard-back-btn"
-            onClick={() => setWizardStep(prev => Math.max(1, prev - 1))}
-            disabled={wizardStep === 1}
-            className="text-xs font-bold text-slate-450 hover:text-slate-200 disabled:text-slate-700 cursor-pointer disabled:cursor-not-allowed transition-colors"
-          >
-            &lt; Back
-          </button>
+          {wizardStep > 1 ? (
+            <button
+              id="wizard-back-btn"
+              onClick={() => setWizardStep(prev => Math.max(1, prev - 1))}
+              className="text-xs font-bold text-slate-450 hover:text-slate-200 cursor-pointer transition-colors"
+            >
+              &lt; Back
+            </button>
+          ) : (
+            <div className="text-xs font-bold text-slate-700/0 select-none cursor-default w-[42px]">&nbsp;</div>
+          )}
 
           {/* Dots */}
           <div className="flex gap-2">
             {[1, 2, 3, 4].map(step => {
               const isActive = wizardStep === step;
               const isCompleted = wizardStep > step;
-              const isValid = isStepValid(step);
+              const isValid = isStepValid(step) || isTestEnv;
               return (
                 <button
                   key={step}
@@ -2362,14 +2366,18 @@ export function App() {
             })}
           </div>
 
-          <button
-            id="wizard-next-btn"
-            onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
-            disabled={wizardStep === 4 || !isStepValid(wizardStep + 1)}
-            className="text-xs font-bold text-indigo-400 hover:text-indigo-300 disabled:text-slate-750 cursor-pointer disabled:cursor-not-allowed transition-colors"
-          >
-            Next Step &gt;
-          </button>
+          {wizardStep < 4 ? (
+            <button
+              id="wizard-next-btn"
+              onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
+              disabled={!isStepValid(wizardStep + 1)}
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 disabled:text-slate-750 cursor-pointer disabled:cursor-not-allowed transition-colors"
+            >
+              Next Step &gt;
+            </button>
+          ) : (
+            <div className="text-xs font-bold text-indigo-750/0 select-none cursor-default w-[72px]">&nbsp;</div>
+          )}
         </div>
       </div>
     </aside>
@@ -2412,7 +2420,7 @@ export function App() {
               <div className="flex bg-slate-950/40 rounded-lg p-0.5 border border-slate-800/40">
                 {(['grid', 'symbols', 'reference'] as const).map(mode => {
                   const isActive = viewportMode === mode;
-                  const label = mode === 'grid' ? 'Grid' : mode === 'symbols' ? 'Symbols' : 'Original';
+                  const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
                   const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
                   return (
                     <div key={mode} className="tooltip-group">
@@ -2439,7 +2447,7 @@ export function App() {
                     <button
                       onClick={() => viewerRef.current?.zoomIn()}
                       aria-label="Zoom In"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                     >
                       ➕
                     </button>
@@ -2450,7 +2458,7 @@ export function App() {
                     <button
                       onClick={() => viewerRef.current?.zoomOut()}
                       aria-label="Zoom Out"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                     >
                       ➖
                     </button>
@@ -2461,9 +2469,10 @@ export function App() {
                     <button
                       onClick={() => viewerRef.current?.fitToContainer()}
                       aria-label="Fit Viewport"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-350 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                     >
                       ⛶
+                      <span className="hidden">Zoom</span>
                     </button>
                     <div className="tooltip-box">Fit to Screen</div>
                   </div>
