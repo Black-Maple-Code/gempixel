@@ -557,17 +557,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
       await new Promise(r => setTimeout(r, 10));
 
-      // Locate Auto-substitute checkbox
+      // Auto-substitute is ON by default; its threshold controls render immediately.
       const subCheckbox = container.querySelector('#substitute-colors-checkbox') as HTMLInputElement;
       expect(subCheckbox).toBeTruthy();
-      expect(subCheckbox.checked).toBe(false); // Default false
+      expect(subCheckbox.checked).toBe(true); // Default ON (count of 15 and below)
 
-      // Check the checkbox
-      subCheckbox.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Threshold input should render now
-      const thresholdInput = Array.from(container.querySelectorAll('input[type="range"]')).find(i => (i as HTMLInputElement).value === '20') as HTMLInputElement;
+      // Threshold input should render with the default of 15
+      const thresholdInput = Array.from(container.querySelectorAll('input[type="range"]')).find(i => (i as HTMLInputElement).value === '15') as HTMLInputElement;
       expect(thresholdInput).toBeTruthy();
 
       // Change threshold
@@ -576,6 +572,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       expect(thresholdInput.value).toBe('50');
+
+      // Toggling the checkbox off hides the threshold controls
+      subCheckbox.click();
+      await new Promise(r => setTimeout(r, 10));
+      expect(subCheckbox.checked).toBe(false);
+      expect(container.querySelector('input[type="range"]')).toBeNull();
     });
 
     it('renders logged unmapped colors lists and handles clear action in settings', async () => {

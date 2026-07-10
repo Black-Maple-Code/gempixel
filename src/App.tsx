@@ -122,11 +122,14 @@ export function App() {
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
   const [enableSubstitution, setEnableSubstitution] = useState<boolean>(() => {
-    return localStorage.getItem('gempixel_enable_substitution') === 'true';
+    // Default ON — auto-substitute low-count colors unless the user opted out.
+    const saved = localStorage.getItem('gempixel_enable_substitution');
+    return saved === null ? true : saved === 'true';
   });
   const [substitutionThreshold, setSubstitutionThreshold] = useState<number>(() => {
+    // Default threshold 15 — colors with a count of 15 and below are substituted.
     const saved = localStorage.getItem('gempixel_substitution_threshold');
-    return saved ? parseInt(saved, 10) : 20;
+    return saved ? parseInt(saved, 10) : 15;
   });
   const [unmappedLog, setUnmappedLog] = useState<string[]>(() => {
     try {
