@@ -8,6 +8,7 @@ import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './
 import { generateSymbolAllocation } from './engine/symbols';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
+import { resolveActiveCandidates } from './engine/candidates';
 
 
 export interface ProjectSummary {
@@ -492,7 +493,14 @@ export function App() {
     ? DMC_PALETTE
     : DMC_PALETTE.filter(c => c.kits.includes(selectedBaseKit));
 
-  const activeCandidates = baseCandidates.filter(c => !excludedColors.has(c.dmc));
+  // NOTE: resolveActiveCandidates is a pure resolver (see engine/candidates.ts). It is
+  // intentionally called inline rather than wrapped in useMemo: memoizing it stabilizes
+  // the reference and shifts Preact's render/effect scheduling, which exposes a latent
+  // cross-test race in the [cols,rows,unit] dimension-sync effect below (that effect reads
+  // document.activeElement and clobbers width/height inputs). The extraction delivers the
+  // naming/depth/testability goal; the per-render-allocation memo is deferred until that
+  // dimension-sync effect's double-source-of-truth fragility is addressed separately.
+  const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
   const matchResult = useMemo(() => {
     if (!rawMatchResult) return null;
