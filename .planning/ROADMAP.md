@@ -13,7 +13,7 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters. (completed 2026-07-07)
 - [x] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey. (completed 2026-07-08)
 - [x] **Phase 7: Symbol-Overlay Canvas & Margin Legends** - Render unique recognizable icons in canvas cells, build a printable margin legend fold layout, and support 3-way viewer switching. (completed 2026-07-09)
-- [ ] **Phase 8: Custom Canvas Export & Multiple Vendor Integration** - Add high-resolution PNG downloads for Option C (combined sheet vs separate grid), Dynamic Sizing Advice, and integrate Lumaprints (default) alongside Prodigi/FinerWorks options.
+- [x] **Phase 8: Custom Canvas Export & Multiple Vendor Integration** - Add high-resolution PNG downloads for Option C (combined sheet vs separate grid), Dynamic Sizing Advice, and integrate Lumaprints (default) alongside Prodigi/FinerWorks options. (completed 2026-07-09)
 
 ## Phase Details
 
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Supply Partnerships & Checkout Integration | 2/2 | Complete    | 2026-07-07 |
 | 6. Commission Workspace & Streamlined Artist UX | 2/2 | Complete    | 2026-07-08 |
 | 7. Symbol-Overlay Canvas & Margin Legends | 2/2 | Complete    | 2026-07-09 |
-| 8. Custom Canvas Export & Multiple Vendor Integration | 0/2 | Pending     | — |
+| 8. Custom Canvas Export & Multiple Vendor Integration | 2/2 | Complete    | 2026-07-09 |
 
 ### Phase 7: Symbol-Overlay Canvas & Margin Legends
 
@@ -202,10 +202,10 @@ Plans:
   3. UI displays clear sizing recommendations advising the artist on what size blank rolled canvas sheet to purchase based on selected layout option.
   4. "Print Legend Sheet" provides a clean, borderless layout for home printers on standard Letter/A4 paper.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 
-- [ ] 08-01-PLAN.md — Multiple canvas vendors selection, pricing engine refactoring, and sizing advice.
-- [ ] 08-02-PLAN.md — High-resolution PNG canvas export engine (Option C) and home printer legend layout.
+- [x] 08-01-PLAN.md — Multiple canvas vendors selection, pricing engine refactoring, and sizing advice.
+- [x] 08-02-PLAN.md — High-resolution PNG canvas export engine (Option C) and home printer legend layout.
 
