@@ -7,6 +7,7 @@ import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
+import { useWizard } from './features/wizard/useWizard';
 
 
 export const STANDARD_SIZES = [
@@ -105,7 +106,7 @@ export function App() {
 
   const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
 
-  const [wizardStep, setWizardStep] = useState<number>(1);
+  // wizardStep state now lives in useWizard (wired below, after the match hook).
   const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain'>('cover');
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
@@ -219,13 +220,6 @@ export function App() {
     };
   }, [cols, rows]);
 
-  const isStepValid = (step: number) => {
-    if (step === 1) return true;
-    if (step === 2) return !!(image || activeProjectId);
-    if (step === 3 || step === 4) return !!matchResult;
-    return false;
-  };
-
   const loadProject = (id: string) => {
     const project = projectStore.load(id);
     if (!project) return;
@@ -297,7 +291,7 @@ export function App() {
       2000: 3.20
     });
     restore(null);
-    setWizardStep(1);
+    wizard.reset();
   };
 
   const handleSaveProject = (name: string, forceNewId = false) => {
@@ -385,6 +379,12 @@ export function App() {
     activeCandidates,
     enableSubstitution,
     substitutionThreshold,
+  });
+
+  const wizard = useWizard({
+    hasImage: !!(image || activeProjectId),
+    hasMatch: !!matchResult,
+    isTestEnv,
   });
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
@@ -1083,7 +1083,7 @@ export function App() {
         </div>
 
         {/* Wizard Step Contents */}
-        {wizardStep === 1 && (
+        {wizard.step === 1 && (
           <div className="flex flex-col gap-4">
             {/* File Ingestion */}
             <div className="flex flex-col gap-1.5 shrink-0">
@@ -1406,7 +1406,7 @@ export function App() {
           </div>
         )}
 
-        {wizardStep === 2 && (
+        {wizard.step === 2 && (
           <div className="flex flex-col gap-3.5">
             <details open className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded border border-slate-850/40 cursor-pointer">
               <summary className="font-bold text-xs uppercase text-indigo-400 select-none flex items-center gap-2 cursor-pointer pb-2 border-b border-slate-850/30">
@@ -1621,7 +1621,7 @@ export function App() {
           </div>
         )}
 
-        {wizardStep === 3 && (
+        {wizard.step === 3 && (
           <div className="flex flex-col gap-4">
             {/* Canvas Print Partner Dropdown (V-05) */}
             <div className="flex flex-col gap-1">
@@ -1951,7 +1951,7 @@ export function App() {
           </div>
         )}
 
-        {wizardStep === 4 && (
+        {wizard.step === 4 && (
           <div className="flex flex-col gap-4">
             {/* Section A: Summary */}
             <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex flex-col gap-2.5">
@@ -2095,10 +2095,10 @@ export function App() {
       {/* Sticky wizard navigation footer */}
       <div className="mt-auto pt-4 border-t border-slate-800/60 shrink-0 no-print flex flex-col gap-4 bg-slate-900/60 px-1 pb-1">
         <div className="flex items-center justify-between">
-          {wizardStep > 1 ? (
+          {wizard.step > 1 ? (
             <button
               id="wizard-back-btn"
-              onClick={() => setWizardStep(prev => Math.max(1, prev - 1))}
+              onClick={wizard.back}
               className="text-xs font-bold text-slate-450 hover:text-slate-200 cursor-pointer transition-colors"
             >
               &lt; Back
@@ -2110,13 +2110,13 @@ export function App() {
           {/* Dots */}
           <div className="flex gap-2">
             {[1, 2, 3, 4].map(step => {
-              const isActive = wizardStep === step;
-              const isCompleted = wizardStep > step;
-              const isValid = isStepValid(step) || isTestEnv;
+              const isActive = wizard.step === step;
+              const isCompleted = wizard.step > step;
+              const isValid = wizard.canEnter(step) || isTestEnv;
               return (
                 <button
                   key={step}
-                  onClick={() => isValid && setWizardStep(step)}
+                  onClick={() => isValid && wizard.goTo(step)}
                   disabled={!isValid}
                   className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
                     isActive
@@ -2135,11 +2135,11 @@ export function App() {
             })}
           </div>
 
-          {wizardStep < 4 ? (
+          {wizard.step < 4 ? (
             <button
               id="wizard-next-btn"
-              onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
-              disabled={!isStepValid(wizardStep + 1)}
+              onClick={wizard.next}
+              disabled={!wizard.canEnter(wizard.step + 1)}
               className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
             >
               Next Step &gt;
@@ -2159,14 +2159,14 @@ export function App() {
           <div className="flex items-center gap-1.5">
             {['Upload', 'Size', 'Colors', 'Supplies'].map((label, i) => {
               const step = i + 1;
-              const isActive = wizardStep === step;
-              const isCompleted = wizardStep > step;
-              const isValid = isStepValid(step) || isTestEnv;
+              const isActive = wizard.step === step;
+              const isCompleted = wizard.step > step;
+              const isValid = wizard.canEnter(step) || isTestEnv;
               return (
                 <div key={label} className="flex items-center gap-1.5">
                   {i > 0 && <span className="w-6 h-px bg-border" />}
                   <button
-                    onClick={() => isValid && setWizardStep(step)}
+                    onClick={() => isValid && wizard.goTo(step)}
                     disabled={!isValid}
                     title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][i]}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer disabled:cursor-not-allowed ${
@@ -2189,10 +2189,10 @@ export function App() {
             })}
           </div>
           <div className="flex items-center gap-2">
-            {wizardStep < 4 && (
+            {wizard.step < 4 && (
               <button
-                onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
-                disabled={!(isStepValid(wizardStep + 1) || isTestEnv)}
+                onClick={wizard.next}
+                disabled={!(wizard.canEnter(wizard.step + 1) || isTestEnv)}
                 className="btn-chunk rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Next Step →
@@ -3012,7 +3012,7 @@ export function App() {
         </div>
       )}
       {/* Printable checklist container (only visible on print via media query) */}
-      {wizardStep === 3 && matchResult && (
+      {wizard.step === 3 && matchResult && (
         <div className="legend-checklist-print-container hidden">
           <h2 className="text-sm font-bold mb-2 uppercase tracking-wider text-black border-b pb-1">Color Checklist Legend</h2>
           <div className="print-checklist-grid">
