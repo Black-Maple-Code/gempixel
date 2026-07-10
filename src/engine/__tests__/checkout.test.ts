@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { optimizeBags, compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost, VENDOR_REGISTRY } from '../checkout';
+import { optimizeBags, compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost } from '../checkout';
 
 describe('Checkout and Sizing Integration', () => {
   describe('Dye Lot Bag Optimizer', () => {
