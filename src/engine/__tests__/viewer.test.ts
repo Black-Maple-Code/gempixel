@@ -21,8 +21,15 @@ class MockCanvas {
       beginPath: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      fillText: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
       fillStyle: '',
       imageSmoothingEnabled: true,
+      font: '',
+      textAlign: '',
+      textBaseline: '',
+      globalAlpha: 1.0,
     };
   }
 
@@ -262,5 +269,62 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
     // Verify no redraws happened on offscreen canvas
     expect(offscreenCanvas.mockContext.fillRect).not.toHaveBeenCalled();
     expect(offscreenCanvas.mockContext.arc).not.toHaveBeenCalled();
+  });
+
+  describe('Symbol Mode Rendering Support', () => {
+    it('should update viewMode and trigger redraw on setViewMode', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(1, 1, ['310'], colorMap);
+
+      canvas.mockContext.clearRect.mockClear();
+      canvas.mockContext.drawImage.mockClear();
+
+      viewer.setViewMode('symbols');
+
+      expect(canvas.mockContext.clearRect).toHaveBeenCalled();
+      expect(canvas.mockContext.drawImage).toHaveBeenCalled();
+    });
+
+    it('should store symbol associations and trigger redraw on setSymbolMap', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(1, 1, ['310'], colorMap);
+
+      canvas.mockContext.clearRect.mockClear();
+      canvas.mockContext.drawImage.mockClear();
+
+      viewer.setSymbolMap({ '310': '▲' });
+
+      expect(canvas.mockContext.clearRect).toHaveBeenCalled();
+      expect(canvas.mockContext.drawImage).toHaveBeenCalled();
+    });
+
+    it('should render symbols using fillText when viewMode is symbols and scale is large enough', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(1, 1, ['310'], colorMap);
+      viewer.setSymbolMap({ '310': '▲' });
+      
+      canvas.mockContext.fillText.mockClear();
+      viewer.setViewMode('symbols'); // viewMode is 'symbols', scale defaults to 1.0, cellSize is 16px >= 10px
+
+      expect(canvas.mockContext.fillText).toHaveBeenCalledWith('▲', 8, 8); // center of cell is (8, 8)
+    });
+
+    it('should skip symbol rendering when cell size is below 10px threshold', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(1, 1, ['310'], colorMap);
+      viewer.setSymbolMap({ '310': '▲' });
+      
+      // Set viewport scale to 0.5. scaledCellSize = 16 * 0.5 = 8px < 10px
+      viewer.setViewportState(0.5, 0, 0);
+      
+      canvas.mockContext.fillText.mockClear();
+      viewer.setViewMode('symbols');
+
+      expect(canvas.mockContext.fillText).not.toHaveBeenCalled();
+    });
   });
 });
