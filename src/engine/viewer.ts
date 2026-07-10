@@ -1,3 +1,5 @@
+import { getContrastColor } from './symbols';
+
 /**
  * CanvasViewer handles interactive rendering of the gem art grid.
  * It implements panning, cursor-centered zoom, and offscreen double-buffering.
@@ -25,6 +27,8 @@ export class CanvasViewer {
   private colorMap = new Map<string, string>(); // maps DMC code to hex string
   private highlightedColor: string | null = null;
   private drillType: 'standard' | 'ab' | 'glow' | 'crystal' = 'standard';
+  private viewMode: 'grid' | 'symbols' | 'reference' = 'grid';
+  private symbolMap: Record<string, string> = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -167,6 +171,16 @@ export class CanvasViewer {
   public setDrillType(type: 'standard' | 'ab' | 'glow' | 'crystal') {
     this.drillType = type;
     this.redrawOffscreen();
+    this.draw();
+  }
+
+  public setViewMode(mode: 'grid' | 'symbols' | 'reference') {
+    this.viewMode = mode;
+    this.draw();
+  }
+
+  public setSymbolMap(map: Record<string, string>) {
+    this.symbolMap = map;
     this.draw();
   }
 
@@ -326,6 +340,38 @@ export class CanvasViewer {
       );
     }
     this.ctx.globalAlpha = 1.0; // Reset
+
+    // Render symbol overlay if zoom is sufficient and viewMode is symbols
+    if (this.viewMode === 'symbols' && scaledCellSize >= 10) {
+      this.ctx.save();
+      this.ctx.font = `bold ${Math.floor(scaledCellSize * 0.65)}px 'Outfit', sans-serif`;
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+
+      const startCol = Math.max(0, Math.floor(-this.offsetX / scaledCellSize));
+      const endCol = Math.min(this.gridWidth, Math.ceil((this.canvas.width - this.offsetX) / scaledCellSize));
+      const startRow = Math.max(0, Math.floor(-this.offsetY / scaledCellSize));
+      const endRow = Math.min(this.gridHeight, Math.ceil((this.canvas.height - this.offsetY) / scaledCellSize));
+
+      for (let row = startRow; row < endRow; row++) {
+        for (let col = startCol; col < endCol; col++) {
+          const index = row * this.gridWidth + col;
+          const code = this.cellMatches[index];
+          const color = this.colorMap.get(code) || '#2D3748';
+          const symbol = this.symbolMap[code];
+
+          if (symbol) {
+            const isHighlighted = !this.highlightedColor || code === this.highlightedColor;
+            this.ctx.globalAlpha = isHighlighted ? 1.0 : 0.2;
+            this.ctx.fillStyle = getContrastColor(color);
+            const centerX = this.offsetX + (col + 0.5) * scaledCellSize;
+            const centerY = this.offsetY + (row + 0.5) * scaledCellSize;
+            this.ctx.fillText(symbol, centerX, centerY);
+          }
+        }
+      }
+      this.ctx.restore();
+    }
   }
 
   public fitToContainer() {
