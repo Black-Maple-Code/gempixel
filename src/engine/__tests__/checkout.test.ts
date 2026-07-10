@@ -1,33 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { optimizeBags, compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost } from '../checkout';
+import { compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost } from '../checkout';
+
+// The dye-lot aggregate `optimizeBags(count)` was removed in the Candidate 1
+// consolidation (unused in production). Its dye-lot rule is now covered per-color
+// by `bagPlanner.test.ts` and end-to-end by the Shopify compiler tests below.
 
 describe('Checkout and Sizing Integration', () => {
-  describe('Dye Lot Bag Optimizer', () => {
-    it('forces 200 bags exclusively for counts <= 800', () => {
-      const result = optimizeBags(550);
-      expect(result.qty200).toBe(3); // 3 * 200 = 600
-      expect(result.qty500).toBe(0);
-      expect(result.qty1000).toBe(0);
-      expect(result.qty2000).toBe(0);
-    });
-
-    it('combines bulk sizes and avoids 200 bags for counts > 800', () => {
-      const result = optimizeBags(1250);
-      expect(result.qty200).toBe(0); // Dye lot rule avoids 200 count
-      expect(result.qty1000).toBe(1); // 1000 + 500 = 1500
-      expect(result.qty500).toBe(1);
-      expect(result.qty2000).toBe(0);
-    });
-
-    it('supports higher thresholds using 2000-count bags', () => {
-      const result = optimizeBags(2700);
-      expect(result.qty2000).toBe(1);
-      expect(result.qty1000).toBe(1);
-      expect(result.qty500).toBe(0);
-      expect(result.qty200).toBe(0);
-    });
-  });
-
   describe('Shopify Permalink Compiler', () => {
     it('correctly compiles variant:qty pairs and includes attributes and referrers', () => {
       const items = [
@@ -61,6 +39,18 @@ describe('Checkout and Sizing Integration', () => {
       const result = compileShopifyCartLink(items, '', 'none');
       expect(result.unmappedItems.length).toBe(0);
       expect(result.url).toContain('29699663593554:6');
+    });
+
+    it('packs a bulk count into descending-size tokens (characterization)', () => {
+      // "150" square has { 200, 500, 1000, 2000 }. 2100 -> 1x2000 + 1x500,
+      // emitted largest-first. Pins cart output across the packColor refactor.
+      const items = [
+        { dmcCode: '150', shape: 'square' as const, requiredCount: 2100 }
+      ];
+
+      const result = compileShopifyCartLink(items, '', 'none');
+      expect(result.unmappedItems.length).toBe(0);
+      expect(result.url).toContain('29699704848466:1,29699704782930:1'); // 2000 then 500
     });
   });
 
