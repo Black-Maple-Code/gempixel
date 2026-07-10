@@ -406,6 +406,13 @@ export function App() {
     };
   }, [widthInput, heightInput, unit]);
 
+  const isStepValid = (step: number) => {
+    if (step === 1) return true;
+    if (step === 2) return !!(image || activeProjectId);
+    if (step === 3 || step === 4) return !!matchResult;
+    return false;
+  };
+
   const loadProject = (id: string) => {
     const project = loadProjectFromStorage(id);
     if (!project) return;
@@ -1222,11 +1229,11 @@ export function App() {
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
       {/* Left Sidebar Control Panel */}
       <aside
-        className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 overflow-y-auto no-print transition-all duration-300 relative shrink-0 ${
+        className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 no-print transition-all duration-300 relative shrink-0 ${
           leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
         }`}
       >
-        <div className="flex justify-between items-center border-b border-slate-800/60 pb-3">
+        <div className="flex justify-between items-center border-b border-slate-800/60 pb-3 shrink-0">
           <div className="flex items-center gap-3">
             <img src={logoUrl} alt="GemPixel Logo" className="w-10 h-10 rounded-lg object-contain shadow-lg shadow-indigo-500/10 shrink-0" />
             <div>
@@ -1245,8 +1252,9 @@ export function App() {
           </button>
         </div>
 
-        {/* My Commissions Portfolio Drawer */}
-        <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
+        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4 pr-1">
+          {/* My Commissions Portfolio Drawer */}
+          <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center">
             <button
               onClick={() => setCommissionsDrawerOpen(!commissionsDrawerOpen)}
@@ -1445,323 +1453,380 @@ export function App() {
                 />
               </div>
             )}
-
-            {/* Image Fit Option */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fit/Crop Mode</label>
-              <select
-                value={imageFitMode}
-                onChange={(e) => {
-                  setImageFitMode((e.target as HTMLSelectElement).value as any);
-                }}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
-              >
-                <option value="cover">Center Crop (Cover)</option>
-                <option value="contain">Fit to Grid (Contain)</option>
-              </select>
-            </div>
-
-            {/* Separator */}
-            <div className="h-px bg-slate-800/40 my-1 no-print" />
-            {/* Canvas Preset Size */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Preset Size</label>
-              <select
-                id="preset-size-select"
-                value={selectedPreset}
-                onChange={handlePresetChange}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
-              >
-                {STANDARD_SIZES.map(sz => (
-                  <option key={sz.value} value={sz.value}>{sz.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Recommended Canvas Sizes (PrintKK matching) */}
-            {image && (
-              <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
-                <button
-                  onClick={() => setRecsOpen(!recsOpen)}
-                  className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recsOpen ? 'rotate-90' : ''}`}>▶</span>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Recommended Canvas Sizes</span>
+            <details open className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded border border-slate-850/40 cursor-pointer">
+              <summary className="font-bold text-xs uppercase text-indigo-400 select-none flex items-center gap-2 cursor-pointer pb-2 border-b border-slate-850/30">
+                <span className="caret-icon text-slate-500">▶</span>
+                <span>Ingestion Settings</span>
+              </summary>
+              <div className="flex flex-col gap-4 mt-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                {/* Image Fit Option */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fit/Crop Mode</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Choose center crop or fit to grid aspect ratio.</div>
+                    </div>
                   </div>
-                </button>
-                {recsOpen && (
-                  <div className="mt-2.5 flex flex-col gap-1.5">
-                    {(() => {
-                      const imgW = image.width;
-                      const imgH = image.height;
-                      const imgRatio = imgW / imgH;
-                      const isLandscape = imgRatio >= 1;
+                  <select
+                    value={imageFitMode}
+                    onChange={(e) => {
+                      setImageFitMode((e.target as HTMLSelectElement).value as any);
+                    }}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
+                  >
+                    <option value="cover">Center Crop (Cover)</option>
+                    <option value="contain">Fit to Grid (Contain)</option>
+                  </select>
+                </div>
 
-                      const PRINTKK_BASE_SIZES = [
-                        { w: 30, h: 40 }, // 12" x 16"
-                        { w: 40, h: 50 }, // 16" x 20"
-                        { w: 50, h: 70 }, // 20" x 28"
-                        { w: 100, h: 150 } // 40" x 60"
-                      ];
+                {/* Separator */}
+                <div className="h-px bg-slate-800/40 my-1 no-print" />
+                {/* Canvas Preset Size */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Preset Size</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Select a standard canvas dimensions preset.</div>
+                    </div>
+                  </div>
+                  <select
+                    id="preset-size-select"
+                    value={selectedPreset}
+                    onChange={handlePresetChange}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer"
+                  >
+                    {STANDARD_SIZES.map(sz => (
+                      <option key={sz.value} value={sz.value}>{sz.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                      const list = PRINTKK_BASE_SIZES.map(sz => {
-                        const width = isLandscape ? Math.max(sz.w, sz.h) : Math.min(sz.w, sz.h);
-                        const height = isLandscape ? Math.min(sz.w, sz.h) : Math.max(sz.w, sz.h);
-                        const ratio = width / height;
-                        const diff = Math.abs(imgRatio - ratio) / imgRatio;
-                        const matchPct = Math.max(0, Math.min(100, Math.round((1 - diff) * 100)));
-                        return { width, height, matchPct, diff };
-                      });
+                {/* Recommended Canvas Sizes (PrintKK matching) */}
+                {image && (
+                  <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
+                    <button
+                      onClick={() => setRecsOpen(!recsOpen)}
+                      className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recsOpen ? 'rotate-90' : ''}`}>▶</span>
+                        <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Recommended Canvas Sizes</span>
+                      </div>
+                    </button>
+                    {recsOpen && (
+                      <div className="mt-2.5 flex flex-col gap-1.5">
+                        {(() => {
+                          const imgW = image.width;
+                          const imgH = image.height;
+                          const imgRatio = imgW / imgH;
+                          const isLandscape = imgRatio >= 1;
 
-                      const top3 = list.sort((a, b) => a.diff - b.diff).slice(0, 3);
+                          const PRINTKK_BASE_SIZES = [
+                            { w: 30, h: 40 }, // 12" x 16"
+                            { w: 40, h: 50 }, // 16" x 20"
+                            { w: 50, h: 70 }, // 20" x 28"
+                            { w: 100, h: 150 } // 40" x 60"
+                          ];
 
-                      return top3.map((sz, idx) => {
-                        const isSelected = selectedPreset === 'custom' && unit === 'cm' && parseInt(widthInput) === sz.width && parseInt(heightInput) === sz.height;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              setSelectedPreset('custom');
-                              setUnit('cm');
-                              setWidthInput(sz.width.toString());
-                              setHeightInput(sz.height.toString());
-                              setCols(Math.max(1, Math.round(sz.width * 4)));
-                              setRows(Math.max(1, Math.round(sz.height * 4)));
-                            }}
-                            className={`w-full py-1.5 px-2 rounded text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
-                              isSelected
-                                ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50'
-                                : 'bg-slate-950/60 text-slate-300 border-slate-850 hover:bg-slate-900/60 hover:text-slate-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold">{sz.width} x {sz.height} cm</span>
-                              <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
-                            </div>
-                            <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                              {sz.matchPct}% Match
-                            </span>
-                          </button>
-                        );
-                      });
-                    })()}
+                          const list = PRINTKK_BASE_SIZES.map(sz => {
+                            const width = isLandscape ? Math.max(sz.w, sz.h) : Math.min(sz.w, sz.h);
+                            const height = isLandscape ? Math.min(sz.w, sz.h) : Math.max(sz.w, sz.h);
+                            const ratio = width / height;
+                            const diff = Math.abs(imgRatio - ratio) / imgRatio;
+                            const matchPct = Math.max(0, Math.min(100, Math.round((1 - diff) * 100)));
+                            return { width, height, matchPct, diff };
+                          });
+
+                          const top3 = list.sort((a, b) => a.diff - b.diff).slice(0, 3);
+
+                          return top3.map((sz, idx) => {
+                            const isSelected = selectedPreset === 'custom' && unit === 'cm' && parseInt(widthInput) === sz.width && parseInt(heightInput) === sz.height;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  setSelectedPreset('custom');
+                                  setUnit('cm');
+                                  setWidthInput(sz.width.toString());
+                                  setHeightInput(sz.height.toString());
+                                  setCols(Math.max(1, Math.round(sz.width * 4)));
+                                  setRows(Math.max(1, Math.round(sz.height * 4)));
+                                }}
+                                className={`w-full py-1.5 px-2 rounded text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50'
+                                    : 'bg-slate-950/60 text-slate-350 border-slate-850 hover:bg-slate-900/60 hover:text-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold">{sz.width} x {sz.height} cm</span>
+                                  <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
+                                </div>
+                                <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {sz.matchPct}% Match
+                                </span>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Sizing Units & Inputs */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sizing Mode</label>
-              <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
-                {(['grid', 'cm', 'inch'] as const).map(u => (
-                  <button
-                    key={u}
-                    onClick={() => handleUnitChange(u)}
-                    className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
-                      unit === u
-                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
-                    }`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Sizing Units & Inputs */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sizing Mode</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Choose sizing in dots, centimeters, or inches.</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
+                    {(['grid', 'cm', 'inch'] as const).map(u => (
+                      <button
+                        key={u}
+                        onClick={() => handleUnitChange(u)}
+                        className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
+                          unit === u
+                            ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-500 uppercase font-semibold">Width ({unit === 'grid' ? 'dots' : unit})</label>
-                <input
-                  type="number"
-                  data-field="width"
-                  step={unit === 'grid' ? '1' : '0.1'}
-                  value={widthInput}
-                  onInput={(e) => handleWidthChange((e.target as HTMLInputElement).value)}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-500 uppercase font-semibold">Height ({unit === 'grid' ? 'dots' : unit})</label>
-                <input
-                  type="number"
-                  data-field="height"
-                  step={unit === 'grid' ? '1' : '0.1'}
-                  value={heightInput}
-                  onInput={(e) => handleHeightChange((e.target as HTMLInputElement).value)}
-                  className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Width ({unit === 'grid' ? 'dots' : unit})</label>
+                    <input
+                      type="number"
+                      data-field="width"
+                      step={unit === 'grid' ? '1' : '0.1'}
+                      value={widthInput}
+                      onInput={(e) => handleWidthChange((e.target as HTMLInputElement).value)}
+                      className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Height ({unit === 'grid' ? 'dots' : unit})</label>
+                    <input
+                      type="number"
+                      data-field="height"
+                      step={unit === 'grid' ? '1' : '0.1'}
+                      value={heightInput}
+                      onInput={(e) => handleHeightChange((e.target as HTMLInputElement).value)}
+                      className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                    />
+                  </div>
+                </div>
 
-            {/* Calculated Info */}
-            <div className="bg-slate-950/30 p-2 rounded border border-slate-850/60 text-[11px] flex flex-col gap-1 text-slate-350">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Grid Dimensions:</span>
-                <span className="font-semibold text-slate-300 font-mono">{cols} × {rows}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Total Drills Needed:</span>
-                <span className="font-bold text-indigo-400 font-mono">{(cols * rows).toLocaleString()}</span>
-              </div>
-            </div>
+                {/* Calculated Info */}
+                <div className="bg-slate-950/30 p-2 rounded border border-slate-850/60 text-[11px] flex flex-col gap-1 text-slate-350">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-medium">Grid Dimensions:</span>
+                    <span className="font-semibold text-slate-300 font-mono">{cols} × {rows}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-medium">Total Drills Needed:</span>
+                    <span className="font-bold text-indigo-400 font-mono">{(cols * rows).toLocaleString()}</span>
+                  </div>
+                </div>
 
-            {/* Drill Style */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Representation</label>
-              <div className="grid grid-cols-2 gap-1.5 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
-                {(['square', 'round'] as const).map(style => (
-                  <button
-                    key={style}
-                    onClick={() => setDrillStyle(style)}
-                    className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
-                      drillStyle === style
-                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
-                    }`}
-                  >
-                    {style}
-                  </button>
-                ))}
+                {/* Drill Style */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Representation</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Choose square or round drill representation on the grid.</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 bg-slate-950/60 p-0.5 rounded border border-slate-850/50">
+                    {(['square', 'round'] as const).map(style => (
+                      <button
+                        key={style}
+                        onClick={() => setDrillStyle(style)}
+                        className={`text-[10px] py-1 rounded capitalize font-medium transition-all cursor-pointer ${
+                          drillStyle === style
+                            ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                        }`}
+                      >
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
           </div>
         )}
 
         {wizardStep === 2 && (
           <div className="flex flex-col gap-3.5">
-            {/* Base Kit Selector */}
-            <div className="flex flex-col gap-1 shrink-0">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
-              <select
-                value={selectedBaseKit}
-                onChange={(e) => {
-                  setSelectedBaseKit((e.target as HTMLSelectElement).value as any);
-                  setExcludedColors(new Set()); // Reset exclusions on kit change
-                }}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
-              >
-                <option value="all">All DMC Palette</option>
-                <option value="100">Art Dot 100 Kit</option>
-                <option value="200">Art Dot 200 Kit</option>
-              </select>
-            </div>
-
-            {/* Drill Type Selector */}
-            <div className="flex flex-col gap-1 shrink-0">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Type (Finish)</label>
-              <select
-                value={drillType}
-                onChange={(e) => {
-                  setDrillType((e.target as HTMLSelectElement).value as any);
-                }}
-                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
-              >
-                <option value="standard">Standard Resin</option>
-                <option value="ab">AB (Aurora Borealis)</option>
-                <option value="glow">Glow-in-the-Dark</option>
-                <option value="crystal">Crystal / Rhinestone</option>
-              </select>
-            </div>
-
-            {/* Color Substitution Option */}
-            <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 mt-1 shrink-0">
-              <div className="flex items-center gap-2">
-                <input
-                  id="substitute-colors-checkbox"
-                  type="checkbox"
-                  checked={enableSubstitution}
-                  onChange={(e) => setEnableSubstitution((e.target as HTMLInputElement).checked)}
-                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
-                />
-                <label htmlFor="substitute-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
-                  Auto-substitute low-count colors
-                </label>
-              </div>
-              {enableSubstitution && (
-                <div className="flex flex-col gap-1 mt-1.5 pl-5 select-none">
-                  <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="1"
-                      max="500"
-                      value={substitutionThreshold}
-                      onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
-                      className="flex-1 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded appearance-none"
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      value={substitutionThreshold}
-                      onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
-                      className="bg-slate-900 border border-slate-800/80 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0 w-14 text-center shadow-inner"
-                    />
+            <details open className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded border border-slate-850/40 cursor-pointer">
+              <summary className="font-bold text-xs uppercase text-indigo-400 select-none flex items-center gap-2 cursor-pointer pb-2 border-b border-slate-850/30">
+                <span className="caret-icon text-slate-500">▶</span>
+                <span>Palette Optimization Settings</span>
+              </summary>
+              <div className="flex flex-col gap-3.5 mt-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                {/* Base Kit Selector */}
+                <div className="flex flex-col gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">DMC Kit Reference</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Filter the standard DMC colors to match selected manufacturer gem kits.</div>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
-                    Fills colors with counts below threshold into their closest color.
-                  </span>
+                  <select
+                    value={selectedBaseKit}
+                    onChange={(e) => {
+                      setSelectedBaseKit((e.target as HTMLSelectElement).value as any);
+                      setExcludedColors(new Set()); // Reset exclusions on kit change
+                    }}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+                  >
+                    <option value="all">All DMC Palette</option>
+                    <option value="100">Art Dot 100 Kit</option>
+                    <option value="200">Art Dot 200 Kit</option>
+                  </select>
                 </div>
-              )}
-            </div>
 
-            {/* Collapsible Sub-palette selection checklist */}
-            <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
-              <button
-                onClick={() => setExcludeListOpen(!excludeListOpen)}
-                className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
-                  <span className="font-semibold text-slate-400 uppercase tracking-wider">Exclude Colors</span>
-                  {excludedColors.size > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
+                {/* Drill Type Selector */}
+                <div className="flex flex-col gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 justify-between">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Type (Finish)</label>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Select the finish/style of diamond drills (standard, AB, glow, crystal).</div>
+                    </div>
+                  </div>
+                  <select
+                    value={drillType}
+                    onChange={(e) => {
+                      setDrillType((e.target as HTMLSelectElement).value as any);
+                    }}
+                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer text-ellipsis overflow-hidden"
+                  >
+                    <option value="standard">Standard Resin</option>
+                    <option value="ab">AB (Aurora Borealis)</option>
+                    <option value="glow">Glow-in-the-Dark</option>
+                    <option value="crystal">Crystal / Rhinestone</option>
+                  </select>
+                </div>
+
+                {/* Color Substitution Option */}
+                <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 mt-1 shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="substitute-colors-checkbox"
+                        type="checkbox"
+                        checked={enableSubstitution}
+                        onChange={(e) => setEnableSubstitution((e.target as HTMLInputElement).checked)}
+                        className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
+                      />
+                      <label htmlFor="substitute-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
+                        Auto-substitute low-count colors
+                      </label>
+                    </div>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Automatically map colors with low pixel counts to their closest active neighbors.</div>
+                    </div>
+                  </div>
+                  {enableSubstitution && (
+                    <div className="flex flex-col gap-1 mt-1.5 pl-5 select-none">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Substitution Threshold (Max Drills)</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="1"
+                          max="500"
+                          value={substitutionThreshold}
+                          onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                          className="flex-1 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded appearance-none"
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          value={substitutionThreshold}
+                          onInput={(e) => setSubstitutionThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                          className="bg-slate-900 border border-slate-800/80 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0 w-14 text-center shadow-inner"
+                        />
+                      </div>
+                      <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
+                        Fills colors with counts below threshold into their closest color.
+                      </span>
+                    </div>
                   )}
                 </div>
-                {excludeListOpen && (
-                  <div className="flex gap-2 text-[10px]" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={handleSelectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                      All
-                    </button>
-                    <span className="text-slate-700 select-none">|</span>
-                    <button onClick={handleDeselectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                      None
-                    </button>
-                  </div>
-                )}
-              </button>
-              
-              {excludeListOpen && (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  <p className="text-[9px] text-slate-500 leading-normal">Uncheck colors to exclude them from matching.</p>
-                  <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto border border-slate-850 p-1 rounded bg-slate-950/60 scrollbar-thin">
-                    {baseCandidates.map(c => {
-                      const isExcluded = excludedColors.has(c.dmc);
-                      return (
-                        <label
-                          key={c.dmc}
-                          className="flex items-center gap-1 cursor-pointer hover:bg-slate-850 p-0.5 rounded text-[10px] select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!isExcluded}
-                            onChange={() => toggleColorExclusion(c.dmc)}
-                            className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-2.5 w-2.5 cursor-pointer"
-                          />
-                          <span
-                            className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
-                            style={{ backgroundColor: c.hex }}
-                          />
-                          <span className="font-mono text-slate-350 truncate" title={c.name}>{c.dmc}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
+
+                {/* Collapsible Sub-palette selection checklist */}
+                <div className="border border-slate-850 p-2 rounded bg-slate-950/30 flex flex-col shrink-0 no-print">
+                  <button
+                    onClick={() => setExcludeListOpen(!excludeListOpen)}
+                    className="w-full flex justify-between items-center text-left font-bold text-xs text-slate-250 select-none cursor-pointer focus:outline-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
+                      <span className="font-semibold text-slate-400 uppercase tracking-wider">Exclude Colors</span>
+                      {excludedColors.size > 0 && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
+                      )}
+                    </div>
+                    {excludeListOpen && (
+                      <div className="flex gap-2 text-[10px]" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={handleSelectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                          All
+                        </button>
+                        <span className="text-slate-700 select-none">|</span>
+                        <button onClick={handleDeselectAll} className="text-indigo-400 hover:text-indigo-300 cursor-pointer">
+                          None
+                        </button>
+                      </div>
+                    )}
+                  </button>
+
+                  {excludeListOpen && (
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <p className="text-[9px] text-slate-500 leading-normal">Uncheck colors to exclude them from matching.</p>
+                      <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto border border-slate-850 p-1 rounded bg-slate-950/60 scrollbar-thin">
+                        {baseCandidates.map(c => {
+                          const isExcluded = excludedColors.has(c.dmc);
+                          return (
+                            <label
+                              key={c.dmc}
+                              className="flex items-center gap-1 cursor-pointer hover:bg-slate-850 p-0.5 rounded text-[10px] select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!isExcluded}
+                                onChange={() => toggleColorExclusion(c.dmc)}
+                                className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-2.5 w-2.5 cursor-pointer"
+                              />
+                              <span
+                                className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
+                                style={{ backgroundColor: c.hex }}
+                              />
+                              <span className="font-mono text-slate-350 truncate" title={c.name}>{c.dmc}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            </details>
 
             {/* DMC Legend List Table */}
             <div className="flex flex-col gap-1.5 no-print">
@@ -2250,78 +2315,62 @@ export function App() {
             <span>Artist Resources</span>
           </button>
         </div>
-      </aside>
+      </div>
 
-      {/* Main Canvas Area */}
-      <main className="flex-1 relative flex flex-col min-w-0 print:block">
-        {/* Top Header Bar for Wizard Progress Stepper */}
-        <div className="bg-slate-900/40 border-b border-slate-800/60 py-3 px-4 flex items-center justify-between select-none no-print shrink-0 z-30">
-          {/* Back Button */}
-          <div className="w-20 flex justify-start">
-            {wizardStep > 1 && (
-              <button
-                onClick={() => setWizardStep(prev => prev - 1)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer active:scale-95 border border-slate-700/50"
-              >
-                Back
-              </button>
-            )}
-          </div>
+      {/* Sticky wizard navigation footer */}
+      <div className="mt-auto pt-4 border-t border-slate-800/60 shrink-0 no-print flex flex-col gap-4 bg-slate-900/60 px-1 pb-1">
+        <div className="flex items-center justify-between">
+          <button
+            id="wizard-back-btn"
+            onClick={() => setWizardStep(prev => Math.max(1, prev - 1))}
+            disabled={wizardStep === 1}
+            className="text-xs font-bold text-slate-450 hover:text-slate-200 disabled:text-slate-700 cursor-pointer disabled:cursor-not-allowed transition-colors"
+          >
+            &lt; Back
+          </button>
 
-          <div className="flex items-center justify-between w-full max-w-md relative">
-            {/* Connector Line Background */}
-            <div className="absolute top-[18px] left-10 right-10 h-0.5 bg-slate-800 z-0" />
-            {/* Active Progress Line */}
-            <div 
-              className="absolute top-[18px] left-10 h-0.5 bg-indigo-500 transition-all duration-300 z-0"
-              style={{ width: `${((wizardStep - 1) / 3) * 80}%` }}
-            />
-            
-            {[1, 2, 3, 4].map((step) => {
+          {/* Dots */}
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map(step => {
               const isActive = wizardStep === step;
               const isCompleted = wizardStep > step;
-              const labels = ['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'];
-              const label = labels[step - 1];
-              
+              const isValid = isStepValid(step);
               return (
-                <div key={step} className="flex flex-col items-center gap-1 z-10 w-24">
-                  <button
-                    onClick={() => {
-                      setWizardStep(step);
-                    }}
-                    title={label}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border cursor-pointer select-none ${
-                      isActive
-                        ? 'bg-slate-900 border-2 border-indigo-500 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] backdrop-blur-md scale-105'
-                        : isCompleted
-                        ? 'bg-indigo-600 text-white border border-indigo-500 hover:bg-indigo-500'
-                        : 'bg-slate-950 border border-slate-800 text-slate-500 hover:bg-slate-900'
-                    }`}
-                  >
-                    {step}
-                  </button>
-                  <span className={`text-[8px] font-bold uppercase tracking-wider text-center truncate w-full ${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
-                    {label}
-                  </span>
-                </div>
+                <button
+                  key={step}
+                  onClick={() => isValid && setWizardStep(step)}
+                  disabled={!isValid}
+                  className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30 scale-105'
+                      : isCompleted
+                      ? 'bg-indigo-950 text-indigo-300 hover:bg-indigo-900 hover:text-white border border-indigo-500/30'
+                      : isValid
+                      ? 'bg-slate-850 text-slate-450 hover:bg-slate-800 hover:text-slate-250 border border-slate-800'
+                      : 'bg-slate-950 text-slate-750 border border-slate-900 cursor-not-allowed'
+                  }`}
+                  title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][step - 1]}
+                >
+                  {step}
+                </button>
               );
             })}
           </div>
 
-          {/* Next Button */}
-          <div className="w-20 flex justify-end">
-            {wizardStep < 4 && (
-              <button
-                id="wizard-next-btn"
-                onClick={() => setWizardStep(prev => prev + 1)}
-                disabled={wizardStep === 1 && !image && !activeProjectId}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer active:scale-95 border border-indigo-500/25"
-              >
-                Next
-              </button>
-            )}
-          </div>
+          <button
+            id="wizard-next-btn"
+            onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
+            disabled={wizardStep === 4 || !isStepValid(wizardStep + 1)}
+            className="text-xs font-bold text-indigo-400 hover:text-indigo-300 disabled:text-slate-750 cursor-pointer disabled:cursor-not-allowed transition-colors"
+          >
+            Next Step &gt;
+          </button>
         </div>
+      </div>
+    </aside>
+
+    {/* Main Canvas Area */}
+    <main className="flex-1 relative flex flex-col min-w-0 print:block">
 
         {leftPanelCollapsed && (
           <button
