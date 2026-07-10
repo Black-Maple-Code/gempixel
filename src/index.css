@@ -242,3 +242,86 @@
     padding-bottom: 4.5rem !important;
   }
 }
+
+/* Floating Viewport HUD overlay */
+.viewport-hud {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  user-select: none;
+}
+
+/* Mobile overrides for Viewport HUD */
+@media (max-width: 767.98px) {
+  .viewport-hud {
+    top: auto;
+    bottom: 80px;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    justify-content: center;
+    gap: 8px;
+  }
+}
+
+/* Pure CSS Hover Tooltips using group and absolute coordinates */
+.tooltip-group {
+  position: relative;
+}
+.tooltip-group .tooltip-box {
+  display: none;
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  font-size: 10px;
+  color: #cbd5e1;
+  font-weight: 500;
+  width: 192px;
+  line-height: 1.5;
+  z-index: 50;
+  pointer-events: none;
+}
+.tooltip-group:hover .tooltip-box {
+  display: block;
+}
+
+/* Standard Tailwind group hover helper for custom tooltips */
+.group:hover .group-hover-tooltip {
+  display: block !important;
+}
+
+/* Hide browser default summary carets */
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary {
+  list-style: none;
+}
+
+/* Animate custom carets in details summary */
+details .caret-icon {
+  transition: transform 150ms ease;
+  display: inline-block;
+}
+details[open] .caret-icon {
+  transform: rotate(90deg);
+}
+
