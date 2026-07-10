@@ -13,6 +13,8 @@ const mockSetHighlightedColor = vi.fn();
 const mockSetDrillType = vi.fn();
 const mockFitToContainer = vi.fn();
 const mockDestroy = vi.fn();
+const mockSetViewMode = vi.fn();
+const mockSetSymbolMap = vi.fn();
 
 vi.mock('../engine/viewer', () => {
   return {
@@ -24,6 +26,8 @@ vi.mock('../engine/viewer', () => {
         setDrillType: mockSetDrillType,
         fitToContainer: mockFitToContainer,
         destroy: mockDestroy,
+        setViewMode: mockSetViewMode,
+        setSymbolMap: mockSetSymbolMap,
       };
     })
   };
@@ -562,7 +566,7 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     // Viewport Mode selector should be visible
     const gridViewBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Grid View')
+      (btn) => btn.textContent?.includes('Grid Colors')
     );
     const originalPhotoBtn = Array.from(container.querySelectorAll('button')).find(
       (btn) => btn.textContent?.includes('Original Photo')
@@ -581,7 +585,7 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(container.querySelector('img[alt="Original reference full size"]')).not.toBeNull();
     });
 
-    // Toggle back to Grid View
+    // Toggle back to Grid Colors
     gridViewBtn!.dispatchEvent(new Event('click', { bubbles: true }));
 
     await vi.waitFor(() => {

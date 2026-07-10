@@ -22,6 +22,8 @@ vi.mock('../engine/viewer', () => {
       setDrillType = vi.fn();
       fitToContainer = vi.fn();
       destroy = vi.fn();
+      setViewMode = vi.fn();
+      setSymbolMap = vi.fn();
     }
   };
 });
