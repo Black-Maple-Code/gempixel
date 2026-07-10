@@ -9,111 +9,8 @@ import { generateSymbolAllocation } from './engine/symbols';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 import { resolveActiveCandidates } from './engine/candidates';
+import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 
-
-export interface ProjectSummary {
-  id: string;
-  name: string;
-  thumbnail: string;
-  dateModified: string;
-  dateCreated: string;
-}
-
-export interface ProjectData {
-  id: string;
-  name: string;
-  dateCreated: string;
-  dateModified: string;
-  imageName: string;
-  dimensions: { cols: number; rows: number };
-  drillStyle: 'square' | 'round';
-  selectedBaseKit: 'all' | '100' | '200';
-  safetyMargin: number;
-  laborMarkup: number;
-  kitBaseCost: number;
-  drillPacketCost: number;
-  excludedDmcCodes: string[];
-  pricesPerBagSize: Record<200 | 500 | 1000 | 2000, number>;
-  drillType: 'standard' | 'ab' | 'glow' | 'crystal';
-  canvasTemplate: string;
-  affiliateTag: string;
-  affiliateApp: 'ref' | 'rfsn' | 'none';
-  gridData: number[] | null;
-}
-
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
-
-function generateThumbnail(canvas: HTMLCanvasElement): string {
-  try {
-    const thumbCanvas = document.createElement('canvas');
-    thumbCanvas.width = 80;
-    thumbCanvas.height = 60;
-    const ctx = thumbCanvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(canvas, 0, 0, 80, 60);
-      return thumbCanvas.toDataURL('image/jpeg', 0.6);
-    }
-  } catch (err) {
-    console.error('Failed to generate thumbnail', err);
-  }
-  return '';
-}
-
-export function saveProjectToStorage(summary: ProjectSummary, data: ProjectData) {
-  try {
-    const registryStr = localStorage.getItem('gempixel_workspace_registry');
-    const registry: ProjectSummary[] = registryStr ? JSON.parse(registryStr) : [];
-    const index = registry.findIndex(p => p.id === summary.id);
-    if (index >= 0) {
-      registry[index] = summary;
-    } else {
-      registry.push(summary);
-    }
-    localStorage.setItem('gempixel_workspace_registry', JSON.stringify(registry));
-  } catch (err) {
-    console.error('Failed to save to workspace registry', err);
-  }
-
-  try {
-    localStorage.setItem(`gempixel_project_${data.id}`, JSON.stringify(data));
-  } catch (err) {
-    console.error('Failed to save project data', err);
-  }
-}
-
-export function loadProjectFromStorage(id: string): ProjectData | null {
-  try {
-    const dataStr = localStorage.getItem(`gempixel_project_${id}`);
-    return dataStr ? JSON.parse(dataStr) : null;
-  } catch (err) {
-    console.error('Failed to load project data', err);
-    return null;
-  }
-}
-
-export function deleteProjectFromStorage(id: string) {
-  try {
-    const registryStr = localStorage.getItem('gempixel_workspace_registry');
-    if (registryStr) {
-      const registry: ProjectSummary[] = JSON.parse(registryStr);
-      const filtered = registry.filter(p => p.id !== id);
-      localStorage.setItem('gempixel_workspace_registry', JSON.stringify(filtered));
-    }
-  } catch (err) {
-    console.error('Failed to remove from registry', err);
-  }
-
-  try {
-    localStorage.removeItem(`gempixel_project_${id}`);
-  } catch (err) {
-    console.error('Failed to delete project data', err);
-  }
-}
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
@@ -171,14 +68,7 @@ export function App() {
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string>('');
-  const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => {
-    try {
-      const saved = localStorage.getItem('gempixel_workspace_registry');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => projectStore.list());
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -214,14 +104,7 @@ export function App() {
   }, [theme]);
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
-  const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
-    try {
-      const saved = localStorage.getItem('gempixel_recent_images');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [recentImages, setRecentImages] = useState<RecentImage[]>(() => projectStore.recents.list());
 
   const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
 
@@ -348,7 +231,7 @@ export function App() {
   };
 
   const loadProject = (id: string) => {
-    const project = loadProjectFromStorage(id);
+    const project = projectStore.load(id);
     if (!project) return;
 
     setActiveProjectId(project.id);
@@ -466,10 +349,8 @@ export function App() {
       gridData
     };
 
-    saveProjectToStorage(projectSummary, projectData);
-
-    const savedRegistry = localStorage.getItem('gempixel_workspace_registry');
-    setProjectsRegistry(savedRegistry ? JSON.parse(savedRegistry) : []);
+    projectStore.save(projectSummary, projectData);
+    setProjectsRegistry(projectStore.list());
 
     setActiveProjectId(projectId);
     setSaveModalOpen(false);
@@ -533,22 +414,9 @@ export function App() {
     };
   }, [activeCandidates]);
 
-  // Persist recent image list to localStorage, popping oldest if quota exceeded
+  // Persist recent image list to localStorage (quota eviction handled in projectStore).
   useEffect(() => {
-    let list = [...recentImages];
-    while (list.length > 0) {
-      try {
-        localStorage.setItem('gempixel_recent_images', JSON.stringify(list));
-        break;
-      } catch (err) {
-        // QuotaExceededError - drop oldest entry and retry
-        list.pop();
-        if (list.length === 0) {
-          localStorage.removeItem('gempixel_recent_images');
-          break;
-        }
-      }
-    }
+    projectStore.recents.save(recentImages);
   }, [recentImages]);
 
   // Initialize MatcherClient
@@ -1258,9 +1126,8 @@ export function App() {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (confirm(`Delete "${project.name}"?`)) {
-                            deleteProjectFromStorage(project.id);
-                            const updated = projectsRegistry.filter(p => p.id !== project.id);
-                            setProjectsRegistry(updated);
+                            projectStore.remove(project.id);
+                            setProjectsRegistry(projectStore.list());
                             if (activeProjectId === project.id) {
                               setActiveProjectId(null);
                               setRawMatchResult(null);
