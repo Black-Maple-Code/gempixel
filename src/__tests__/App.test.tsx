@@ -24,6 +24,8 @@ vi.mock('../engine/viewer', () => {
       destroy = vi.fn();
       setViewMode = vi.fn();
       setSymbolMap = vi.fn();
+      setRoundBacking = vi.fn();
+      setGridGap = vi.fn();
       zoomIn = vi.fn();
       zoomOut = vi.fn();
       resetZoom = vi.fn();
@@ -179,8 +181,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(asides[0].className).toContain('w-0');
     expect(asides[1].className).toContain('w-0');
 
-    // Click 'Controls' bottom tab to expand left controls panel
-    const controlsTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'controls');
+    // Click 'Setup' bottom tab to expand left controls panel
+    const controlsTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'setup');
     expect(controlsTab).toBeTruthy();
     controlsTab?.click();
     await new Promise(r => setTimeout(r, 10));

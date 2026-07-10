@@ -4,7 +4,6 @@ import { MatcherClient } from './engine/worker-client';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
-import logoUrl from './logo.png';
 import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
 import { generateSymbolAllocation } from './engine/symbols';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload } from './engine/export';
@@ -267,6 +266,23 @@ export function App() {
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
+
+  // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted + applied to <html>.
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return (localStorage.getItem('gempixel_theme') as 'dark' | 'light') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem('gempixel_theme', theme);
+    } catch {
+      /* ignore persistence failures */
+    }
+  }, [theme]);
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
@@ -664,6 +680,14 @@ export function App() {
       }
     }
   }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode, symbolMap]);
+
+  // Push theme colors into the canvas viewer (canvas can't read CSS vars itself).
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    const styles = getComputedStyle(document.documentElement);
+    viewerRef.current.setRoundBacking(styles.getPropertyValue('--drill-round-backing').trim());
+    viewerRef.current.setGridGap(styles.getPropertyValue('--canvas-gap').trim());
+  }, [theme, image, matchResult, drillStyle]);
 
   const savedViewportModeRef = useRef<'grid' | 'symbols' | 'reference'>('grid');
 
@@ -1241,10 +1265,14 @@ export function App() {
       >
         <div className="flex justify-between items-center border-b border-slate-800/60 pb-3 shrink-0">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="GemPixel Logo" className="w-10 h-10 rounded-lg object-contain shadow-lg shadow-indigo-500/10 shrink-0" />
+            <div className="gem-logo w-[38px] h-[38px] shrink-0" aria-hidden="true">
+              {['--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink'].map((c, i) => (
+                <span key={i} style={{ backgroundColor: `var(${c})` }} />
+              ))}
+            </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent leading-none">GemPixel</h1>
-              <p className="text-[10px] text-slate-400 mt-1 font-medium tracking-wide">Diamond Painting Planner</p>
+              <h1 className="font-display text-[23px] font-bold text-ink leading-none">GemPixel</h1>
+              <p className="text-[10px] text-muted mt-1 font-medium tracking-wide">Diamond Painting Planner</p>
             </div>
           </div>
           <button
@@ -2300,6 +2328,25 @@ export function App() {
 
         {/* Sidebar Footer Actions */}
         <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
+          {/* Theme skin toggle */}
+          <div className="flex items-center gap-0.5 bg-panel border border-border rounded-[11px] p-1.5">
+            <button
+              onClick={() => setTheme('light')}
+              className={`flex-1 font-mono text-[13px] px-4 py-2 rounded-lg cursor-pointer transition-colors ${
+                theme === 'light' ? 'bg-accent text-on-accent font-bold' : 'text-muted hover:text-ink'
+              }`}
+            >
+              ☀ Light
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`flex-1 font-mono text-[13px] px-4 py-2 rounded-lg cursor-pointer transition-colors ${
+                theme === 'dark' ? 'bg-accent text-on-accent font-bold' : 'text-muted hover:text-ink'
+              }`}
+            >
+              ☾ Dark
+            </button>
+          </div>
           {matchResult && (
             <button
               onClick={printReport}
@@ -2918,51 +2965,71 @@ export function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Tab Bar Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex justify-around py-2.5 md:hidden no-print font-sans select-none shrink-0">
-        <button
+      {/* Mobile drawer backdrop — tap to return to Canvas */}
+      {(!leftPanelCollapsed || !rightPanelCollapsed) && (
+        <div
+          className="drawer-backdrop md:hidden no-print"
           onClick={() => {
             setLeftPanelCollapsed(true);
             setRightPanelCollapsed(true);
           }}
-          className={`flex flex-col items-center gap-1.5 cursor-pointer transition-colors ${
-            leftPanelCollapsed && rightPanelCollapsed ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="text-[9px] uppercase tracking-wide">Canvas</span>
-        </button>
+        />
+      )}
 
+      {/* Mobile Bottom Tab Bar Navigation: Setup · Canvas · Colors */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 flex border-t border-border bg-panel pt-2.5 pb-[max(1.4rem,env(safe-area-inset-bottom))] no-print font-mono select-none">
+        {/* Setup */}
         <button
           onClick={() => {
             setLeftPanelCollapsed(false);
             setRightPanelCollapsed(true);
           }}
-          className={`flex flex-col items-center gap-1.5 cursor-pointer transition-colors ${
-            !leftPanelCollapsed ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
+            !leftPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
           }`}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-          </svg>
-          <span className="text-[9px] uppercase tracking-wide">Controls</span>
+          <span className="w-5 h-5 flex items-center justify-center">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </span>
+          Setup
         </button>
 
+        {/* Canvas */}
+        <button
+          onClick={() => {
+            setLeftPanelCollapsed(true);
+            setRightPanelCollapsed(true);
+          }}
+          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
+            leftPanelCollapsed && rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
+          }`}
+        >
+          <span className="w-5 h-5 flex items-center justify-center">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </span>
+          Canvas
+        </button>
+
+        {/* Colors */}
         <button
           onClick={() => {
             setLeftPanelCollapsed(true);
             setRightPanelCollapsed(false);
           }}
-          className={`flex flex-col items-center gap-1.5 cursor-pointer transition-colors ${
-            !rightPanelCollapsed ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
+            !rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
           }`}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          <span className="text-[9px] uppercase tracking-wide">Supply List</span>
+          <span className="w-5 h-5 flex items-center justify-center">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </span>
+          Colors
         </button>
       </nav>
 

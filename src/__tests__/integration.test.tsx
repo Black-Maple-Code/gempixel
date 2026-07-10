@@ -15,6 +15,8 @@ const mockFitToContainer = vi.fn();
 const mockDestroy = vi.fn();
 const mockSetViewMode = vi.fn();
 const mockSetSymbolMap = vi.fn();
+const mockSetRoundBacking = vi.fn();
+const mockSetGridGap = vi.fn();
 
 vi.mock('../engine/viewer', () => {
   return {
@@ -28,6 +30,8 @@ vi.mock('../engine/viewer', () => {
         destroy: mockDestroy,
         setViewMode: mockSetViewMode,
         setSymbolMap: mockSetSymbolMap,
+        setRoundBacking: mockSetRoundBacking,
+        setGridGap: mockSetGridGap,
       };
     })
   };

@@ -30,6 +30,8 @@ export class CanvasViewer {
   private drillType: 'standard' | 'ab' | 'glow' | 'crystal' = 'standard';
   private viewMode: 'grid' | 'symbols' | 'reference' = 'grid';
   private symbolMap: Record<string, string> = {};
+  private roundBacking = '#2D3748';   // slate backing shown through round-drill gaps (themed)
+  private gridGap = '#0d0d13';        // fill behind square drills / gap color (themed)
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -189,6 +191,22 @@ export class CanvasViewer {
     this.draw();
   }
 
+  /** Theme the slate backing shown through the gaps of round drills. */
+  public setRoundBacking(hex: string) {
+    if (!hex) return;
+    this.roundBacking = hex;
+    this.redrawOffscreen();
+    this.draw();
+  }
+
+  /** Theme the fill color behind drills / the inter-drill gap. */
+  public setGridGap(hex: string) {
+    if (!hex) return;
+    this.gridGap = hex;
+    this.redrawOffscreen();
+    this.draw();
+  }
+
   private drawCellFinish(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -257,14 +275,16 @@ export class CanvasViewer {
     this.offscreenCanvas.height = this.gridHeight * cellSize;
 
     const ctx = this.offscreenCtx;
-    ctx.fillStyle = '#2D3748'; // Neutral slate backing
+    // Round drills reveal the slate backing through their gaps; square drills sit
+    // on the gap color. Both are theme-driven.
+    ctx.fillStyle = this.drillStyle === 'round' ? this.roundBacking : this.gridGap;
     ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
 
     for (let row = 0; row < this.gridHeight; row++) {
       for (let col = 0; col < this.gridWidth; col++) {
         const idx = row * this.gridWidth + col;
         const code = this.cellMatches[idx];
-        const color = this.colorMap.get(code) || '#2D3748';
+        const color = this.colorMap.get(code) || this.roundBacking;
 
         ctx.fillStyle = color;
         if (this.drillStyle === 'square') {
@@ -316,7 +336,7 @@ export class CanvasViewer {
         for (let col = startCol; col < endCol; col++) {
           const code = this.cellMatches[row * this.gridWidth + col];
           if (code === this.highlightedColor) {
-            const color = this.colorMap.get(code) || '#2D3748';
+            const color = this.colorMap.get(code) || this.roundBacking;
             this.ctx.fillStyle = color;
 
             const destX = this.offsetX + col * virtualCellSize * this.scale;
@@ -362,7 +382,7 @@ export class CanvasViewer {
         for (let col = startCol; col < endCol; col++) {
           const index = row * this.gridWidth + col;
           const code = this.cellMatches[index];
-          const color = this.colorMap.get(code) || '#2D3748';
+          const color = this.colorMap.get(code) || this.roundBacking;
           const symbol = this.symbolMap[code];
 
           if (symbol) {
