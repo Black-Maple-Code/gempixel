@@ -671,6 +671,36 @@ export function App() {
     }
   }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode]);
 
+  const savedViewportModeRef = useRef<'grid' | 'symbols' | 'reference'>('grid');
+
+  // Print hooks to force symbol rendering and fit to container
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      savedViewportModeRef.current = viewportMode;
+      setViewportMode('symbols');
+      if (viewerRef.current) {
+        viewerRef.current.setViewMode('symbols');
+        viewerRef.current.fitToContainer();
+      }
+    };
+
+    const handleAfterPrint = () => {
+      setViewportMode(savedViewportModeRef.current);
+      if (viewerRef.current) {
+        viewerRef.current.setViewMode(savedViewportModeRef.current);
+        viewerRef.current.draw();
+      }
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [viewportMode]);
+
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
     const activeEl = document.activeElement;
