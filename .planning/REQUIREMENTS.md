@@ -59,9 +59,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Custom Canvas Export & Multiple Vendor Integration (Phase 8)
 
-- [ ] **EXPORT-01**: Support downloading high-resolution PNG image exports under Option C (Separate Canvas grid-only vs Combined Canvas Sheet with margin legends and vertical wrap fold lines).
-- [ ] **EXPORT-02**: Provide dynamic canvas sizing calculations and advice displayed inline based on selected layout (accounting for margin sizes).
-- [ ] **VENDOR-01**: Integrate Lumaprints as the primary default canvas vendor, and Prodigi + FinerWorks as user-selectable dropdown options, dynamically updating product costing and default shipping rates.
+- [x] **EXPORT-01**: Support downloading high-resolution PNG image exports under Option C (Separate Canvas grid-only vs Combined Canvas Sheet with margin legends and vertical wrap fold lines).
+- [x] **EXPORT-02**: Provide dynamic canvas sizing calculations and advice displayed inline based on selected layout (accounting for margin sizes).
+- [x] **VENDOR-01**: Integrate Lumaprints as the primary default canvas vendor, and Prodigi + FinerWorks as user-selectable dropdown options, dynamically updating product costing and default shipping rates.
+
+### Viewport HUD & Intuitive Wizard Navigation (Phase 9)
+
+- [ ] **NAV-01**: Replace or style Next/Back buttons to be intuitive, contextual, and prominent.
+- [ ] **NAV-02**: Move active layout, view toggles, color highlights, and basic canvas settings directly into a floating HUD overlay (Heads-Up Display) inside the canvas viewport, reducing sidebar clutter.
+- [ ] **NAV-03**: Re-organize settings logically, group them, and display clear tooltips or descriptive labels.
 
 ## Out of Scope
 
@@ -99,19 +105,23 @@ Requirements for initial release. Each maps to roadmap phases.
 | SYMBOL-01 | Phase 7 | Complete |
 | SYMBOL-02 | Phase 7 | Complete |
 | SYMBOL-03 | Phase 7 | Complete |
-| EXPORT-01 | Phase 8 | Pending |
-| EXPORT-02 | Phase 8 | Pending |
-| VENDOR-01 | Phase 8 | Pending |
+| EXPORT-01 | Phase 8 | Complete |
+| EXPORT-02 | Phase 8 | Complete |
+| VENDOR-01 | Phase 8 | Complete |
+| NAV-01 | Phase 9 | Pending |
+| NAV-02 | Phase 9 | Pending |
+| NAV-03 | Phase 9 | Pending |
 
 **Coverage:**
 
 - Milestone v1.0 requirements: 17 total (17 complete)
 - Milestone v2.0 requirements: 4 total (4 complete)
 - Milestone v2.1 / Phase 7 requirements: 3 total (3 complete)
-- Milestone v2.2 / Phase 8 requirements: 3 total (0 complete)
-- Mapped to phases: 27
+- Milestone v2.2 / Phase 8 requirements: 3 total (3 complete)
+- Milestone v2.3 / Phase 9 requirements: 3 total (0 complete)
+- Mapped to phases: 30
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-10 after Phase 8 initiation*
+*Last updated: 2026-07-10 after Phase 9 initiation*
