@@ -85,8 +85,8 @@ describe('Canvas PNG Exporter Rendering', () => {
       cellScale: 20
     });
     
-    expect(canvas.width).toBe(200); // 10 * 20
-    expect(canvas.height).toBe(300); // 15 * 20
+    expect(canvas.width).toBe(320); // 10 * 20 + 2 * (3 * 20) outer margin
+    expect(canvas.height).toBe(420); // 15 * 20 + 2 * (3 * 20) outer margin
   });
 
   it('allocates margin widths for combined sheets correctly', () => {
@@ -102,9 +102,9 @@ describe('Canvas PNG Exporter Rendering', () => {
       marginWidth: 140
     });
 
-    expect(canvas.width).toBe(480); // 10 * 20 + 2 * 140
-    // Height: max(gridHeight = 300, legendHeight = 1 * 18 + 30 = 48) + 2 * 140 => 300 + 280 = 580
-    expect(canvas.height).toBe(580);
+    expect(canvas.width).toBe(600); // 10 * 20 + 2 * 140 + 2 * (3 * 20) outer margin
+    // Height: max(gridHeight = 300, legendHeight = 1 * 18 + 30 = 48) + 2 * 140 + 2 * 60 => 300 + 280 + 120 = 700
+    expect(canvas.height).toBe(700);
   });
 
   it('overrides height when the required legend size exceeds grid size', () => {
@@ -113,7 +113,7 @@ describe('Canvas PNG Exporter Rendering', () => {
     // itemsPerCol = Math.ceil(51 / 3) = 17 items.
     // legendRequiredHeight = 17 * 18 + 30 = 336px.
     // gridHeight is 15 * 20 = 300px.
-    // CanvasHeight = max(300, 336) + 2 * 140 = 336 + 280 = 616.
+    // CanvasHeight = max(300, 336) + 2 * 140 + 2 * 60 = 336 + 280 + 120 = 736.
     const longLegend = Array.from({ length: 50 }, (_, i) => ({ dmc: `${i}`, hex: '#000000' }));
     
     const canvas = drawCombinedCanvasSheet({
@@ -128,7 +128,7 @@ describe('Canvas PNG Exporter Rendering', () => {
       marginWidth: 140
     });
 
-    expect(canvas.height).toBe(616);
+    expect(canvas.height).toBe(736);
   });
 
   it('draw methods handle mock canvas rendering contexts properly without throwing errors', () => {

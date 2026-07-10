@@ -1,5 +1,8 @@
 import { getContrastColor } from './symbols';
 
+/** White wrap-margin (in grid cells) applied around exported PNGs. */
+const OUTER_MARGIN_CELLS = 3;
+
 interface ExportCanvasOnlyOptions {
   cols: number;
   rows: number;
@@ -27,12 +30,19 @@ interface CombinedSheetOptions {
 export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElement {
   const { cols, rows, gridData, colorMap, symbolMap, cellScale = 20 } = options;
 
+  // White wrap margin around the grid (matches the combined sheet's outer margin).
+  const outerMargin = OUTER_MARGIN_CELLS * cellScale;
+
   const canvas = document.createElement('canvas');
-  canvas.width = cols * cellScale;
-  canvas.height = rows * cellScale;
+  canvas.width = cols * cellScale + outerMargin * 2;
+  canvas.height = rows * cellScale + outerMargin * 2;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not retrieve 2D drawing context');
+
+  // Paint white margin backing
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Disable antialiasing for crisp grid cells
   ctx.imageSmoothingEnabled = false;
@@ -43,8 +53,8 @@ export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElem
       const dmcCode = gridData[idx];
       const color = colorMap.get(dmcCode) || '#FFFFFF';
 
-      const x = c * cellScale;
-      const y = r * cellScale;
+      const x = outerMargin + c * cellScale;
+      const y = outerMargin + r * cellScale;
 
       // Draw cell backing block
       ctx.fillStyle = color;
@@ -99,9 +109,12 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   // Inner height of content (grid vs legend)
   const innerAreaHeight = Math.max(gridHeight, legendRequiredHeight);
 
-  // Canvas dimensions (margin/buffer applied symmetrically on all sides)
-  const canvasWidth = gridWidth + marginWidth * 2;
-  const canvasHeight = innerAreaHeight + marginWidth * 2;
+  // Extra white wrap margin around the whole sheet (matches drawCanvasOnly).
+  const outerMargin = OUTER_MARGIN_CELLS * cellScale;
+
+  // Canvas dimensions (legend margin + outer white margin on all sides)
+  const canvasWidth = gridWidth + marginWidth * 2 + outerMargin * 2;
+  const canvasHeight = innerAreaHeight + marginWidth * 2 + outerMargin * 2;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -114,9 +127,9 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Grid offsets centered within the inner content area (buffered by marginWidth)
-  const gridOffsetY = marginWidth + Math.floor((innerAreaHeight - gridHeight) / 2);
-  const legendOffsetY = marginWidth + Math.floor((innerAreaHeight - legendRequiredHeight) / 2);
+  // Grid offsets centered within the inner content area (buffered by margins)
+  const gridOffsetY = outerMargin + marginWidth + Math.floor((innerAreaHeight - gridHeight) / 2);
+  const legendOffsetY = outerMargin + marginWidth + Math.floor((innerAreaHeight - legendRequiredHeight) / 2);
 
   // 1. Render Core Grid Cells
   ctx.imageSmoothingEnabled = false;
@@ -126,7 +139,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
       const dmcCode = gridData[idx];
       const color = colorMap.get(dmcCode) || '#FFFFFF';
 
-      const x = marginWidth + c * cellScale;
+      const x = outerMargin + marginWidth + c * cellScale;
       const y = gridOffsetY + r * cellScale;
 
       ctx.fillStyle = color;
@@ -145,7 +158,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
 
   // 2. Draw Margins (split into columns on the right side)
   ctx.textBaseline = 'middle';
-  const startX = marginWidth + gridWidth;
+  const startX = outerMargin + marginWidth + gridWidth;
   const colSpacing = Math.floor((marginWidth - 25) / numCols); // distribute columns
 
   allLegendColors.forEach((item, index) => {
@@ -181,28 +194,35 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   ctx.lineWidth = 1.5;
   ctx.setLineDash([6, 6]);
 
+  const guideTop = outerMargin;
+  const guideBottom = canvasHeight - outerMargin;
+  const guideLeft = outerMargin;
+  const guideRight = canvasWidth - outerMargin;
+  const gridLeftX = outerMargin + marginWidth;
+  const gridRightX = outerMargin + marginWidth + gridWidth;
+
   // Left vertical guide
   ctx.beginPath();
-  ctx.moveTo(marginWidth, 0);
-  ctx.lineTo(marginWidth, canvasHeight);
+  ctx.moveTo(gridLeftX, guideTop);
+  ctx.lineTo(gridLeftX, guideBottom);
   ctx.stroke();
 
   // Right vertical guide
   ctx.beginPath();
-  ctx.moveTo(marginWidth + gridWidth, 0);
-  ctx.lineTo(marginWidth + gridWidth, canvasHeight);
+  ctx.moveTo(gridRightX, guideTop);
+  ctx.lineTo(gridRightX, guideBottom);
   ctx.stroke();
 
   // Top horizontal guide
   ctx.beginPath();
-  ctx.moveTo(0, gridOffsetY);
-  ctx.lineTo(canvasWidth, gridOffsetY);
+  ctx.moveTo(guideLeft, gridOffsetY);
+  ctx.lineTo(guideRight, gridOffsetY);
   ctx.stroke();
 
   // Bottom horizontal guide
   ctx.beginPath();
-  ctx.moveTo(0, gridOffsetY + gridHeight);
-  ctx.lineTo(canvasWidth, gridOffsetY + gridHeight);
+  ctx.moveTo(guideLeft, gridOffsetY + gridHeight);
+  ctx.lineTo(guideRight, gridOffsetY + gridHeight);
   ctx.stroke();
 
   // Reset dashboard configurations

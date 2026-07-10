@@ -195,6 +195,8 @@ export interface VendorConfig {
   baseShipping: number;
   sqInchRate: number;
   pricingPoints: PricingPoint[];
+  /** Direct "door" to the provider's rolled-canvas order / image-upload page. */
+  uploadUrl: string;
 }
 
 export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', VendorConfig> = {
@@ -202,6 +204,7 @@ export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', Ve
     name: 'Lumaprints',
     baseShipping: 4.99,
     sqInchRate: 0.035,
+    uploadUrl: 'https://lumaprints.com/product/rolled-canvas/',
     pricingPoints: [
       { areaSqIn: 192, price: 6.50 },  // 12x16
       { areaSqIn: 320, price: 8.50 },  // 16x20
@@ -213,6 +216,7 @@ export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', Ve
     name: 'Prodigi',
     baseShipping: 5.00,
     sqInchRate: 0.048,
+    uploadUrl: 'https://www.prodigi.com/products/canvas/rolled-canvas/',
     pricingPoints: [
       { areaSqIn: 192, price: 9.00 },
       { areaSqIn: 320, price: 11.50 },
@@ -224,6 +228,7 @@ export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', Ve
     name: 'FinerWorks',
     baseShipping: 5.50,
     sqInchRate: 0.058,
+    uploadUrl: 'https://www.finerworks.com/canvasprints.aspx',
     pricingPoints: [
       { areaSqIn: 192, price: 11.00 },
       { areaSqIn: 320, price: 14.00 },

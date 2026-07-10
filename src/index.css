@@ -18,11 +18,11 @@
   --ink-strong:#FFFFFF;
   --muted:     #8A8A99;
   --faint:     #6c6c7a;
-  --accent:    #FF3D8A;   /* primary action */
+  --accent:    #8B7BD8;   /* primary action (soft violet — calmer than the old magenta) */
   --accent-2:  #37E2C4;   /* secondary / positive */
   --on-accent: #0B0B10;
   --font-display: 'Pixelify Sans', sans-serif;
-  --btn-shadow:  4px 4px 0 #a3235a;
+  --btn-shadow:  4px 4px 0 #4f4488;
   --btn2-shadow: 3px 3px 0 #0e7d68;
   --grid-dot:    #15151f;   /* viewport bg dot */
   --canvas-gap:  #0d0d13;   /* gap between drills */
@@ -477,6 +477,14 @@
 }
 .tooltip-group:hover .tooltip-box {
   display: block;
+}
+
+/* Sidebar tooltips open leftward (anchored to the trigger's right edge) so the
+   help boxes stay inside the panel instead of being clipped off the edge. */
+aside .tooltip-group .tooltip-box {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 /* Standard Tailwind group hover helper for custom tooltips */

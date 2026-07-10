@@ -390,39 +390,22 @@ export function App() {
   }, [widthInput, heightInput, unit, selectedVendor, image, activeProjectId]);
 
   const sizingAdviceData = useMemo(() => {
-    const w = parseFloat(widthInput) || 0;
-    const h = parseFloat(heightInput) || 0;
-    
-    let buffer = 0;
-    let margin = 0;
-    let unitLabel = '';
-    
-    if (unit === 'grid') {
-      buffer = 20; // 10 cells each side
-      margin = 10;
-      unitLabel = 'cells';
-    } else if (unit === 'inch') {
-      buffer = 2.0; // 1.0 inch each side
-      margin = 1.0;
-      unitLabel = 'inches';
-    } else { // cm
-      buffer = 5.0; // 2.5 cm each side
-      margin = 2.5;
-      unitLabel = 'cm';
-    }
+    // Physical size is derived from the grid itself (10 dots per inch => 2.54 cm),
+    // so the advice is always in inches + cm regardless of the sizing mode.
+    const wIn = cols / 10;
+    const hIn = rows / 10;
+    const toCm = (inches: number) => inches * 2.54;
+    const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
+    const wrapIn = 1; // 1 inch (2.5 cm) wrap buffer on each side
 
-    const combinedWidth = Math.round((w + buffer) * 100) / 100;
-    const combinedHeight = Math.round((h + buffer) * 100) / 100;
-    
     return {
-      width: w.toString(),
-      height: h.toString(),
-      combinedWidth: combinedWidth.toString(),
-      combinedHeight: combinedHeight.toString(),
-      margin: margin.toString(),
-      unitLabel
+      gridIn: `${fmt(wIn)}″ × ${fmt(hIn)}″`,
+      gridCm: `${fmt(toCm(wIn))} × ${fmt(toCm(hIn))} cm`,
+      combinedIn: `${fmt(wIn + wrapIn * 2)}″ × ${fmt(hIn + wrapIn * 2)}″`,
+      combinedCm: `${fmt(toCm(wIn + wrapIn * 2))} × ${fmt(toCm(hIn + wrapIn * 2))} cm`,
+      wrap: `${wrapIn}″ (${fmt(toCm(wrapIn))} cm)`,
     };
-  }, [widthInput, heightInput, unit]);
+  }, [cols, rows]);
 
   const isStepValid = (step: number) => {
     if (step === 1) return true;
@@ -2099,14 +2082,14 @@ export function App() {
                 <div>
                   <span className="font-semibold text-indigo-300 block mb-0.5">Combined Layout view:</span>
                   <span>
-                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. To preserve the legend and frame wrap buffers, order a rolled canvas print of <strong>{sizingAdviceData.combinedWidth}x{sizingAdviceData.combinedHeight} {sizingAdviceData.unitLabel}</strong> from your print shop. This leaves a {sizingAdviceData.margin} {sizingAdviceData.unitLabel} wrap border buffer around the grid.
+                    Your finished grid is <strong>{sizingAdviceData.gridIn}</strong> ({sizingAdviceData.gridCm}). To keep the printed legend and a frame-wrap buffer, order a rolled canvas of <strong>{sizingAdviceData.combinedIn}</strong> ({sizingAdviceData.combinedCm}). That leaves a {sizingAdviceData.wrap} wrap border on each side.
                   </span>
                 </div>
                 <div className="border-t border-slate-800/80 my-1.5"></div>
                 <div>
                   <span className="font-semibold text-indigo-300 block mb-0.5">Separate Layout view:</span>
                   <span>
-                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. Order an exact <strong>{sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}</strong> borderless rolled canvas. Print the legend separately on standard paper.
+                    Order an exact <strong>{sizingAdviceData.gridIn}</strong> ({sizingAdviceData.gridCm}) borderless rolled canvas, and print the legend separately on standard paper.
                   </span>
                 </div>
               </div>
@@ -2161,6 +2144,31 @@ export function App() {
                 </svg>
                 <span>🖨️ Print Supply Report</span>
               </button>
+            </div>
+
+            {/* Send to a canvas printer — direct provider "doors" */}
+            <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Send to a Canvas Printer</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Download the <strong>Canvas Grid PNG</strong> above, then open a printer below and upload it as a rolled canvas at your recommended size (<strong>{sizingAdviceData.combinedIn}</strong>).
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {(Object.keys(VENDOR_REGISTRY) as Array<keyof typeof VENDOR_REGISTRY>).map(key => {
+                  const v = VENDOR_REGISTRY[key];
+                  return (
+                    <a
+                      key={key}
+                      href={v.uploadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-accent transition-all text-xs text-slate-200 hover:text-ink group"
+                    >
+                      <span className="font-semibold">Upload to {v.name}</span>
+                      <span className="text-slate-500 group-hover:text-accent font-bold ml-2">↗</span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Affiliate & settings configurations */}
@@ -2460,16 +2468,27 @@ export function App() {
               );
             })}
           </div>
-          <button
-            onClick={() => {
-              setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
-              setSaveModalOpen(true);
-            }}
-            disabled={!matchResult}
-            className="btn-chunk-2 rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-          >
-            Save
-          </button>
+          <div className="flex items-center gap-2">
+            {wizardStep < 4 && (
+              <button
+                onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
+                disabled={!(isStepValid(wizardStep + 1) || isTestEnv)}
+                className="rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide border border-border text-ink hover:bg-panel-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Next Step →
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
+                setSaveModalOpen(true);
+              }}
+              disabled={!matchResult}
+              className="btn-chunk-2 rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Save
+            </button>
+          </div>
         </div>
 
         {leftPanelCollapsed && (
