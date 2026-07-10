@@ -14,7 +14,7 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey. (completed 2026-07-08)
 - [x] **Phase 7: Symbol-Overlay Canvas & Margin Legends** - Render unique recognizable icons in canvas cells, build a printable margin legend fold layout, and support 3-way viewer switching. (completed 2026-07-09)
 - [x] **Phase 8: Custom Canvas Export & Multiple Vendor Integration** - Add high-resolution PNG downloads for Option C (combined sheet vs separate grid), Dynamic Sizing Advice, and integrate Lumaprints (default) alongside Prodigi/FinerWorks options. (completed 2026-07-09)
-- [ ] **Phase 9: Viewport HUD Overlay & Intuitive Wizard Navigation UX** - Implement a floating viewport Heads-Up Display (HUD) overlay for interactive controls, redesign next/back step navigation buttons, and logically group sidebar settings.
+- [x] **Phase 9: Viewport HUD Overlay & Intuitive Wizard Navigation UX** - Implement a floating viewport Heads-Up Display (HUD) overlay for interactive controls, redesign next/back step navigation buttons, and logically group sidebar settings. (completed 2026-07-10)
 
 ## Phase Details
 
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 6. Commission Workspace & Streamlined Artist UX | 2/2 | Complete    | 2026-07-08 |
 | 7. Symbol-Overlay Canvas & Margin Legends | 2/2 | Complete    | 2026-07-09 |
 | 8. Custom Canvas Export & Multiple Vendor Integration | 2/2 | Complete    | 2026-07-09 |
-| 9. Viewport HUD Overlay & Intuitive Wizard Navigation UX | 0/1 | Pending     | — |
+| 9. Viewport HUD Overlay & Intuitive Wizard Navigation UX | 2/2 | Complete    | 2026-07-10 |
 
 ### Phase 7: Symbol-Overlay Canvas & Margin Legends
 
@@ -223,10 +223,10 @@ Plans:
   2. Next and Back buttons redesigned as a persistent, styled footer bar or intuitive navigation panel showing step progress clearly.
   3. Sidebar configurations are categorized logically (e.g., Image settings vs Color Palette options) with tooltips and clean labels.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 
-- [ ] 09-01-PLAN.md — CanvasViewer Zoom APIs and stylesheet additions for glassmorphic Viewport HUD.
-- [ ] 09-02-PLAN.md — App.tsx UI refactoring: stepper navigation, details accordions, viewport HUD integration, and unit tests alignment.
+- [x] 09-01-PLAN.md — CanvasViewer Zoom APIs and stylesheet additions for glassmorphic Viewport HUD.
+- [x] 09-02-PLAN.md — App.tsx UI refactoring: stepper navigation, details accordions, viewport HUD integration, and unit tests alignment.
 
