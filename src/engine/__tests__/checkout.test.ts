@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { optimizeBags, compileShopifyCartLink, compileCanvasPartnerUrl } from '../checkout';
+import { optimizeBags, compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost, VENDOR_REGISTRY } from '../checkout';
 
 describe('Checkout and Sizing Integration', () => {
   describe('Dye Lot Bag Optimizer', () => {
@@ -105,6 +105,62 @@ describe('Checkout and Sizing Integration', () => {
       );
       
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Canvas Cost Calculator', () => {
+    it('returns exact tier prices when dimensions match exactly (using inches)', () => {
+      // 12x16 inches = 192 sq in
+      expect(calculateCanvasCost(12, 16, 'inch', 'lumaprints')).toBe(6.50);
+      // 16x20 inches = 320 sq in
+      expect(calculateCanvasCost(16, 20, 'inch', 'lumaprints')).toBe(8.50);
+      // 20x28 inches = 560 sq in
+      expect(calculateCanvasCost(20, 28, 'inch', 'lumaprints')).toBe(12.00);
+      // 40x60 inches = 2400 sq in
+      expect(calculateCanvasCost(40, 60, 'inch', 'lumaprints')).toBe(28.00);
+    });
+
+    it('handles exact matches for other vendors', () => {
+      expect(calculateCanvasCost(12, 16, 'inch', 'prodigi')).toBe(9.00);
+      expect(calculateCanvasCost(12, 16, 'inch', 'finerworks')).toBe(11.00);
+    });
+
+    it('interpolates prices linearly between tiers', () => {
+      // Area = 16x16 = 256 sq in
+      // For Lumaprints: between 192 ($6.50) and 320 ($8.50)
+      // (256 - 192) / (320 - 192) = 64 / 128 = 0.5
+      // 6.50 + 0.5 * (8.50 - 6.50) = 7.50
+      expect(calculateCanvasCost(16, 16, 'inch', 'lumaprints')).toBe(7.50);
+
+      // Area = 18x24 = 432 sq in
+      // For Prodigi: between 320 ($11.50) and 560 ($16.00)
+      // Fraction = (432 - 320) / (560 - 320) = 112 / 240 = 0.46667
+      // Price = 11.50 + 0.46667 * (16.00 - 11.50) = 11.50 + 2.10 = 13.60
+      expect(calculateCanvasCost(18, 24, 'inch', 'prodigi')).toBe(13.60);
+    });
+
+    it('falls back to custom square inch rate when area is below minimum tier', () => {
+      // Area = 10x10 = 100 sq in (below 192)
+      // For Lumaprints: 100 * 0.035 = 3.50
+      expect(calculateCanvasCost(10, 10, 'inch', 'lumaprints')).toBe(3.50);
+      // For FinerWorks: 100 * 0.058 = 5.80
+      expect(calculateCanvasCost(10, 10, 'inch', 'finerworks')).toBe(5.80);
+    });
+
+    it('falls back to custom square inch rate when area is above maximum tier', () => {
+      // Area = 50x60 = 3000 sq in (above 2400)
+      // For Prodigi: 3000 * 0.048 = 144.00
+      expect(calculateCanvasCost(50, 60, 'inch', 'prodigi')).toBe(144.00);
+    });
+
+    it('performs unit conversions correctly', () => {
+      // Grid unit: w = cols/10, h = rows/10
+      // 120 x 160 grid = 12 x 16 inches = 192 sq in
+      expect(calculateCanvasCost(120, 160, 'grid', 'lumaprints')).toBe(6.50);
+
+      // Cm unit: w = cm/2.54, h = cm/2.54
+      // 30.48 x 40.64 cm = 12 x 16 inches = 192 sq in
+      expect(calculateCanvasCost(30.48, 40.64, 'cm', 'lumaprints')).toBe(6.50);
     });
   });
 });

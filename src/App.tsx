@@ -356,6 +356,8 @@ export function App() {
   }, [canvasTemplate]);
 
   useEffect(() => {
+    if (!image && !activeProjectId) return;
+
     const w = parseFloat(widthInput);
     const h = parseFloat(heightInput);
     if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
@@ -366,7 +368,7 @@ export function App() {
         setCanvasShippingEstimate(config.baseShipping);
       }
     }
-  }, [widthInput, heightInput, unit, selectedVendor]);
+  }, [widthInput, heightInput, unit, selectedVendor, image, activeProjectId]);
 
   const sizingAdviceData = useMemo(() => {
     const w = parseFloat(widthInput) || 0;

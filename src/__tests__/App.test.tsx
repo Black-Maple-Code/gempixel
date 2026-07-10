@@ -835,8 +835,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       uploadInput.dispatchEvent(new Event('change', { bubbles: true }));
       await new Promise(r => setTimeout(r, 15));
 
-      // Check that Recommended PrintKK Sizes heading exists
-      expect(container.textContent).toContain('Recommended PrintKK Sizes');
+      // Check that Recommended Canvas Sizes heading exists
+      expect(container.textContent).toContain('Recommended Canvas Sizes');
 
       // Top recommendation should be "30 x 40 cm" with "100% Match"
       expect(container.textContent).toContain('30 x 40 cm');
