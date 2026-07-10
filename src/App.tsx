@@ -2996,24 +2996,26 @@ export function App() {
         </div>
       )}
       {/* Printable checklist container (only visible on print via media query) */}
-      <div className="legend-checklist-print-container hidden">
-        <h2 className="text-xl font-bold mb-4 font-sans text-black border-b pb-2">Color Checklist Legend</h2>
-        <div className="print-checklist-grid">
-          {activeCandidates.map(c => {
-            const symbol = symbolMap[c.dmc] || '';
-            return (
-              <div key={c.dmc} className="print-checklist-item">
-                <input type="checkbox" className="mr-2 h-4 w-4 border-gray-300 rounded cursor-pointer" readOnly />
-                <span className="font-mono text-xs w-6 text-center border border-slate-350 mr-2 rounded bg-slate-100 py-0.5 text-black font-bold">
-                  {symbol}
-                </span>
-                <div className="w-4 h-4 border border-black mr-2 shrink-0" style={{ backgroundColor: c.hex }} />
-                <span className="font-mono text-xs font-semibold text-black">{c.dmc}</span>
-              </div>
-            );
-          })}
+      {wizardStep === 3 && matchResult && (
+        <div className="legend-checklist-print-container hidden">
+          <h2 className="text-xl font-bold mb-4 font-sans text-black border-b pb-2">Color Checklist Legend</h2>
+          <div className="print-checklist-grid">
+            {activeCandidates.map(c => {
+              const symbol = symbolMap[c.dmc] || '';
+              return (
+                <div key={c.dmc} className="print-checklist-item">
+                  <input type="checkbox" className="mr-2 h-4 w-4 border-gray-300 rounded cursor-pointer" readOnly />
+                  <span className="font-mono text-xs w-6 text-center border border-slate-350 mr-2 rounded bg-slate-100 py-0.5 text-black font-bold">
+                    {symbol}
+                  </span>
+                  <div className="w-4 h-4 border border-black mr-2 shrink-0" style={{ backgroundColor: c.hex }} />
+                  <span className="font-mono text-xs font-semibold text-black">{c.dmc}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
