@@ -141,6 +141,62 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Specific styling overrides for print-only-legend-mode */
+  @page portrait-layout {
+    size: portrait;
+    margin: 10mm;
+  }
+
+  body.print-only-legend-mode {
+    page: portrait-layout;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide regular UI elements and canvas grid entirely */
+  body.print-only-legend-mode .no-print,
+  body.print-only-legend-mode nav,
+  body.print-only-legend-mode aside,
+  body.print-only-legend-mode main,
+  body.print-only-legend-mode footer,
+  body.print-only-legend-mode .print-canvas-sheet,
+  body.print-only-legend-mode #app-root,
+  body.print-only-legend-mode .min-h-screen {
+    display: none !important;
+  }
+
+  /* Expose the Print Checklist Container */
+  body.print-only-legend-mode .legend-checklist-print-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    box-sizing: border-box;
+  }
+
+  .legend-checklist-print-container * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Grid style list for checklist */
+  .print-checklist-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important; /* 3 columns of legends per sheet row */
+    gap: 12px !important;
+  }
+
+  .print-checklist-item {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-bottom: 1px solid #E2E8F0;
+    break-inside: avoid; /* Prevents splitting a single checklist item across pages */
+  }
 }
 
 @media (max-width: 767.98px) {
