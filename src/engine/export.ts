@@ -78,21 +78,28 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
     leftLegendColors,
     rightLegendColors,
     cellScale = 20,
-    marginWidth = 140
+    marginWidth = 200
   } = options;
 
   const gridWidth = cols * cellScale;
   const gridHeight = rows * cellScale;
 
-  // Determine required vertical legend spacing
-  const itemHeight = 20;
+  // Combine both legend arrays into a single list
+  const allLegendColors = [...leftLegendColors, ...rightLegendColors];
+  const totalColors = allLegendColors.length;
+
+  // Determine number of columns (2 or 3)
+  const numCols = totalColors > 40 ? 3 : 2;
+  const itemsPerCol = Math.ceil(totalColors / numCols);
+
+  const itemHeight = 18;
   const topPadding = 15;
-  const maxLegendLen = Math.max(leftLegendColors.length, rightLegendColors.length);
-  const legendRequiredHeight = maxLegendLen * itemHeight + topPadding * 2;
+  const legendRequiredHeight = itemsPerCol * itemHeight + topPadding * 2;
 
   // Apply maximum buffer to avoid legend cropping
   const canvasHeight = Math.max(gridHeight, legendRequiredHeight);
-  const canvasWidth = gridWidth + marginWidth * 2;
+  // Width is grid + right margin only
+  const canvasWidth = gridWidth + marginWidth;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -108,7 +115,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   // Center canvas grid vertically
   const gridOffsetY = Math.floor((canvasHeight - gridHeight) / 2);
 
-  // 1. Render Core Grid Cells
+  // 1. Render Core Grid Cells at offset X = 0 (far left)
   ctx.imageSmoothingEnabled = false;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -116,7 +123,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
       const dmcCode = gridData[idx];
       const color = colorMap.get(dmcCode) || '#FFFFFF';
 
-      const x = marginWidth + c * cellScale;
+      const x = c * cellScale;
       const y = gridOffsetY + r * cellScale;
 
       ctx.fillStyle = color;
@@ -133,53 +140,47 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
     }
   }
 
-  // Helper routine to render margin listing
-  const drawLegendColumn = (items: typeof leftLegendColors, startX: number) => {
-    ctx.textBaseline = 'middle';
-    items.forEach((item, i) => {
-      const y = topPadding + i * itemHeight + itemHeight / 2;
-      const symbol = symbolMap[item.dmc] || '';
+  // 2. Draw Margins (split into columns on the right side)
+  ctx.textBaseline = 'middle';
+  const startX = gridWidth;
+  const colSpacing = Math.floor((marginWidth - 25) / numCols); // distribute columns
 
-      // Draw Swatch Border & Color Backing
-      ctx.fillStyle = item.hex;
-      ctx.fillRect(startX + 10, Math.round(y - 6), 12, 12);
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(startX + 10, Math.round(y - 6), 12, 12);
+  allLegendColors.forEach((item, index) => {
+    const colIdx = Math.floor(index / itemsPerCol);
+    const rowIdx = index % itemsPerCol;
 
-      // Center Symbol inside swatch
-      ctx.fillStyle = getContrastColor(item.hex);
-      ctx.font = 'bold 9px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(symbol, startX + 16, y);
+    const x = startX + 10 + colIdx * colSpacing;
+    const y = gridOffsetY + topPadding + rowIdx * itemHeight + itemHeight / 2;
+    const symbol = symbolMap[item.dmc] || '';
 
-      // Render DMC color label next to swatch
-      ctx.fillStyle = '#000000';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(item.dmc, startX + 28, y);
-    });
-  };
+    // Draw Swatch Border & Color Backing
+    ctx.fillStyle = item.hex;
+    ctx.fillRect(x, Math.round(y - 5), 10, 10);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, Math.round(y - 5), 10, 10);
 
-  // 2. Draw Margins
-  drawLegendColumn(leftLegendColors, 0);
-  drawLegendColumn(rightLegendColors, marginWidth + gridWidth);
+    // Center Symbol inside swatch
+    ctx.fillStyle = getContrastColor(item.hex);
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(symbol, x + 5, y);
 
-  // 3. Draw Vertical Folding dashed guidelines
+    // Render DMC color label next to swatch
+    ctx.fillStyle = '#000000';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.dmc, x + 18, y);
+  });
+
+  // 3. Draw Vertical Folding dashed guideline on the right of the grid
   ctx.strokeStyle = '#4A5568';
   ctx.lineWidth = 1.5;
   ctx.setLineDash([6, 6]);
 
-  // Left Guide
   ctx.beginPath();
-  ctx.moveTo(marginWidth, 0);
-  ctx.lineTo(marginWidth, canvasHeight);
-  ctx.stroke();
-
-  // Right Guide
-  ctx.beginPath();
-  ctx.moveTo(marginWidth + gridWidth, 0);
-  ctx.lineTo(marginWidth + gridWidth, canvasHeight);
+  ctx.moveTo(gridWidth, 0);
+  ctx.lineTo(gridWidth, canvasHeight);
   ctx.stroke();
 
   // Reset dashboard configurations

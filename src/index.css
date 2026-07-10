@@ -157,6 +157,18 @@
     overflow: visible !important;
   }
 
+  /* Force root Preact wrapper to render with a white background and black text on print */
+  body.print-only-legend-mode #app,
+  body.print-only-legend-mode #app > div {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    display: block !important;
+    height: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
   /* Hide regular UI elements and canvas grid entirely */
   body.print-only-legend-mode .no-print,
   body.print-only-legend-mode nav,
@@ -164,7 +176,6 @@
   body.print-only-legend-mode main,
   body.print-only-legend-mode footer,
   body.print-only-legend-mode .print-canvas-sheet,
-  body.print-only-legend-mode #app-root,
   body.print-only-legend-mode .min-h-screen {
     display: none !important;
   }
@@ -174,8 +185,10 @@
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 10mm !important;
+    padding: 2mm !important;
     box-sizing: border-box;
+    background: #FFFFFF !important;
+    color: #000000 !important;
   }
 
   .legend-checklist-print-container * {
@@ -187,14 +200,14 @@
   .print-checklist-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important; /* 3 columns of legends per sheet row */
-    gap: 12px !important;
+    gap: 4px 16px !important;
   }
 
   .print-checklist-item {
     display: flex;
     align-items: center;
-    padding: 4px;
-    border-bottom: 1px solid #E2E8F0;
+    padding: 2px 0 !important;
+    border-bottom: 1px dashed #CBD5E1 !important;
     break-inside: avoid; /* Prevents splitting a single checklist item across pages */
   }
 }

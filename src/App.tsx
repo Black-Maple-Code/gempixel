@@ -1081,13 +1081,13 @@ export function App() {
         leftLegendColors,
         rightLegendColors,
         cellScale: 20,
-        marginWidth: 140
+        marginWidth: 200
       });
       
       const baseName = saveProjectName.trim() || 'gempixel-layout';
-      await triggerCanvasDownload(canvas, `${baseName}-combined-sheet.png`);
+      await triggerCanvasDownload(canvas, `${baseName}-grid-legend.png`);
     } catch (err) {
-      console.error('Failed to download combined canvas sheet:', err);
+      console.error('Failed to download canvas grid + legend:', err);
     }
   };
 
@@ -2036,7 +2036,7 @@ export function App() {
                 disabled={!matchResult}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
               >
-                <span>📥 Download Combined Canvas Sheet (PNG)</span>
+                <span>📥 Download Canvas Grid + Legend (PNG)</span>
               </button>
 
               <button
@@ -2998,7 +2998,7 @@ export function App() {
       {/* Printable checklist container (only visible on print via media query) */}
       {wizardStep === 3 && matchResult && (
         <div className="legend-checklist-print-container hidden">
-          <h2 className="text-xl font-bold mb-4 font-sans text-black border-b pb-2">Color Checklist Legend</h2>
+          <h2 className="text-sm font-bold mb-2 uppercase tracking-wider text-black border-b pb-1">Color Checklist Legend</h2>
           <div className="print-checklist-grid">
             {activeCandidates.map(c => {
               const symbol = symbolMap[c.dmc] || '';
