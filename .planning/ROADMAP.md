@@ -12,7 +12,7 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 4: Supply Planning, Customization & Exports** - Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF. (completed 2026-07-07)
 - [x] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters. (completed 2026-07-07)
 - [x] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey. (completed 2026-07-08)
-- [ ] **Phase 7: Symbol-Overlay Canvas & Margin Legends** - Render unique recognizable icons in canvas cells, build a printable margin legend fold layout, and support 3-way viewer switching.
+- [x] **Phase 7: Symbol-Overlay Canvas & Margin Legends** - Render unique recognizable icons in canvas cells, build a printable margin legend fold layout, and support 3-way viewer switching. (completed 2026-07-09)
 
 ## Phase Details
 
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Supply Planning, Customization & Exports | 3/3 | Complete    | 2026-07-07 |
 | 5. Supply Partnerships & Checkout Integration | 2/2 | Complete    | 2026-07-07 |
 | 6. Commission Workspace & Streamlined Artist UX | 2/2 | Complete    | 2026-07-08 |
-| 7. Symbol-Overlay Canvas & Margin Legends | 0/2 | Pending     | — |
+| 7. Symbol-Overlay Canvas & Margin Legends | 2/2 | Complete    | 2026-07-09 |
 
 ### Phase 7: Symbol-Overlay Canvas & Margin Legends
 
@@ -180,9 +180,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
   3. Seamless 3-way viewport switcher allows instant toggling between "Grid Colors", "Grid + Symbols", and "Original Photo" in <1ms without Preact DOM re-renders.
   4. Printable canvas layout forces symbol view and positions color checklist legend in margins outside dashed fold boundaries.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 
-- [ ] 07-01-PLAN.md — Core dynamic symbol database and luminance-based canvas text overlay.
-- [ ] 07-02-PLAN.md — 3-way viewport switcher and printable margin legend fold layout.
+- [x] 07-01-PLAN.md — Core dynamic symbol database and luminance-based canvas text overlay.
+- [x] 07-02-PLAN.md — 3-way viewport switcher and printable margin legend fold layout.
