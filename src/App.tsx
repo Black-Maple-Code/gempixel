@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
-import { substituteLowCountColors } from './engine/color';
-import { MatcherClient } from './engine/worker-client';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
-import { boxSampleImage } from './engine/ingest';
 import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
-import { generateSymbolAllocation } from './engine/symbols';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
+import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 
 
 export const STANDARD_SIZES = [
@@ -117,9 +114,8 @@ export function App() {
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
   const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
   
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [rawMatchResult, setRawMatchResult] = useState<{ matches: string[]; counts: Record<string, number> } | null>(null);
+  // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
+  // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
   const [enableSubstitution, setEnableSubstitution] = useState<boolean>(() => {
     return localStorage.getItem('gempixel_enable_substitution') === 'true';
   });
@@ -265,12 +261,12 @@ export function App() {
       restoredMatches.forEach(code => {
         counts[code] = (counts[code] || 0) + 1;
       });
-      setRawMatchResult({
+      restore({
         matches: restoredMatches,
         counts
       });
     } else {
-      setRawMatchResult(null);
+      restore(null);
     }
   };
 
@@ -300,7 +296,7 @@ export function App() {
       1000: 1.80,
       2000: 3.20
     });
-    setRawMatchResult(null);
+    restore(null);
     setWizardStep(1);
   };
 
@@ -365,7 +361,6 @@ export function App() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<CanvasViewer | null>(null);
-  const clientRef = useRef<MatcherClient | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const lastFitImageRef = useRef<HTMLImageElement | null>(null);
 
@@ -383,28 +378,14 @@ export function App() {
   // dimension-sync effect's double-source-of-truth fragility is addressed separately.
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
-  const matchResult = useMemo(() => {
-    if (!rawMatchResult) return null;
-    if (!enableSubstitution) return rawMatchResult;
-    const sub = substituteLowCountColors(
-      rawMatchResult.matches,
-      rawMatchResult.counts,
-      activeCandidates,
-      substitutionThreshold
-    );
-    return {
-      matches: sub.codes,
-      counts: sub.counts
-    };
-  }, [rawMatchResult, enableSubstitution, substitutionThreshold, activeCandidates]);
-
-  const symbolMap = useMemo(() => {
-    if (!matchResult) return {};
-    return generateSymbolAllocation(
-      matchResult.matches,
-      activeCandidates.map(c => c.dmc)
-    );
-  }, [matchResult, activeCandidates]);
+  const { matchResult, symbolMap, loading, progress, restore } = useDiamondArtMatch({
+    image,
+    cols,
+    rows,
+    activeCandidates,
+    enableSubstitution,
+    substitutionThreshold,
+  });
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
     const mid = Math.ceil(activeCandidates.length / 2);
@@ -419,13 +400,9 @@ export function App() {
     projectStore.recents.save(recentImages);
   }, [recentImages]);
 
-  // Initialize MatcherClient
+  // Tear down the canvas viewer on unmount (worker teardown lives in useDiamondArtMatch).
   useEffect(() => {
-    // Instantiate client with Vite worker URL syntax
-    clientRef.current = new MatcherClient(new URL('./engine/matcher.worker.ts', import.meta.url));
-
     return () => {
-      clientRef.current?.terminate();
       viewerRef.current?.destroy();
       viewerRef.current = null;
     };
@@ -653,62 +630,6 @@ export function App() {
     }
   };
 
-  // Helper to extract pixels from image
-  const getImagePixels = (img: HTMLImageElement): { pixels: Uint8ClampedArray; width: number; height: number } => {
-    const canvas = document.createElement('canvas');
-    let w = img.naturalWidth || img.width;
-    let h = img.naturalHeight || img.height;
-
-    // Performance optimization: downscale huge images to a maximum of 2000px before pixel processing
-    const maxDimension = 2000;
-    if (w > maxDimension || h > maxDimension) {
-      const scale = maxDimension / Math.max(w, h);
-      w = Math.round(w * scale);
-      h = Math.round(h * scale);
-    }
-
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Failed to get 2d context for image pixels');
-    ctx.drawImage(img, 0, 0, w, h);
-    const imageData = ctx.getImageData(0, 0, w, h);
-    return {
-      pixels: imageData.data,
-      width: w,
-      height: h
-    };
-  };
-
-
-
-  // Trigger match recalculation when image, dimensions, or candidates change
-  useEffect(() => {
-    if (!image) return;
-    if (activeCandidates.length === 0) return;
-
-    setLoading(true);
-    setProgress(0);
-
-    try {
-      const { pixels, width: srcW, height: srcH } = getImagePixels(image);
-      const downsampled = boxSampleImage(pixels, srcW, srcH, cols, rows);
-
-      clientRef.current?.match(
-        downsampled,
-        activeCandidates,
-        (pct) => setProgress(pct),
-        (result) => {
-          setLoading(false);
-          setRawMatchResult(result);
-        },
-        cols
-      );
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  }, [image, cols, rows, selectedBaseKit, excludedColors]);
 
   // Toggle exclusion for a color
   const toggleColorExclusion = (dmc: string) => {
@@ -1130,7 +1051,7 @@ export function App() {
                             setProjectsRegistry(projectStore.list());
                             if (activeProjectId === project.id) {
                               setActiveProjectId(null);
-                              setRawMatchResult(null);
+                              restore(null);
                             }
                           }
                         }}
