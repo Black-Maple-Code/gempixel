@@ -5,7 +5,7 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
-import { compileShopifyCartLink } from './engine/checkout';
+import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
 import { generateSymbolAllocation } from './engine/symbols';
 
 
@@ -115,15 +115,15 @@ export function deleteProjectFromStorage(id: string) {
 
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
-  // PrintKK Standard Sizes (12x16, 16x20, 20x28, 40x60 in)
-  { name: 'PrintKK 12 x 16 in (30 x 40 cm)', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
-  { name: 'PrintKK 16 x 12 in (40 x 30 cm)', value: '40x30-cm', width: 40, height: 30, unit: 'cm' },
-  { name: 'PrintKK 16 x 20 in (40 x 50 cm)', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
-  { name: 'PrintKK 20 x 16 in (50 x 40 cm)', value: '50x40-cm', width: 50, height: 40, unit: 'cm' },
-  { name: 'PrintKK 20 x 28 in (50 x 70 cm)', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
-  { name: 'PrintKK 28 x 20 in (70 x 50 cm)', value: '70x50-cm', width: 70, height: 50, unit: 'cm' },
-  { name: 'PrintKK 40 x 60 in (100 x 150 cm)', value: '100x150-cm', width: 100, height: 150, unit: 'cm' },
-  { name: 'PrintKK 60 x 40 in (150 x 100 cm)', value: '150x100-cm', width: 150, height: 100, unit: 'cm' },
+  // Standard Sizes (12x16, 16x20, 20x28, 40x60 in)
+  { name: 'Canvas 12 x 16 in (30 x 40 cm)', value: '30x40-cm', width: 30, height: 40, unit: 'cm' },
+  { name: 'Canvas 16 x 12 in (40 x 30 cm)', value: '40x30-cm', width: 40, height: 30, unit: 'cm' },
+  { name: 'Canvas 16 x 20 in (40 x 50 cm)', value: '40x50-cm', width: 40, height: 50, unit: 'cm' },
+  { name: 'Canvas 20 x 16 in (50 x 40 cm)', value: '50x40-cm', width: 50, height: 40, unit: 'cm' },
+  { name: 'Canvas 20 x 28 in (50 x 70 cm)', value: '50x70-cm', width: 50, height: 70, unit: 'cm' },
+  { name: 'Canvas 28 x 20 in (70 x 50 cm)', value: '70x50-cm', width: 70, height: 50, unit: 'cm' },
+  { name: 'Canvas 40 x 60 in (100 x 150 cm)', value: '100x150-cm', width: 100, height: 150, unit: 'cm' },
+  { name: 'Canvas 60 x 40 in (150 x 100 cm)', value: '150x100-cm', width: 150, height: 100, unit: 'cm' },
   
   // Custom grids
   { name: '40 x 30 grid', value: '40x30-grid', width: 40, height: 30, unit: 'grid' },
@@ -131,77 +131,6 @@ export const STANDARD_SIZES = [
   { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
   { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
 ];
-
-export const PRINTKK_CANVAS_PRICES: Record<string, {
-  label: string;
-  ratio: string;
-  productPriceUSD: number;
-  productUrl: string;
-}> = {
-  '3:4': {
-    label: '12" × 16"',
-    ratio: '3:4',
-    productPriceUSD: 2.87,
-    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting',
-  },
-  '4:5': {
-    label: '16" × 20"',
-    ratio: '4:5',
-    productPriceUSD: 4.42,
-    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-four-five',
-  },
-  '5:7': {
-    label: '20" × 28"',
-    ratio: '5:7',
-    productPriceUSD: 7.74,
-    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-five-seven',
-  },
-  '2:3': {
-    label: '40" × 60"',
-    ratio: '2:3',
-    productPriceUSD: 24.76,
-    productUrl: 'https://www.printkk.com/product/info/diy-diamond-painting-two-three',
-  },
-};
-
-export function getMatchingPrintKKPrice(width: number, height: number, unit: string): { label: string; ratio: string; productPriceUSD: number; productUrl: string } | null {
-  if (unit === 'grid') return null;
-  
-  let w = width;
-  let h = height;
-  if (unit === 'inch') {
-    w = width * 2.54;
-    h = height * 2.54;
-  }
-
-  const smaller = Math.min(w, h);
-  const larger = Math.max(w, h);
-  if (larger === 0) return null;
-  const ratio = smaller / larger;
-
-  const baseRatios = [
-    { key: '3:4', val: 3/4 },
-    { key: '4:5', val: 4/5 },
-    { key: '5:7', val: 5/7 },
-    { key: '2:3', val: 2/3 }
-  ];
-
-  let best = baseRatios[0];
-  let minDiff = Math.abs(ratio - best.val);
-  for (let i = 1; i < baseRatios.length; i++) {
-    const diff = Math.abs(ratio - baseRatios[i].val);
-    if (diff < minDiff) {
-      minDiff = diff;
-      best = baseRatios[i];
-    }
-  }
-
-  if (minDiff / ratio <= 0.03) {
-    return PRINTKK_CANVAS_PRICES[best.key];
-  }
-
-  return null;
-}
 
 
 export function calculateSafetyPurchase(exactCount: number, bagSize: number = 200): { safety: number; packets: number; purchase: number } {
@@ -383,6 +312,7 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('gempixel_substitution_threshold', substitutionThreshold.toString());
   }, [substitutionThreshold]);
+  const [selectedVendor, setSelectedVendor] = useState<'lumaprints' | 'prodigi' | 'finerworks'>('lumaprints');
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
@@ -429,11 +359,46 @@ export function App() {
     const w = parseFloat(widthInput);
     const h = parseFloat(heightInput);
     if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
-      const matched = getMatchingPrintKKPrice(w, h, unit);
-      if (matched) {
-        setCanvasBaseCost(matched.productPriceUSD);
+      const cost = calculateCanvasCost(w, h, unit, selectedVendor);
+      setCanvasBaseCost(cost);
+      const config = VENDOR_REGISTRY[selectedVendor];
+      if (config) {
+        setCanvasShippingEstimate(config.baseShipping);
       }
     }
+  }, [widthInput, heightInput, unit, selectedVendor]);
+
+  const sizingAdviceData = useMemo(() => {
+    const w = parseFloat(widthInput) || 0;
+    const h = parseFloat(heightInput) || 0;
+    
+    let X = 0;
+    let margin = 0;
+    let unitLabel = '';
+    
+    if (unit === 'grid') {
+      X = 14;
+      margin = 7;
+      unitLabel = 'cells';
+    } else if (unit === 'inch') {
+      X = 1.4;
+      margin = 0.7;
+      unitLabel = 'inches';
+    } else { // cm
+      X = 3.56;
+      margin = 1.78;
+      unitLabel = 'cm';
+    }
+
+    const combinedWidth = Math.round((w + X) * 100) / 100;
+    
+    return {
+      width: w.toString(),
+      height: h.toString(),
+      combinedWidth: combinedWidth.toString(),
+      margin: margin.toString(),
+      unitLabel
+    };
   }, [widthInput, heightInput, unit]);
 
   const loadProject = (id: string) => {
@@ -1460,7 +1425,7 @@ export function App() {
                 >
                   <div className="flex items-center gap-1.5">
                     <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recsOpen ? 'rotate-90' : ''}`}>▶</span>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Recommended PrintKK Sizes</span>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Recommended Canvas Sizes</span>
                   </div>
                 </button>
                 {recsOpen && (
@@ -1794,6 +1759,21 @@ export function App() {
 
         {wizardStep === 3 && (
           <div className="flex flex-col gap-4">
+            {/* Canvas Print Partner Dropdown (V-05) */}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="canvas-print-partner" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canvas Print Partner</label>
+              <select
+                id="canvas-print-partner"
+                value={selectedVendor}
+                onChange={(e) => setSelectedVendor((e.target as HTMLSelectElement).value as any)}
+                className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[32px]"
+              >
+                <option value="lumaprints">Lumaprints (Default)</option>
+                <option value="prodigi">Prodigi</option>
+                <option value="finerworks">FinerWorks</option>
+              </select>
+            </div>
+
             {/* Canvas Base Price ($) and shipping estimate */}
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
@@ -1949,6 +1929,28 @@ export function App() {
               </div>
             </div>
 
+            {/* Sizing Advice Helper Card (V-06) */}
+            <div className="border border-indigo-500/30 p-3 rounded-lg bg-indigo-950/20 flex flex-col gap-2 no-print">
+              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                <span>ℹ️ Sizing Advice</span>
+              </div>
+              <div className="flex flex-col gap-2.5 text-xs text-slate-300 leading-relaxed">
+                <div>
+                  <span className="font-semibold text-indigo-300 block mb-0.5">Combined Layout view:</span>
+                  <span>
+                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. To preserve the legend on the side margins, order a rolled canvas print of <strong>{sizingAdviceData.combinedWidth}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}</strong> from your print shop. The side legends occupy {sizingAdviceData.margin} {sizingAdviceData.unitLabel} on each side.
+                  </span>
+                </div>
+                <div className="border-t border-slate-800/80 my-1.5"></div>
+                <div>
+                  <span className="font-semibold text-indigo-300 block mb-0.5">Separate Layout view:</span>
+                  <span>
+                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. Order an exact <strong>{sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}</strong> borderless rolled canvas. Print the legend separately on standard paper.
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Order & Print Actions */}
             <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order & Actions</span>
@@ -1960,21 +1962,6 @@ export function App() {
               >
                 <span>🛒 Order Drills from Diamond Drills USA</span>
               </button>
-
-              {(() => {
-                const matched = getMatchingPrintKKPrice(parseFloat(widthInput), parseFloat(heightInput), unit);
-                const printKKUrl = matched ? matched.productUrl : 'https://www.printkk.com/product/info/diy-diamond-painting';
-                return (
-                  <a
-                    href={printKKUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-slate-900 hover:bg-slate-850 text-indigo-400 hover:text-indigo-300 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border border-indigo-500/80 cursor-pointer active:scale-98 text-center block shadow-lg shadow-indigo-500/5"
-                  >
-                    <span>🖼️ Order Canvas from PrintKK</span>
-                  </a>
-                );
-              })()}
 
               <button
                 onClick={printReport}
