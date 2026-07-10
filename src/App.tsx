@@ -599,6 +599,22 @@ export function App() {
     };
   }, [rawMatchResult, enableSubstitution, substitutionThreshold, activeCandidates]);
 
+  const symbolMap = useMemo(() => {
+    if (!matchResult) return {};
+    return generateSymbolAllocation(
+      matchResult.matches,
+      activeCandidates.map(c => c.dmc)
+    );
+  }, [matchResult, activeCandidates]);
+
+  const { leftLegendColors, rightLegendColors } = useMemo(() => {
+    const mid = Math.ceil(activeCandidates.length / 2);
+    return {
+      leftLegendColors: activeCandidates.slice(0, mid),
+      rightLegendColors: activeCandidates.slice(mid)
+    };
+  }, [activeCandidates]);
+
   // Persist recent image list to localStorage, popping oldest if quota exceeded
   useEffect(() => {
     let list = [...recentImages];
@@ -655,11 +671,6 @@ export function App() {
       viewerRef.current.setHighlightedColor(highlightedColor);
       viewerRef.current.setDrillType(drillType);
       viewerRef.current.setViewMode(viewportMode);
-
-      const symbolMap = generateSymbolAllocation(
-        matchResult.matches,
-        activeCandidates.map(c => c.dmc)
-      );
       viewerRef.current.setSymbolMap(symbolMap);
 
       // Automatically fit to container by default on first load of a new image or when switching projects
@@ -669,7 +680,7 @@ export function App() {
         lastFitProjectRef.current = activeProjectId;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode, symbolMap]);
 
   const savedViewportModeRef = useRef<'grid' | 'symbols' | 'reference'>('grid');
 
@@ -2299,15 +2310,47 @@ export function App() {
             </div>
           )}
           {(image || matchResult) ? (
-            <>
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={600}
-                className={`shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none ${
-                  (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
-                }`}
-              />
+            <div className="print-canvas-sheet w-full h-full flex items-center justify-center print:grid print:grid-cols-[140px_1fr_140px] print:gap-2">
+              {/* Left print legend */}
+              <div className="print-legend print-legend-left hidden print:flex flex-col p-1 text-[8px] font-mono overflow-hidden border-r-2 border-dashed border-slate-500 pr-2">
+                {leftLegendColors.map(c => {
+                  const symbol = symbolMap[c.dmc] || '';
+                  return (
+                    <div key={c.dmc} className="print-legend-item flex items-center mb-1 pb-1 border-b border-slate-200">
+                      <span className="print-legend-symbol text-[10px] font-bold w-[18px] text-center mr-1">{symbol}</span>
+                      <div className="print-legend-swatch w-3 h-3 border border-black mr-2 print-color-adjust-exact" style={{ backgroundColor: c.hex }} />
+                      <span className="print-legend-label flex-1">{c.dmc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Center canvas wrapper */}
+              <div className="print-canvas-wrapper flex items-center justify-center">
+                <canvas
+                  ref={canvasRef}
+                  width={800}
+                  height={600}
+                  className={`shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none ${
+                    (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
+                  }`}
+                />
+              </div>
+
+              {/* Right print legend */}
+              <div className="print-legend print-legend-right hidden print:flex flex-col p-1 text-[8px] font-mono overflow-hidden border-l-2 border-dashed border-slate-500 pl-2">
+                {rightLegendColors.map(c => {
+                  const symbol = symbolMap[c.dmc] || '';
+                  return (
+                    <div key={c.dmc} className="print-legend-item flex items-center mb-1 pb-1 border-b border-slate-200">
+                      <span className="print-legend-symbol text-[10px] font-bold w-[18px] text-center mr-1">{symbol}</span>
+                      <div className="print-legend-swatch w-3 h-3 border border-black mr-2 print-color-adjust-exact" style={{ backgroundColor: c.hex }} />
+                      <span className="print-legend-label flex-1">{c.dmc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
               {image && (
                 <div className={`relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print ${
                   viewportMode === 'reference' ? '' : 'hidden'
@@ -2320,7 +2363,7 @@ export function App() {
                   <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
                 </div>
               )}
-            </>
+            </div>
           ) : (
             <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
               <span className="text-lg font-bold text-slate-350">No Image Loaded</span>
