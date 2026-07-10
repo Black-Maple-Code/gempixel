@@ -7,6 +7,7 @@ import { boxSampleImage } from './engine/ingest';
 import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
 import { generateSymbolAllocation } from './engine/symbols';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
+import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 
 
 export interface ProjectSummary {
@@ -138,79 +139,6 @@ export function calculateSafetyPurchase(exactCount: number, bagSize: number = 20
   const packets = Math.ceil(safety / bagSize);
   const purchase = packets * bagSize;
   return { safety, packets, purchase };
-}
-
-export function getDefaultPacketCost(type: 'standard' | 'ab' | 'glow' | 'crystal', bagSize: number): number {
-  if (bagSize === 200) {
-    if (type === 'standard') return 0.25;
-    if (type === 'ab') return 0.35;
-    if (type === 'glow') return 0.45;
-    return 0.50; // crystal
-  }
-  if (bagSize === 1000) {
-    if (type === 'standard') return 0.80;
-    if (type === 'ab') return 1.10;
-    if (type === 'glow') return 1.40;
-    return 1.60;
-  }
-  if (bagSize === 2000) {
-    if (type === 'standard') return 1.40;
-    if (type === 'ab') return 1.90;
-    if (type === 'glow') return 2.40;
-    return 2.70;
-  }
-  // 5000 drills bulk bag
-  if (type === 'standard') return 3.00;
-  if (type === 'ab') return 4.00;
-  if (type === 'glow') return 5.00;
-  return 6.00;
-}
-
-export function optimizeBags(
-  target: number,
-  prices: { 200: number; 500: number; 1000: number; 2000: number }
-): { bags: { 200: number; 500: number; 1000: number; 2000: number }; cost: number; totalDrills: number } {
-  if (target <= 0) {
-    return { bags: { 200: 0, 500: 0, 1000: 0, 2000: 0 }, cost: 0, totalDrills: 0 };
-  }
-
-  const priceMap = {
-    2000: prices[2000],
-    1000: prices[1000],
-    500: prices[500],
-    200: prices[200]
-  };
-
-  let minCost = Infinity;
-  let bestBags = { 200: 0, 500: 0, 1000: 0, 2000: 0 };
-  let bestDrills = 0;
-
-  const max2000 = Math.ceil(target / 2000);
-  for (let n2000 = 0; n2000 <= max2000; n2000++) {
-    const remAfter2000 = Math.max(0, target - n2000 * 2000);
-    const max1000 = Math.ceil(remAfter2000 / 1000);
-    for (let n1000 = 0; n1000 <= max1000; n1000++) {
-      const remAfter1000 = Math.max(0, remAfter2000 - n1000 * 1000);
-      const max500 = Math.ceil(remAfter1000 / 500);
-      for (let n500 = 0; n500 <= max500; n500++) {
-        const remAfter500 = Math.max(0, remAfter1000 - n500 * 500);
-        const n200 = Math.ceil(remAfter500 / 200);
-
-        const totalDrills = n2000 * 2000 + n1000 * 1000 + n500 * 500 + n200 * 200;
-        if (totalDrills >= target) {
-          const cost = n2000 * priceMap[2000] + n1000 * priceMap[1000] + n500 * priceMap[500] + n200 * priceMap[200];
-          // Use a small epsilon to avoid precision issues
-          if (cost < minCost - 0.0001) {
-            minCost = cost;
-            bestBags = { 200: n200, 500: n500, 1000: n1000, 2000: n2000 };
-            bestDrills = totalDrills;
-          }
-        }
-      }
-    }
-  }
-
-  return { bags: bestBags, cost: Math.round(minCost * 100) / 100, totalDrills: bestDrills };
 }
 
 export function hexToHue(hex: string): number {
@@ -726,7 +654,7 @@ export function App() {
 
   // Synchronize drillPacketCost defaults and priceDb presets when drillType changes
   useEffect(() => {
-    setDrillPacketCost(getDefaultPacketCost(drillType, drillBagSize));
+    setDrillPacketCost(defaultPacketCost(drillType, drillBagSize));
     if (drillType === 'standard') {
       setPriceDb({ 200: 0.60, 500: 1.10, 1000: 1.80, 2000: 3.20 });
     } else if (drillType === 'ab') {
@@ -1135,33 +1063,25 @@ export function App() {
       const hex = colorInfo?.hex || '#2D3748';
 
       if (optimizeBagsCost) {
-        // Find safety count first (+10%)
+        // +10% safety drill count (unchanged column semantics).
         const safety = Math.ceil(Math.round(count * 110) / 100);
-        
-        // Run optimized combinations for both exact and safety targets
-        const optExact = optimizeBags(count, priceDb);
-        const optSafety = optimizeBags(safety, priceDb);
 
-        // Format bags text (e.g. 1×2000, 1×500)
-        const parts: string[] = [];
-        if (optSafety.bags[2000] > 0) parts.push(`${optSafety.bags[2000]}×2000`);
-        if (optSafety.bags[1000] > 0) parts.push(`${optSafety.bags[1000]}×1000`);
-        if (optSafety.bags[500] > 0) parts.push(`${optSafety.bags[500]}×500`);
-        if (optSafety.bags[200] > 0) parts.push(`${optSafety.bags[200]}×200`);
-        const bagsText = parts.length > 0 ? parts.join(', ') : 'None';
+        // Pack exact + safety through the SAME per-color primitive the cart uses
+        // (bagPlanner.packColor), so the legend estimate always matches the cart.
+        const row = planColorSupply(code, drillStyle, count, priceDb);
 
         return {
           code,
           count,
           name,
           hex,
-          safety,
-          packets: optSafety.bags[200] + optSafety.bags[500] + optSafety.bags[1000] + optSafety.bags[2000], // total packet count (sum)
-          purchase: optSafety.totalDrills, // total drills purchased
-          costExact: optExact.cost,
-          costSafety: optSafety.cost,
-          bagsText,
-          optimizedBags: optSafety.bags
+          safety, // +10% drill count (Safety Marg. column)
+          packets: row.safety.packets, // total bag/packet count
+          purchase: row.safety.totalDrills, // total drills purchased
+          costExact: row.costExact,
+          costSafety: row.costSafety,
+          bagsText: row.bagsText,
+          optimizedBags: row.safety.bySize
         };
       } else {
         const metrics = calculateSafetyPurchase(count, drillBagSize);

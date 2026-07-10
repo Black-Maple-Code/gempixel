@@ -6,6 +6,8 @@ import {
   planColorSupply,
   defaultPacketCost,
 } from '../bagPlanner';
+import { compileShopifyCartLink } from '../checkout';
+import { DRILL_VARIANTS, VariantMapping } from '../variants';
 
 // Fixtures grounded in real DRILL_VARIANTS entries:
 //   "150" square -> { 200, 500, 1000, 2000 } (all sizes)
@@ -82,6 +84,40 @@ describe('bagPlanner.planColorSupply', () => {
     const row = planColorSupply('150', 'square', 2100, PRICE_DB);
     // safety of 2100 rounds to 2400 -> { 2000:1, 500:1 }
     expect(row.bagsText).toBe('1×2000, 1×500');
+  });
+});
+
+describe('estimate == cart (Candidate 1 regression)', () => {
+  it('planColorSupply packs exactly the bags the Shopify cart builds', () => {
+    const fixture = [
+      { dmcCode: '150', shape: 'square' as const, requiredCount: 2100 },
+      { dmcCode: '310', shape: 'square' as const, requiredCount: 150 },
+      { dmcCode: '367', shape: 'square' as const, requiredCount: 1200 },
+      { dmcCode: '150', shape: 'round' as const, requiredCount: 3000 },
+    ];
+
+    // Cart side: parse variantId -> total qty out of the compiled cart URL.
+    const cart = compileShopifyCartLink(fixture, '', 'none');
+    const cartTokens: Record<string, number> = {};
+    const tokenStr = cart.url.split('/cart/')[1].split('?')[0];
+    for (const tok of tokenStr.split(',')) {
+      if (!tok) continue;
+      const [id, qty] = tok.split(':');
+      cartTokens[id] = (cartTokens[id] || 0) + Number(qty);
+    }
+
+    // Estimate side: map planColorSupply's exact pack (size -> qty) to variant IDs.
+    const estTokens: Record<string, number> = {};
+    for (const item of fixture) {
+      const row = planColorSupply(item.dmcCode, item.shape, item.requiredCount, {});
+      const mapping = DRILL_VARIANTS[item.dmcCode][item.shape];
+      for (const [size, qty] of Object.entries(row.exact.bySize)) {
+        const id = String(mapping[Number(size) as keyof VariantMapping]);
+        estTokens[id] = (estTokens[id] || 0) + qty;
+      }
+    }
+
+    expect(estTokens).toEqual(cartTokens);
   });
 });
 
