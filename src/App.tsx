@@ -6,7 +6,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
 import { generateSymbolAllocation } from './engine/symbols';
-import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload } from './engine/export';
+import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 
 
 export interface ProjectSummary {
@@ -396,13 +396,17 @@ export function App() {
     const hIn = rows / 10;
     const toCm = (inches: number) => inches * 2.54;
     const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
-    const wrapIn = 1; // 1 inch (2.5 cm) wrap buffer on each side
+    const wrapIn = 1; // legend/wrap buffer for the combined sheet, each side
+    const framerIn = FRAMER_MARGIN_CELLS / 10; // framer wrap baked into the Canvas Grid PNG, each side
 
     return {
       gridIn: `${fmt(wIn)}″ × ${fmt(hIn)}″`,
       gridCm: `${fmt(toCm(wIn))} × ${fmt(toCm(hIn))} cm`,
       combinedIn: `${fmt(wIn + wrapIn * 2)}″ × ${fmt(hIn + wrapIn * 2)}″`,
       combinedCm: `${fmt(toCm(wIn + wrapIn * 2))} × ${fmt(toCm(hIn + wrapIn * 2))} cm`,
+      canvasOnlyIn: `${fmt(wIn + framerIn * 2)}″ × ${fmt(hIn + framerIn * 2)}″`,
+      canvasOnlyCm: `${fmt(toCm(wIn + framerIn * 2))} × ${fmt(toCm(hIn + framerIn * 2))} cm`,
+      framer: `${fmt(framerIn)}″ (${fmt(toCm(framerIn))} cm)`,
       wrap: `${wrapIn}″ (${fmt(toCm(wrapIn))} cm)`,
     };
   }, [cols, rows]);
@@ -2073,28 +2077,6 @@ export function App() {
               </div>
             </div>
 
-            {/* Sizing Advice Helper Card (V-06) */}
-            <div className="border border-indigo-500/30 p-3 rounded-lg bg-indigo-950/20 flex flex-col gap-2 no-print">
-              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                <span>ℹ️ Sizing Advice</span>
-              </div>
-              <div className="flex flex-col gap-2.5 text-xs text-slate-300 leading-relaxed">
-                <div>
-                  <span className="font-semibold text-indigo-300 block mb-0.5">Combined Layout view:</span>
-                  <span>
-                    Your finished grid is <strong>{sizingAdviceData.gridIn}</strong> ({sizingAdviceData.gridCm}). To keep the printed legend and a frame-wrap buffer, order a rolled canvas of <strong>{sizingAdviceData.combinedIn}</strong> ({sizingAdviceData.combinedCm}). That leaves a {sizingAdviceData.wrap} wrap border on each side.
-                  </span>
-                </div>
-                <div className="border-t border-slate-800/80 my-1.5"></div>
-                <div>
-                  <span className="font-semibold text-indigo-300 block mb-0.5">Separate Layout view:</span>
-                  <span>
-                    Order an exact <strong>{sizingAdviceData.gridIn}</strong> ({sizingAdviceData.gridCm}) borderless rolled canvas, and print the legend separately on standard paper.
-                  </span>
-                </div>
-              </div>
-            </div>
-
             {/* Order & Print Actions */}
             <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order & Actions</span>
@@ -2146,11 +2128,33 @@ export function App() {
               </button>
             </div>
 
+            {/* Sizing Advice Helper Card (V-06) */}
+            <div className="border border-indigo-500/30 p-3 rounded-lg bg-indigo-950/20 flex flex-col gap-2 no-print">
+              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                <span>ℹ️ Sizing Advice</span>
+              </div>
+              <div className="flex flex-col gap-2.5 text-xs text-slate-300 leading-relaxed">
+                <div>
+                  <span className="font-semibold text-indigo-300 block mb-0.5">Canvas Grid (PNG):</span>
+                  <span>
+                    Your finished grid is <strong>{sizingAdviceData.gridIn}</strong> ({sizingAdviceData.gridCm}). The downloaded Canvas Grid PNG adds a {sizingAdviceData.framer} white framer wrap on each side, so order a rolled canvas of <strong>{sizingAdviceData.canvasOnlyIn}</strong> ({sizingAdviceData.canvasOnlyCm}) and upload the PNG below.
+                  </span>
+                </div>
+                <div className="border-t border-slate-800/80 my-1.5"></div>
+                <div>
+                  <span className="font-semibold text-indigo-300 block mb-0.5">Canvas + Legend (PNG):</span>
+                  <span>
+                    Prefer the all-in-one sheet? Order roughly <strong>{sizingAdviceData.combinedIn}</strong> ({sizingAdviceData.combinedCm}) to fit the grid plus the printed legend margins.
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Send to a canvas printer — direct provider "doors" */}
             <div className="flex flex-col gap-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Send to a Canvas Printer</span>
               <p className="text-[10px] text-slate-500 leading-normal">
-                Download the <strong>Canvas Grid PNG</strong> above, then open a printer below and upload it as a rolled canvas at your recommended size (<strong>{sizingAdviceData.combinedIn}</strong>).
+                Download the <strong>Canvas Grid PNG</strong> above, then open a printer below and upload it as a rolled canvas at <strong>{sizingAdviceData.canvasOnlyIn}</strong> ({sizingAdviceData.canvasOnlyCm}).
               </p>
               <div className="flex flex-col gap-1.5">
                 {(Object.keys(VENDOR_REGISTRY) as Array<keyof typeof VENDOR_REGISTRY>).map(key => {

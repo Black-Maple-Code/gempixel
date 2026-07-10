@@ -85,8 +85,8 @@ describe('Canvas PNG Exporter Rendering', () => {
       cellScale: 20
     });
     
-    expect(canvas.width).toBe(320); // 10 * 20 + 2 * (3 * 20) outer margin
-    expect(canvas.height).toBe(420); // 15 * 20 + 2 * (3 * 20) outer margin
+    expect(canvas.width).toBe(1000); // 10 * 20 + 2 * (20 * 20) framer margin
+    expect(canvas.height).toBe(1100); // 15 * 20 + 2 * (20 * 20) framer margin
   });
 
   it('allocates margin widths for combined sheets correctly', () => {

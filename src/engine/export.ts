@@ -1,7 +1,15 @@
 import { getContrastColor } from './symbols';
 
-/** White wrap-margin (in grid cells) applied around exported PNGs. */
+/** White wrap-margin (in grid cells) applied around the combined legend sheet. */
 const OUTER_MARGIN_CELLS = 3;
+
+/**
+ * Wider white wrap-margin (in grid cells) for the standalone Canvas Grid PNG.
+ * At 10 dots/inch this is ~2 inches per side — enough blank canvas for a framer
+ * to gallery-wrap / stretch the finished piece. Exported so the sizing advice
+ * can recommend a matching rolled-canvas order size.
+ */
+export const FRAMER_MARGIN_CELLS = 20;
 
 interface ExportCanvasOnlyOptions {
   cols: number;
@@ -30,8 +38,8 @@ interface CombinedSheetOptions {
 export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElement {
   const { cols, rows, gridData, colorMap, symbolMap, cellScale = 20 } = options;
 
-  // White wrap margin around the grid (matches the combined sheet's outer margin).
-  const outerMargin = OUTER_MARGIN_CELLS * cellScale;
+  // Generous white framer wrap margin around the grid.
+  const outerMargin = FRAMER_MARGIN_CELLS * cellScale;
 
   const canvas = document.createElement('canvas');
   canvas.width = cols * cellScale + outerMargin * 2;
