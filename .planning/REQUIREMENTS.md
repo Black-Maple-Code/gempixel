@@ -57,6 +57,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SYMBOL-02**: Canvas cells render symbol overlays centering characters, with font color adapted to cell color luminance for maximum readability (black text on light cells, white text on dark cells).
 - [x] **SYMBOL-03**: Seamless 3-way viewport switcher allows instant toggling between "Grid Colors", "Grid + Symbols", and "Original Photo" in <1ms without Preact DOM re-renders. Printable canvas layout forces symbol view and positions color checklist legend in margins outside dashed fold boundaries.
 
+### Custom Canvas Export & Multiple Vendor Integration (Phase 8)
+
+- [ ] **EXPORT-01**: Support downloading high-resolution PNG image exports under Option C (Separate Canvas grid-only vs Combined Canvas Sheet with margin legends and vertical wrap fold lines).
+- [ ] **EXPORT-02**: Provide dynamic canvas sizing calculations and advice displayed inline based on selected layout (accounting for margin sizes).
+- [ ] **VENDOR-01**: Integrate Lumaprints as the primary default canvas vendor, and Prodigi + FinerWorks as user-selectable dropdown options, dynamically updating product costing and default shipping rates.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -93,15 +99,19 @@ Requirements for initial release. Each maps to roadmap phases.
 | SYMBOL-01 | Phase 7 | Complete |
 | SYMBOL-02 | Phase 7 | Complete |
 | SYMBOL-03 | Phase 7 | Complete |
+| EXPORT-01 | Phase 8 | Pending |
+| EXPORT-02 | Phase 8 | Pending |
+| VENDOR-01 | Phase 8 | Pending |
 
 **Coverage:**
 
 - Milestone v1.0 requirements: 17 total (17 complete)
 - Milestone v2.0 requirements: 4 total (4 complete)
 - Milestone v2.1 / Phase 7 requirements: 3 total (3 complete)
-- Mapped to phases: 24
+- Milestone v2.2 / Phase 8 requirements: 3 total (0 complete)
+- Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-10 after Phase 7 completion*
+*Last updated: 2026-07-10 after Phase 8 initiation*
