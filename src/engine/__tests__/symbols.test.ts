@@ -11,10 +11,10 @@ describe('Symbol Database & Allocation Engine', () => {
       expect(uniqueSymbols.size).toBe(CURATED_SYMBOLS.length);
     });
 
-    it('omits visually similar characters (0, O, 1, I, 5, S, 8, B, 2, Z)', () => {
-      const omitted = ['0', 'O', '1', 'I', '5', 'S', '8', 'B', '2', 'Z'];
-      omitted.forEach(char => {
-        expect(CURATED_SYMBOLS).not.toContain(char);
+    it('contains no alphanumeric characters (letters or numbers)', () => {
+      const alphanumerics = /[A-Za-z0-9]/;
+      CURATED_SYMBOLS.forEach(char => {
+        expect(alphanumerics.test(char)).toBe(false);
       });
     });
   });

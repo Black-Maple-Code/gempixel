@@ -48,8 +48,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### commission artist experience
 
-- [ ] **ARTIST-01**: User can save and manage multiple custom commission projects locally (via localStorage) to quickly switch layouts, quotes, and progress.
-- [ ] **ARTIST-02**: Refactor sidebar controls and input layouts into a streamlined step-by-step workflow to guide the artist from image ingestion -> design preview -> quoting -> supply ordering.
+- [x] **ARTIST-01**: User can save and manage multiple custom commission projects locally (via localStorage) to quickly switch layouts, quotes, and progress.
+- [x] **ARTIST-02**: Refactor sidebar controls and input layouts into a streamlined step-by-step workflow to guide the artist from image ingestion -> design preview -> quoting -> supply ordering.
+
+### Symbol-Overlay Canvas & Margin Legends (Phase 7)
+
+- [x] **SYMBOL-01**: Curated database of 80+ visually unique symbols, allocated dynamically to active palette colors in order of color usage quantity.
+- [x] **SYMBOL-02**: Canvas cells render symbol overlays centering characters, with font color adapted to cell color luminance for maximum readability (black text on light cells, white text on dark cells).
+- [x] **SYMBOL-03**: Seamless 3-way viewport switcher allows instant toggling between "Grid Colors", "Grid + Symbols", and "Original Photo" in <1ms without Preact DOM re-renders. Printable canvas layout forces symbol view and positions color checklist legend in margins outside dashed fold boundaries.
 
 ## Out of Scope
 
@@ -82,16 +88,20 @@ Requirements for initial release. Each maps to roadmap phases.
 | REPORT-03 | Phase 4 | Complete |
 | PARTNER-01 | Phase 5 | Complete |
 | PARTNER-02 | Phase 5 | Complete |
-| ARTIST-01 | Phase 6 | Pending |
-| ARTIST-02 | Phase 6 | Pending |
+| ARTIST-01 | Phase 6 | Complete |
+| ARTIST-02 | Phase 6 | Complete |
+| SYMBOL-01 | Phase 7 | Complete |
+| SYMBOL-02 | Phase 7 | Complete |
+| SYMBOL-03 | Phase 7 | Complete |
 
 **Coverage:**
 
 - Milestone v1.0 requirements: 17 total (17 complete)
-- Milestone v2.0 requirements: 4 total (2 complete)
-- Mapped to phases: 21
+- Milestone v2.0 requirements: 4 total (4 complete)
+- Milestone v2.1 / Phase 7 requirements: 3 total (3 complete)
+- Mapped to phases: 24
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-07 after Milestone v2.0 Phase 5 completion*
+*Last updated: 2026-07-10 after Phase 7 completion*
