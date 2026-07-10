@@ -1,0 +1,96 @@
+import { describe, it, expect } from 'vitest';
+import {
+  packColor,
+  withSafetyMargin,
+  priceColorPack,
+  planColorSupply,
+  defaultPacketCost,
+} from '../bagPlanner';
+
+// Fixtures grounded in real DRILL_VARIANTS entries:
+//   "150" square -> { 200, 500, 1000, 2000 } (all sizes)
+//   "150" round  -> { 200 }                  (only 200 available)
+//   "99999"      -> absent from the catalog
+const PRICE_DB: Record<number, number> = { 200: 2, 500: 4, 1000: 7, 2000: 12 };
+
+describe('bagPlanner.packColor', () => {
+  it('enforces the dye-lot rule: <= 800 drills packs into 200-bags only', () => {
+    const pack = packColor('150', 'square', 800);
+    expect(pack.bySize).toEqual({ 200: 4 });
+    expect(pack.totalDrills).toBe(800);
+    expect(pack.packets).toBe(4);
+  });
+
+  it('packs > 800 with bulk sizes (never all-200)', () => {
+    const pack = packColor('150', 'square', 2100);
+    // 1x2000 leaves 100 -> smallest bulk >= 100 is 500
+    expect(pack.bySize).toEqual({ 2000: 1, 500: 1 });
+    expect(pack.totalDrills).toBe(2500);
+    expect(pack.packets).toBe(2);
+  });
+
+  it('never packs into a bag size the color lacks', () => {
+    // "150" round only has the 200 size; a large count must stay in 200-bags,
+    // never spilling into 500/1000/2000 which do not exist for this color.
+    const pack = packColor('150', 'round', 3000);
+    expect(Object.keys(pack.bySize)).toEqual(['200']);
+    expect(pack.bySize[1000]).toBeUndefined();
+    expect(pack.bySize[200]).toBe(15);
+    expect(pack.totalDrills).toBe(3000);
+  });
+
+  it('returns an empty pack for an unknown DMC code and does not throw', () => {
+    const pack = packColor('99999', 'square', 500);
+    expect(pack).toEqual({ bySize: {}, totalDrills: 0, packets: 0 });
+  });
+});
+
+describe('bagPlanner.withSafetyMargin', () => {
+  it('adds +10% then rounds up to the smallest available bag size', () => {
+    // 100 -> +10% = 110 -> round up to nearest 200 (smallest available) = 200
+    expect(withSafetyMargin('150', 'square', 100)).toBe(200);
+  });
+
+  it('rounds up to the color-specific smallest size (round variant only has 200)', () => {
+    // 640 -> +10% = 704 -> round up to nearest 200 = 800
+    expect(withSafetyMargin('150', 'round', 640)).toBe(800);
+  });
+});
+
+describe('bagPlanner.priceColorPack', () => {
+  it('sums per-bag prices across the packed sizes', () => {
+    const pack = packColor('150', 'square', 2100); // { 2000:1, 500:1 }
+    expect(priceColorPack(pack, PRICE_DB)).toBe(12 + 4);
+  });
+
+  it('prices an empty pack as 0', () => {
+    expect(priceColorPack({ bySize: {}, totalDrills: 0, packets: 0 }, PRICE_DB)).toBe(0);
+  });
+});
+
+describe('bagPlanner.planColorSupply', () => {
+  it('packs exact + safety and prices both', () => {
+    const row = planColorSupply('150', 'square', 100, PRICE_DB);
+    expect(row.exact.bySize).toEqual({ 200: 1 });
+    expect(row.safety.bySize).toEqual({ 200: 1 });
+    expect(row.costExact).toBe(2);
+    expect(row.costSafety).toBe(2);
+    expect(row.bagsText).toBe('1×200');
+  });
+
+  it('formats bagsText in descending size order', () => {
+    const row = planColorSupply('150', 'square', 2100, PRICE_DB);
+    // safety of 2100 rounds to 2400 -> { 2000:1, 500:1 }
+    expect(row.bagsText).toBe('1×2000, 1×500');
+  });
+});
+
+describe('bagPlanner.defaultPacketCost', () => {
+  it('mirrors the per-type / per-size price table', () => {
+    expect(defaultPacketCost('standard', 200)).toBe(0.25);
+    expect(defaultPacketCost('crystal', 200)).toBe(0.5);
+    expect(defaultPacketCost('ab', 1000)).toBe(1.1);
+    expect(defaultPacketCost('glow', 2000)).toBe(2.4);
+    expect(defaultPacketCost('standard', 5000)).toBe(3.0);
+  });
+});
