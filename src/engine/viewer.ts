@@ -6,6 +6,7 @@ import { getContrastColor } from './symbols';
  * Supports rendering drills in square and round styles, showing neutral slate backing.
  */
 export class CanvasViewer {
+  public onZoomChange?: (scale: number) => void;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
@@ -131,6 +132,10 @@ export class CanvasViewer {
     this.scale = newScale;
 
     this.draw();
+
+    if (this.onZoomChange) {
+      this.onZoomChange(this.scale);
+    }
   }
 
   public getViewportState() {
@@ -374,6 +379,22 @@ export class CanvasViewer {
     }
   }
 
+  public zoomIn() {
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    this.handleZoom(centerX, centerY, 1.25);
+  }
+
+  public zoomOut() {
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    this.handleZoom(centerX, centerY, 0.8);
+  }
+
+  public resetZoom() {
+    this.fitToContainer();
+  }
+
   public fitToContainer() {
     if (this.gridWidth <= 0 || this.gridHeight <= 0) return;
     const cellSize = 16;
@@ -388,5 +409,9 @@ export class CanvasViewer {
     this.offsetX = (this.canvas.width - offscreenWidth * this.scale) / 2;
     this.offsetY = (this.canvas.height - offscreenHeight * this.scale) / 2;
     this.draw();
+
+    if (this.onZoomChange) {
+      this.onZoomChange(this.scale);
+    }
   }
 }
