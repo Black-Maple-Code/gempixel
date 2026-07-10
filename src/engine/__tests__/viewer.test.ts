@@ -327,4 +327,35 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
       expect(canvas.mockContext.fillText).not.toHaveBeenCalled();
     });
   });
+
+  describe('Zoom and callback interface', () => {
+    it('should support programmatic zoomIn, zoomOut, resetZoom and trigger onZoomChange', () => {
+      const onZoomChangeMock = vi.fn();
+      viewer.onZoomChange = onZoomChangeMock;
+
+      const initialScale = viewer.getViewportState().scale;
+
+      // zoomIn
+      viewer.zoomIn();
+      const afterZoomInScale = viewer.getViewportState().scale;
+      expect(afterZoomInScale).toBeGreaterThan(initialScale);
+      expect(onZoomChangeMock).toHaveBeenCalledWith(afterZoomInScale);
+
+      // zoomOut
+      onZoomChangeMock.mockClear();
+      viewer.zoomOut();
+      const afterZoomOutScale = viewer.getViewportState().scale;
+      expect(afterZoomOutScale).toBeLessThan(afterZoomInScale);
+      expect(onZoomChangeMock).toHaveBeenCalledWith(afterZoomOutScale);
+
+      // resetZoom / fitToContainer (needs some data first to calculate scale)
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+      
+      onZoomChangeMock.mockClear();
+      viewer.resetZoom();
+      expect(onZoomChangeMock).toHaveBeenCalled();
+    });
+  });
 });
