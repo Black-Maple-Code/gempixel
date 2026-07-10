@@ -11,7 +11,8 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 3: Canvas Viewer & Zoom/Pan Interaction** - Implement high-performance interactive grid preview canvas with zoom, pan, and custom drill styles. (completed 2026-07-07)
 - [x] **Phase 4: Supply Planning, Customization & Exports** - Generate printable supply reports, customize sub-palettes, highlight canvas colors, and export to PDF. (completed 2026-07-07)
 - [x] **Phase 5: Supply Partnerships & Checkout Integration** - Integrate canvas supplier redirects and Diamond Drills USA shopping cart generators with affiliate parameters. (completed 2026-07-07)
-- [ ] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey.
+- [x] **Phase 6: Commission Workspace & Streamlined Artist UX** - Build a local portfolio workspace manager and refactor sidebar inputs into a simplified 4-step wizard journey. (completed 2026-07-08)
+- [ ] **Phase 7: Symbol-Overlay Canvas & Margin Legends** - Render unique recognizable icons in canvas cells, build a printable margin legend fold layout, and support 3-way viewer switching.
 
 ## Phase Details
 
@@ -121,12 +122,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 **Depends on**: Phase 4
 **Requirements**: PARTNER-01, PARTNER-02
 **Success Criteria** (what must be TRUE):
+
   1. User can choose a partner canvas supplier and see an "Order Sticky Canvas" button that opens their site pre-filled with the active canvas rows, columns, and layout dimensions.
   2. User can view a "Buy Custom Drills Cart" link that compiles all exact drill sizes and quantities into a single referral cart at Diamond Drills USA for easy checkout.
 
 **Plans**: 2/2 plans complete
 
 Plans:
+
 - [x] 05-01-PLAN.md — Build canvas partner redirect link integrations passing sizing parameters.
 - [x] 05-02-PLAN.md — Implement Diamond Drills USA shopping cart link compiler with affiliate referral tracking.
 
@@ -137,20 +140,22 @@ Plans:
 **Depends on**: Phase 5
 **Requirements**: ARTIST-01, ARTIST-02
 **Success Criteria** (what must be TRUE):
+
   1. User can view a "My Commissions" sidebar dashboard listing saved projects with names, custom client quotes, and date added.
   2. All commission metadata and palette customization states are stored locally and persist across page reloads.
   3. Sidebar controls are consolidated into a clean 4-step wizard: (1) Upload, (2) Canvas Size & Style, (3) Legend & Palette, (4) Quoting & Ordering.
 
-**Plans**: 0/2 plans complete
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 06-01-PLAN.md — Build local storage database and project switcher for multiple commission projects.
-- [ ] 06-02-PLAN.md — Redesign sidebar controls into a simplified 4-step wizard workflow.
+
+- [x] 06-01-PLAN.md — Build local storage database and project switcher for multiple commission projects.
+- [x] 06-02-PLAN.md — Redesign sidebar controls into a simplified 4-step wizard workflow.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -159,4 +164,25 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Canvas Viewer & Zoom/Pan Interaction | 2/2 | Complete    | 2026-07-07 |
 | 4. Supply Planning, Customization & Exports | 3/3 | Complete    | 2026-07-07 |
 | 5. Supply Partnerships & Checkout Integration | 2/2 | Complete    | 2026-07-07 |
-| 6. Commission Workspace & Streamlined Artist UX | 0/2 | Pending     | — |
+| 6. Commission Workspace & Streamlined Artist UX | 2/2 | Complete    | 2026-07-08 |
+| 7. Symbol-Overlay Canvas & Margin Legends | 0/2 | Pending     | — |
+
+### Phase 7: Symbol-Overlay Canvas & Margin Legends
+
+**Goal**: Render distinguishable symbols/icons inside grid cells on canvas, print margins legend hidden when stretched/framed, and support seamless 3-way viewer toggling.
+**Mode**: standard
+**Depends on**: Phase 6
+**Requirements**: SYMBOL-01, SYMBOL-02, SYMBOL-03
+**Success Criteria** (what must be TRUE):
+
+  1. Curated database of 80+ visually unique symbols, allocated dynamically to active palette colors in order of color usage quantity.
+  2. Canvas cells render symbol overlays centering characters, with font color adapted to cell color luminance for maximum readability (black text on light cells, white text on dark cells).
+  3. Seamless 3-way viewport switcher allows instant toggling between "Grid Colors", "Grid + Symbols", and "Original Photo" in <1ms without Preact DOM re-renders.
+  4. Printable canvas layout forces symbol view and positions color checklist legend in margins outside dashed fold boundaries.
+
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 07-01-PLAN.md — Core dynamic symbol database and luminance-based canvas text overlay.
+- [ ] 07-02-PLAN.md — 3-way viewport switcher and printable margin legend fold layout.
