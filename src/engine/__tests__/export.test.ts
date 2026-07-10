@@ -102,9 +102,9 @@ describe('Canvas PNG Exporter Rendering', () => {
       marginWidth: 140
     });
 
-    expect(canvas.width).toBe(340); // 10 * 20 + 140
-    // Height: max(gridHeight = 300, legendHeight = 1 * 18 + 30 = 48) => 300
-    expect(canvas.height).toBe(300);
+    expect(canvas.width).toBe(480); // 10 * 20 + 2 * 140
+    // Height: max(gridHeight = 300, legendHeight = 1 * 18 + 30 = 48) + 2 * 140 => 300 + 280 = 580
+    expect(canvas.height).toBe(580);
   });
 
   it('overrides height when the required legend size exceeds grid size', () => {
@@ -113,7 +113,7 @@ describe('Canvas PNG Exporter Rendering', () => {
     // itemsPerCol = Math.ceil(51 / 3) = 17 items.
     // legendRequiredHeight = 17 * 18 + 30 = 336px.
     // gridHeight is 15 * 20 = 300px.
-    // So canvas.height should be overridden to 336.
+    // CanvasHeight = max(300, 336) + 2 * 140 = 336 + 280 = 616.
     const longLegend = Array.from({ length: 50 }, (_, i) => ({ dmc: `${i}`, hex: '#000000' }));
     
     const canvas = drawCombinedCanvasSheet({
@@ -128,7 +128,7 @@ describe('Canvas PNG Exporter Rendering', () => {
       marginWidth: 140
     });
 
-    expect(canvas.height).toBe(336);
+    expect(canvas.height).toBe(616);
   });
 
   it('draw methods handle mock canvas rendering contexts properly without throwing errors', () => {

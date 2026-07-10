@@ -375,30 +375,32 @@ export function App() {
     const w = parseFloat(widthInput) || 0;
     const h = parseFloat(heightInput) || 0;
     
-    let X = 0;
+    let buffer = 0;
     let margin = 0;
     let unitLabel = '';
     
     if (unit === 'grid') {
-      X = 14;
-      margin = 7;
+      buffer = 20; // 10 cells each side
+      margin = 10;
       unitLabel = 'cells';
     } else if (unit === 'inch') {
-      X = 1.4;
-      margin = 0.7;
+      buffer = 2.0; // 1.0 inch each side
+      margin = 1.0;
       unitLabel = 'inches';
     } else { // cm
-      X = 3.56;
-      margin = 1.78;
+      buffer = 5.0; // 2.5 cm each side
+      margin = 2.5;
       unitLabel = 'cm';
     }
 
-    const combinedWidth = Math.round((w + X) * 100) / 100;
+    const combinedWidth = Math.round((w + buffer) * 100) / 100;
+    const combinedHeight = Math.round((h + buffer) * 100) / 100;
     
     return {
       width: w.toString(),
       height: h.toString(),
       combinedWidth: combinedWidth.toString(),
+      combinedHeight: combinedHeight.toString(),
       margin: margin.toString(),
       unitLabel
     };
@@ -1998,7 +2000,7 @@ export function App() {
                 <div>
                   <span className="font-semibold text-indigo-300 block mb-0.5">Combined Layout view:</span>
                   <span>
-                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. To preserve the legend on the side margins, order a rolled canvas print of <strong>{sizingAdviceData.combinedWidth}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}</strong> from your print shop. The side legends occupy {sizingAdviceData.margin} {sizingAdviceData.unitLabel} on each side.
+                    Sizing Advice: The grid is {sizingAdviceData.width}x{sizingAdviceData.height} {sizingAdviceData.unitLabel}. To preserve the legend and frame wrap buffers, order a rolled canvas print of <strong>{sizingAdviceData.combinedWidth}x{sizingAdviceData.combinedHeight} {sizingAdviceData.unitLabel}</strong> from your print shop. This leaves a {sizingAdviceData.margin} {sizingAdviceData.unitLabel} wrap border buffer around the grid.
                   </span>
                 </div>
                 <div className="border-t border-slate-800/80 my-1.5"></div>

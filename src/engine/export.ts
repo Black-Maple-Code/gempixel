@@ -96,10 +96,12 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   const topPadding = 15;
   const legendRequiredHeight = itemsPerCol * itemHeight + topPadding * 2;
 
-  // Apply maximum buffer to avoid legend cropping
-  const canvasHeight = Math.max(gridHeight, legendRequiredHeight);
-  // Width is grid + right margin only
-  const canvasWidth = gridWidth + marginWidth;
+  // Inner height of content (grid vs legend)
+  const innerAreaHeight = Math.max(gridHeight, legendRequiredHeight);
+
+  // Canvas dimensions (margin/buffer applied symmetrically on all sides)
+  const canvasWidth = gridWidth + marginWidth * 2;
+  const canvasHeight = innerAreaHeight + marginWidth * 2;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -112,10 +114,11 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Center canvas grid vertically
-  const gridOffsetY = Math.floor((canvasHeight - gridHeight) / 2);
+  // Grid offsets centered within the inner content area (buffered by marginWidth)
+  const gridOffsetY = marginWidth + Math.floor((innerAreaHeight - gridHeight) / 2);
+  const legendOffsetY = marginWidth + Math.floor((innerAreaHeight - legendRequiredHeight) / 2);
 
-  // 1. Render Core Grid Cells at offset X = 0 (far left)
+  // 1. Render Core Grid Cells
   ctx.imageSmoothingEnabled = false;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -123,7 +126,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
       const dmcCode = gridData[idx];
       const color = colorMap.get(dmcCode) || '#FFFFFF';
 
-      const x = c * cellScale;
+      const x = marginWidth + c * cellScale;
       const y = gridOffsetY + r * cellScale;
 
       ctx.fillStyle = color;
@@ -142,7 +145,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
 
   // 2. Draw Margins (split into columns on the right side)
   ctx.textBaseline = 'middle';
-  const startX = gridWidth;
+  const startX = marginWidth + gridWidth;
   const colSpacing = Math.floor((marginWidth - 25) / numCols); // distribute columns
 
   allLegendColors.forEach((item, index) => {
@@ -150,7 +153,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
     const rowIdx = index % itemsPerCol;
 
     const x = startX + 10 + colIdx * colSpacing;
-    const y = gridOffsetY + topPadding + rowIdx * itemHeight + itemHeight / 2;
+    const y = legendOffsetY + topPadding + rowIdx * itemHeight + itemHeight / 2;
     const symbol = symbolMap[item.dmc] || '';
 
     // Draw Swatch Border & Color Backing
@@ -173,14 +176,33 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
     ctx.fillText(item.dmc, x + 18, y);
   });
 
-  // 3. Draw Vertical Folding dashed guideline on the right of the grid
+  // 3. Draw Symmetrical Folding dashed guidelines around the grid
   ctx.strokeStyle = '#4A5568';
   ctx.lineWidth = 1.5;
   ctx.setLineDash([6, 6]);
 
+  // Left vertical guide
   ctx.beginPath();
-  ctx.moveTo(gridWidth, 0);
-  ctx.lineTo(gridWidth, canvasHeight);
+  ctx.moveTo(marginWidth, 0);
+  ctx.lineTo(marginWidth, canvasHeight);
+  ctx.stroke();
+
+  // Right vertical guide
+  ctx.beginPath();
+  ctx.moveTo(marginWidth + gridWidth, 0);
+  ctx.lineTo(marginWidth + gridWidth, canvasHeight);
+  ctx.stroke();
+
+  // Top horizontal guide
+  ctx.beginPath();
+  ctx.moveTo(0, gridOffsetY);
+  ctx.lineTo(canvasWidth, gridOffsetY);
+  ctx.stroke();
+
+  // Bottom horizontal guide
+  ctx.beginPath();
+  ctx.moveTo(0, gridOffsetY + gridHeight);
+  ctx.lineTo(canvasWidth, gridOffsetY + gridHeight);
   ctx.stroke();
 
   // Reset dashboard configurations
