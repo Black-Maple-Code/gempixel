@@ -7,6 +7,7 @@ import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
 import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
 import { generateSymbolAllocation } from './engine/symbols';
+import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload } from './engine/export';
 
 
 export interface ProjectSummary {
@@ -1043,6 +1044,63 @@ export function App() {
     window.print();
   };
 
+  const handleDownloadCanvasOnly = async () => {
+    if (!matchResult) return;
+    try {
+      const colorMap = new Map<string, string>();
+      activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
+      
+      const canvas = drawCanvasOnly({
+        cols,
+        rows,
+        gridData: matchResult.matches,
+        colorMap,
+        symbolMap,
+        cellScale: 20
+      });
+      
+      const baseName = saveProjectName.trim() || 'gempixel-layout';
+      await triggerCanvasDownload(canvas, `${baseName}-canvas.png`);
+    } catch (err) {
+      console.error('Failed to download canvas grid:', err);
+    }
+  };
+
+  const handleDownloadCombinedCanvasSheet = async () => {
+    if (!matchResult) return;
+    try {
+      const colorMap = new Map<string, string>();
+      activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
+      
+      const canvas = drawCombinedCanvasSheet({
+        cols,
+        rows,
+        gridData: matchResult.matches,
+        colorMap,
+        symbolMap,
+        leftLegendColors,
+        rightLegendColors,
+        cellScale: 20,
+        marginWidth: 140
+      });
+      
+      const baseName = saveProjectName.trim() || 'gempixel-layout';
+      await triggerCanvasDownload(canvas, `${baseName}-combined-sheet.png`);
+    } catch (err) {
+      console.error('Failed to download combined canvas sheet:', err);
+    }
+  };
+
+  const printLegendSheetOnly = () => {
+    document.body.classList.add('print-only-legend-mode');
+    window.print();
+    const cleanup = () => {
+      document.body.classList.remove('print-only-legend-mode');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
+
   // Calculate sorted legend table rows
   const sortedMatches = Object.entries(matchResult?.counts || {})
     .map(([code, count]) => {
@@ -1963,6 +2021,33 @@ export function App() {
                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
               >
                 <span>🛒 Order Drills from Diamond Drills USA</span>
+              </button>
+
+              <button
+                onClick={handleDownloadCanvasOnly}
+                disabled={!matchResult}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <span>📥 Download Canvas Grid (PNG)</span>
+              </button>
+
+              <button
+                onClick={handleDownloadCombinedCanvasSheet}
+                disabled={!matchResult}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <span>📥 Download Combined Canvas Sheet (PNG)</span>
+              </button>
+
+              <button
+                onClick={printLegendSheetOnly}
+                disabled={!matchResult}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <span>🖨️ Print Legend Sheet (Paper)</span>
               </button>
 
               <button
@@ -2910,6 +2995,25 @@ export function App() {
           </div>
         </div>
       )}
+      {/* Printable checklist container (only visible on print via media query) */}
+      <div className="legend-checklist-print-container hidden">
+        <h2 className="text-xl font-bold mb-4 font-sans text-black border-b pb-2">Color Checklist Legend</h2>
+        <div className="print-checklist-grid">
+          {activeCandidates.map(c => {
+            const symbol = symbolMap[c.dmc] || '';
+            return (
+              <div key={c.dmc} className="print-checklist-item">
+                <input type="checkbox" className="mr-2 h-4 w-4 border-gray-300 rounded cursor-pointer" readOnly />
+                <span className="font-mono text-xs w-6 text-center border border-slate-350 mr-2 rounded bg-slate-100 py-0.5 text-black font-bold">
+                  {symbol}
+                </span>
+                <div className="w-4 h-4 border border-black mr-2 shrink-0" style={{ backgroundColor: c.hex }} />
+                <span className="font-mono text-xs font-semibold text-black">{c.dmc}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
