@@ -2420,7 +2420,7 @@ export function App() {
               id="wizard-next-btn"
               onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
               disabled={!isStepValid(wizardStep + 1)}
-              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 disabled:text-slate-750 cursor-pointer disabled:cursor-not-allowed transition-colors"
+              className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
             >
               Next Step &gt;
             </button>
@@ -2473,7 +2473,7 @@ export function App() {
               <button
                 onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
                 disabled={!(isStepValid(wizardStep + 1) || isTestEnv)}
-                className="rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide border border-border text-ink hover:bg-panel-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="btn-chunk rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Next Step →
               </button>
