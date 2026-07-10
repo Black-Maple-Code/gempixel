@@ -253,7 +253,7 @@ export function App() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
-  const [commissionsDrawerOpen, setCommissionsDrawerOpen] = useState(false);
+  const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');
@@ -1274,28 +1274,28 @@ export function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4 pr-1">
-          {/* My Commissions Portfolio Drawer */}
+          {/* My Images saved-projects drawer */}
           <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center">
             <button
-              onClick={() => setCommissionsDrawerOpen(!commissionsDrawerOpen)}
+              onClick={() => setImagesDrawerOpen(!imagesDrawerOpen)}
               className="flex items-center gap-1.5 text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
             >
-              <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${commissionsDrawerOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">My Commissions</span>
+              <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${imagesDrawerOpen ? 'rotate-90' : ''}`}>▶</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">My Images</span>
               <span className="text-[9px] text-slate-500 font-medium">({projectsRegistry.length})</span>
             </button>
             <button
               id="new-project-btn"
               onClick={resetWorkspace}
               className="text-[9px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer border border-indigo-500/20 px-1.5 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors"
-              title="Reset workspace to start a new commission"
+              title="Reset workspace to start a new image"
             >
               New
             </button>
           </div>
           
-          {commissionsDrawerOpen && (
+          {imagesDrawerOpen && (
             <div className="flex flex-col gap-2 mt-1">
               <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto scrollbar-thin">
                 {projectsRegistry.map(project => {
@@ -1329,7 +1329,7 @@ export function App() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Delete commission "${project.name}"?`)) {
+                          if (confirm(`Delete "${project.name}"?`)) {
                             deleteProjectFromStorage(project.id);
                             const updated = projectsRegistry.filter(p => p.id !== project.id);
                             setProjectsRegistry(updated);
@@ -1340,7 +1340,7 @@ export function App() {
                           }
                         }}
                         className="absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-950/80 text-[11px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
-                        title="Delete Commission"
+                        title="Delete Image"
                       >
                         ×
                       </button>
@@ -1348,19 +1348,19 @@ export function App() {
                   );
                 })}
                 {projectsRegistry.length === 0 && (
-                  <span className="text-[10px] text-slate-500 text-center block py-2 italic">No commissions saved yet.</span>
+                  <span className="text-[10px] text-slate-500 text-center block py-2 italic">No images saved yet.</span>
                 )}
               </div>
               <button
                 id="save-project-btn"
                 onClick={() => {
-                  setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
+                  setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
                   setSaveModalOpen(true);
                 }}
                 disabled={!matchResult}
                 className="w-full bg-slate-950/80 hover:bg-slate-850 disabled:bg-slate-950/20 disabled:text-slate-600 text-indigo-400 hover:text-indigo-300 disabled:border-slate-900 border border-slate-800 rounded py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
               >
-                <span>Save Current Commission</span>
+                <span>Save to My Images</span>
               </button>
             </div>
           )}
@@ -2239,7 +2239,7 @@ export function App() {
           <div className="flex flex-col gap-4">
             {/* Section A: Summary */}
             <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex flex-col gap-2.5">
-              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Commission Summary</span>
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Diamond Art Summary</span>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="flex flex-col gap-0.5 bg-slate-950/40 p-2 rounded border border-slate-850/50">
                   <span className="text-[9px] text-slate-500 uppercase font-semibold">Dimensions</span>
@@ -2270,14 +2270,14 @@ export function App() {
 
             {/* Portfolio Saving Form */}
             <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850/60 flex flex-col gap-2.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Save Commission</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Save to My Images</span>
               <div className="flex flex-col gap-1.5">
                 <input
                   type="text"
                   id="step4-save-name-input"
                   value={saveProjectName}
                   onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
-                  placeholder="e.g. Commission Layout 1"
+                  placeholder="e.g. Sunset Beach"
                   className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
                 />
                 
@@ -2311,7 +2311,7 @@ export function App() {
                       }}
                       className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
                     >
-                      Save to My Commissions
+                      Save to My Images
                     </button>
                   )}
                 </div>
@@ -2330,7 +2330,7 @@ export function App() {
                 onClick={resetWorkspace}
                 className="w-full bg-slate-800 hover:bg-slate-750 hover:text-slate-100 text-slate-350 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
               >
-                <span>Start New Commission / Reset</span>
+                <span>Start New Image / Reset</span>
               </button>
             </div>
           </div>
@@ -2484,7 +2484,7 @@ export function App() {
             )}
             <button
               onClick={() => {
-                setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
+                setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
                 setSaveModalOpen(true);
               }}
               disabled={!matchResult}
@@ -3262,7 +3262,7 @@ export function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
           <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
             <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-              Save Current Commission
+              Save to My Images
             </h3>
             <p className="text-[11px] text-slate-400">
               Enter a name to save this project layout configuration locally.
@@ -3272,7 +3272,7 @@ export function App() {
               id="save-project-name-input"
               value={saveProjectName}
               onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
-              placeholder="e.g. Commission Layout 1"
+              placeholder="e.g. Sunset Beach"
               className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoFocus
             />

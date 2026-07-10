@@ -301,7 +301,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -354,7 +354,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open again
-      (Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions')) as HTMLButtonElement).click();
+      (Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images')) as HTMLButtonElement).click();
       await new Promise(r => setTimeout(r, 10));
 
       // Click delete button ('×') inside project row
@@ -362,7 +362,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       const originalConfirm = window.confirm;
       window.confirm = () => true;
 
-      const deleteBtn = container.querySelector('button[title="Delete Commission"]') as HTMLButtonElement;
+      const deleteBtn = container.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
       expect(deleteBtn).toBeTruthy();
       deleteBtn.click();
       await new Promise(r => setTimeout(r, 10));
@@ -429,7 +429,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -539,7 +539,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -616,7 +616,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -687,7 +687,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -772,7 +772,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Commissions'));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
       toggleBtn?.click();
       await new Promise(r => setTimeout(r, 10));
 
@@ -791,7 +791,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Click Start New Commission / Reset button
-      const resetBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start New Commission / Reset') as HTMLButtonElement;
+      const resetBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start New Image / Reset') as HTMLButtonElement;
       expect(resetBtn).toBeTruthy();
       resetBtn.click();
       await new Promise(r => setTimeout(r, 10));
