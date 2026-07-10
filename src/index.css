@@ -20,6 +20,7 @@
   --faint:     #6c6c7a;
   --accent:    #8B7BD8;   /* primary action (soft violet — calmer than the old magenta) */
   --accent-2:  #37E2C4;   /* secondary / positive */
+  --warn:      #F5B54A;   /* medium / caution — bright amber reads on the dark bg */
   --on-accent: #0B0B10;
   --font-display: 'Pixelify Sans', sans-serif;
   --btn-shadow:  4px 4px 0 #4f4488;
@@ -41,6 +42,7 @@
   --faint:     #9a927d;
   --accent:    #0E6E5C;
   --accent-2:  #0E6E5C;
+  --warn:      #A85A11;   /* medium / caution — dark amber reads on the cream bg */
   --on-accent: #F4F1E9;
   --font-display: 'Newsreader', serif;
   --btn-shadow:  none;
@@ -77,6 +79,7 @@
   --color-faint:     var(--faint);
   --color-accent:    var(--accent);
   --color-accent-2:  var(--accent-2);
+  --color-warn:      var(--warn);
   --color-on-accent: var(--on-accent);
   --color-gem-pink:  var(--gem-pink);
   --color-gem-cyan:  var(--gem-cyan);

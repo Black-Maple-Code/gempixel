@@ -304,7 +304,7 @@ export function Step1Ingest(props: Step1IngestProps) {
                                 <span className="font-semibold">{sz.width} x {sz.height} cm</span>
                                 <span className="text-[10px] text-slate-400">({(sz.width * 0.3937).toFixed(0)}" x {(sz.height * 0.3937).toFixed(0)}")</span>
                               </div>
-                              <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              <span className={`text-[10px] font-mono font-semibold ${sz.matchPct >= 95 ? 'text-emerald-400' : 'text-warn'}`}>
                                 {sz.matchPct}% Match
                               </span>
                             </button>
