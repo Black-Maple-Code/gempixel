@@ -223,9 +223,10 @@ Plans:
   2. Next and Back buttons redesigned as a persistent, styled footer bar or intuitive navigation panel showing step progress clearly.
   3. Sidebar configurations are categorized logically (e.g., Image settings vs Color Palette options) with tooltips and clean labels.
 
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
 
-- [ ] 09-01-PLAN.md — Viewport HUD interactive overlay controls, wizard navigation improvements, and organized settings hierarchy.
+- [ ] 09-01-PLAN.md — CanvasViewer Zoom APIs and stylesheet additions for glassmorphic Viewport HUD.
+- [ ] 09-02-PLAN.md — App.tsx UI refactoring: stepper navigation, details accordions, viewport HUD integration, and unit tests alignment.
 
