@@ -2328,6 +2328,12 @@ export function App() {
 
         {/* Sidebar Footer Actions */}
         <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
+          {matchResult && (
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">
+              <span className="w-2 h-2 rounded-sm bg-accent-2 inline-block" />
+              Matched · {sortedMatches.length} colors
+            </div>
+          )}
           {/* Theme skin toggle */}
           <div className="flex items-center gap-0.5 bg-panel border border-border rounded-[11px] p-1.5">
             <button
@@ -2432,6 +2438,52 @@ export function App() {
     {/* Main Canvas Area */}
     <main className="flex-1 relative flex flex-col min-w-0 print:block">
 
+        {/* Center top wizard progress bar + Save */}
+        <div className="hidden md:flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-panel no-print shrink-0">
+          <div className="flex items-center gap-1.5">
+            {['Upload', 'Size', 'Colors', 'Supplies'].map((label, i) => {
+              const step = i + 1;
+              const isActive = wizardStep === step;
+              const isCompleted = wizardStep > step;
+              const isValid = isStepValid(step) || isTestEnv;
+              return (
+                <div key={label} className="flex items-center gap-1.5">
+                  {i > 0 && <span className="w-6 h-px bg-border" />}
+                  <button
+                    onClick={() => isValid && setWizardStep(step)}
+                    disabled={!isValid}
+                    title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][i]}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer disabled:cursor-not-allowed ${
+                      isCompleted
+                        ? 'bg-accent-2 text-on-accent font-bold'
+                        : isActive
+                        ? 'bg-accent text-on-accent font-bold'
+                        : isValid
+                        ? 'text-muted hover:text-ink'
+                        : 'text-muted opacity-50'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] border border-current">
+                      {isCompleted ? '✓' : step}
+                    </span>
+                    {label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => {
+              setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Commission Layout ${projectsRegistry.length + 1}`);
+              setSaveModalOpen(true);
+            }}
+            disabled={!matchResult}
+            className="btn-chunk-2 rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            Save
+          </button>
+        </div>
+
         {leftPanelCollapsed && (
           <button
             onClick={() => setLeftPanelCollapsed(false)}
@@ -2456,7 +2508,7 @@ export function App() {
           </button>
         )}
 
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 print:bg-white print:h-auto print:overflow-visible print:p-4">
+        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
           {/* Floating Viewport HUD overlay */}
           {image && (
             <div 
@@ -2593,9 +2645,43 @@ export function App() {
               )}
             </div>
           ) : (
-            <div className="text-center p-6 max-w-sm flex flex-col items-center gap-2">
-              <span className="text-lg font-bold text-slate-350">No Image Loaded</span>
-              <p className="text-xs text-slate-400">Load a photo using the sidebar panel to see your diamond painting canvas layout preview.</p>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className="text-center p-6 max-w-md flex flex-col items-center gap-6"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <h2 className="font-display text-4xl font-bold text-ink leading-tight">Photo → Diamond Chart</h2>
+                <p className="text-sm text-muted max-w-sm">Drop a photo to map it to DMC / Art Dot colors with exact drill counts. Everything runs in your browser.</p>
+              </div>
+              <div
+                onClick={() => document.getElementById('hero-file-upload')?.click()}
+                className={`w-full max-w-sm border-2 border-dashed rounded-xl px-6 py-10 cursor-pointer transition-all flex flex-col items-center gap-5 ${
+                  isDragOver ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/60 bg-panel/40'
+                }`}
+              >
+                <div className="gem-logo w-12 h-12" aria-hidden="true">
+                  {['--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink'].map((c, i) => (
+                    <span key={i} style={{ backgroundColor: `var(${c})` }} />
+                  ))}
+                </div>
+                <span className="btn-chunk rounded-md px-5 py-2.5 text-xs font-bold uppercase tracking-wide">Browse Files</span>
+                <input
+                  id="hero-file-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Bottom hint pill */}
+          {(image || matchResult) && (viewportMode === 'grid' || viewportMode === 'symbols') && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 no-print px-3 py-1.5 rounded-full bg-panel/80 border border-border text-[10px] font-mono text-muted whitespace-nowrap backdrop-blur">
+              drag to pan · scroll to zoom · {(cols * rows).toLocaleString()} drills
             </div>
           )}
 
@@ -2616,9 +2702,12 @@ export function App() {
           rightPanelCollapsed ? 'w-0 border-l-0 p-0' : 'w-96'
         }`}
       >
-        {/* Workspace Panel Header */}
+        {/* Color Legend Header */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 px-4 pt-3.5 no-print shrink-0">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspace Panel</span>
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-lg font-bold text-ink leading-none">Color Legend</span>
+            <span className="text-[10px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
+          </div>
           <button
             onClick={() => setRightPanelCollapsed(true)}
             className="p-1 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
@@ -2866,8 +2955,34 @@ export function App() {
               </tbody>
             </table>
           </div>
-          
+
         </div>
+
+        {/* Legend footer summary + primary CTA */}
+        {matchResult && (
+          <div className="shrink-0 border-t border-border px-4 py-3 flex flex-col gap-3 no-print">
+            <div className="flex flex-col gap-1 text-[11px] font-mono">
+              <div className="flex justify-between">
+                <span className="text-muted uppercase tracking-wider">Drills (+10% safety)</span>
+                <span className="font-bold text-ink">{totalSafetyDrills.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted uppercase tracking-wider">Packets ({drillBagSize}-ct)</span>
+                <span className="font-bold text-ink">{totalPackets}</span>
+              </div>
+              <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
+                <span className="text-muted uppercase tracking-wider">Est. total</span>
+                <span className="text-lg font-bold text-accent-2 font-mono">${totalCostSafety.toFixed(2)}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleShopifyCheckout}
+              className="btn-chunk rounded-md py-3 text-xs font-bold uppercase tracking-wide cursor-pointer"
+            >
+              Buy Supplies →
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Artist Resources Modal */}

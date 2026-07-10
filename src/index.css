@@ -413,6 +413,12 @@
   }
 }
 
+/* Dotted viewport texture (transparent dot in light theme = no texture) */
+.viewport-dots {
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
 /* Floating Viewport HUD overlay (glassmorphic, themed) */
 .viewport-hud {
   position: absolute;
