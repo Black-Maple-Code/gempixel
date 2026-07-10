@@ -6,6 +6,8 @@ import { DMC_PALETTE } from './engine/palette';
 import { boxSampleImage } from './engine/ingest';
 import logoUrl from './logo.png';
 import { compileShopifyCartLink } from './engine/checkout';
+import { generateSymbolAllocation } from './engine/symbols';
+
 
 export interface ProjectSummary {
   id: string;
@@ -332,7 +334,7 @@ export function App() {
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [recsOpen, setRecsOpen] = useState(true);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
-  const [viewportMode, setViewportMode] = useState<'grid' | 'reference'>('grid');
+  const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<{ id: string; name: string; dataUrl: string; width: number; height: number }[]>(() => {
@@ -652,6 +654,13 @@ export function App() {
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
       viewerRef.current.setDrillType(drillType);
+      viewerRef.current.setViewMode(viewportMode);
+
+      const symbolMap = generateSymbolAllocation(
+        matchResult.matches,
+        activeCandidates.map(c => c.dmc)
+      );
+      viewerRef.current.setSymbolMap(symbolMap);
 
       // Automatically fit to container by default on first load of a new image or when switching projects
       if (lastFitImageRef.current !== image || (activeProjectId && lastFitProjectRef.current !== activeProjectId)) {
@@ -660,7 +669,7 @@ export function App() {
         lastFitProjectRef.current = activeProjectId;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
@@ -2222,7 +2231,7 @@ export function App() {
         )}
 
         {/* Floating Zoom & Fit Controls */}
-        {(image || matchResult) && viewportMode === 'grid' && (
+        {(image || matchResult) && (viewportMode === 'grid' || viewportMode === 'symbols') && (
           <div className="absolute bottom-4 right-4 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-1 shadow-xl backdrop-blur-md flex flex-col gap-1 no-print font-sans">
             <button
               onClick={() => {
@@ -2244,7 +2253,7 @@ export function App() {
           {/* Floating Center Mode Selector */}
           {image && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 border border-slate-700/50 rounded-lg p-0.5 shadow-xl backdrop-blur-md flex gap-1 no-print font-sans">
-              {(['grid', 'reference'] as const).map(mode => (
+              {(['grid', 'symbols', 'reference'] as const).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setViewportMode(mode)}
@@ -2254,7 +2263,7 @@ export function App() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {mode === 'grid' ? 'Grid View' : 'Original Photo'}
+                  {mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo'}
                 </button>
               ))}
             </div>
@@ -2266,7 +2275,7 @@ export function App() {
                 width={800}
                 height={600}
                 className={`shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none ${
-                  viewportMode === 'grid' ? '' : 'hidden'
+                  (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
                 }`}
               />
               {image && (
