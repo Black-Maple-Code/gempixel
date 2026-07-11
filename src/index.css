@@ -490,6 +490,13 @@ aside .tooltip-group .tooltip-box {
   transform: none;
 }
 
+/* HUD sits at the top of the (overflow-hidden) viewport, so its tooltips open
+   DOWNWARD — opening up would clip them behind the wizard progress bar. */
+.viewport-hud .tooltip-group .tooltip-box {
+  bottom: auto;
+  top: 120%;
+}
+
 /* Standard Tailwind group hover helper for custom tooltips */
 .group:hover .group-hover-tooltip {
   display: block !important;

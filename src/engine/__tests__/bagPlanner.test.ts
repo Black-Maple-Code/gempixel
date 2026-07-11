@@ -17,24 +17,32 @@ const PRICE_DB: Record<number, number> = { 200: 2, 500: 4, 1000: 7, 2000: 12 };
 
 describe('bagPlanner.packColor', () => {
   it('enforces the dye-lot rule: <= 800 drills packs into 200-bags only', () => {
-    const pack = packColor('150', 'square', 800);
+    const pack = packColor('150', 'square', 800, PRICE_DB);
     expect(pack.bySize).toEqual({ 200: 4 });
     expect(pack.totalDrills).toBe(800);
     expect(pack.packets).toBe(4);
   });
 
   it('packs > 800 with bulk sizes (never all-200)', () => {
-    const pack = packColor('150', 'square', 2100);
-    // 1x2000 leaves 100 -> smallest bulk >= 100 is 500
+    const pack = packColor('150', 'square', 2100, PRICE_DB);
+    // cost-min covering >=2100: 1×2000+1×500 ($16) beats 2×1000+1×500 ($18)
     expect(pack.bySize).toEqual({ 2000: 1, 500: 1 });
     expect(pack.totalDrills).toBe(2500);
     expect(pack.packets).toBe(2);
   });
 
+  it('consolidates bulk bags instead of fragmenting (cost-min, not greedy)', () => {
+    // The greedy packer produced 6×2000 + 1×1000 + 2×500 (9 bags) for this count;
+    // cost-min buys 7×2000 (7 bags) — same 14000 drills, fewer bags, lower cost.
+    const pack = packColor('150', 'square', 13533, PRICE_DB);
+    expect(pack.bySize).toEqual({ 2000: 7 });
+    expect(pack.packets).toBe(7);
+  });
+
   it('never packs into a bag size the color lacks', () => {
     // "150" round only has the 200 size; a large count must stay in 200-bags,
     // never spilling into 500/1000/2000 which do not exist for this color.
-    const pack = packColor('150', 'round', 3000);
+    const pack = packColor('150', 'round', 3000, PRICE_DB);
     expect(Object.keys(pack.bySize)).toEqual(['200']);
     expect(pack.bySize[1000]).toBeUndefined();
     expect(pack.bySize[200]).toBe(15);
@@ -42,7 +50,7 @@ describe('bagPlanner.packColor', () => {
   });
 
   it('returns an empty pack for an unknown DMC code and does not throw', () => {
-    const pack = packColor('99999', 'square', 500);
+    const pack = packColor('99999', 'square', 500, PRICE_DB);
     expect(pack).toEqual({ bySize: {}, totalDrills: 0, packets: 0 });
   });
 });
@@ -61,7 +69,7 @@ describe('bagPlanner.withSafetyMargin', () => {
 
 describe('bagPlanner.priceColorPack', () => {
   it('sums per-bag prices across the packed sizes', () => {
-    const pack = packColor('150', 'square', 2100); // { 2000:1, 500:1 }
+    const pack = packColor('150', 'square', 2100, PRICE_DB); // { 2000:1, 500:1 }
     expect(priceColorPack(pack, PRICE_DB)).toBe(12 + 4);
   });
 
@@ -97,7 +105,7 @@ describe('estimate == cart (Candidate 1 regression)', () => {
     ];
 
     // Cart side: parse variantId -> total qty out of the compiled cart URL.
-    const cart = compileShopifyCartLink(fixture, '', 'none');
+    const cart = compileShopifyCartLink(fixture, '', 'none', PRICE_DB);
     const cartTokens: Record<string, number> = {};
     const tokenStr = cart.url.split('/cart/')[1].split('?')[0];
     for (const tok of tokenStr.split(',')) {
@@ -109,7 +117,7 @@ describe('estimate == cart (Candidate 1 regression)', () => {
     // Estimate side: map planColorSupply's exact pack (size -> qty) to variant IDs.
     const estTokens: Record<string, number> = {};
     for (const item of fixture) {
-      const row = planColorSupply(item.dmcCode, item.shape, item.requiredCount, {});
+      const row = planColorSupply(item.dmcCode, item.shape, item.requiredCount, PRICE_DB);
       const mapping = DRILL_VARIANTS[item.dmcCode][item.shape];
       for (const [size, qty] of Object.entries(row.exact.bySize)) {
         const id = String(mapping[Number(size) as keyof VariantMapping]);

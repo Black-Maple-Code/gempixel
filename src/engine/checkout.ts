@@ -20,14 +20,21 @@ export interface CanvasRedirectOptions {
   shape: 'square' | 'round';
 }
 
+// Standard per-bag prices; a fallback when the caller doesn't supply live prices.
+// The app passes its own editable `priceDb` so the cart matches the legend estimate.
+const DEFAULT_PRICE_DB: Record<number, number> = { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 };
+
 /**
  * Compiles an optimized cart permalink for Diamond Drills USA.
  * Persists affiliate referrers via query parameters and Shopify cart attributes.
+ * Packs each color via the shared `bagPlanner.packColor` using `priceDb`, so the
+ * cart's bag choices match the legend estimate exactly.
  */
 export function compileShopifyCartLink(
   items: CartItemInput[],
   affiliateTag: string,
-  affiliateApp: 'ref' | 'rfsn' | 'none' = 'ref'
+  affiliateApp: 'ref' | 'rfsn' | 'none' = 'ref',
+  priceDb: Record<number, number> = DEFAULT_PRICE_DB
 ): CompilerResult {
   const baseUrl = 'https://diamonddrillsusa.com/cart/';
   const unmappedItems: Array<{ dmcCode: string; handle: string }> = [];
@@ -44,7 +51,7 @@ export function compileShopifyCartLink(
 
     // Per-color packing via the shared bagPlanner primitive, so the cart and the
     // legend cost estimate can never diverge (dye-lot rule + variant availability).
-    const pack = packColor(item.dmcCode, item.shape, item.requiredCount);
+    const pack = packColor(item.dmcCode, item.shape, item.requiredCount, priceDb);
 
     // Emit variant:qty tokens largest-size-first (preserves prior cart ordering).
     const sizes = Object.keys(pack.bySize)

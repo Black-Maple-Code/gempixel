@@ -4,11 +4,18 @@ import { DRILL_VARIANTS, VariantMapping } from './variants';
  * Supply Bag Optimizer — the single per-color packing primitive shared by the
  * legend cost estimate and the Shopify cart, so the two can never diverge.
  *
- * Packing rules (mirrored from `checkout.ts::compileShopifyCartLink`):
+ * Packing rules:
  * - Dye-lot separation: a color needing <= 800 drills is packed into 200-count
  *   bags only (never mixed with bulk sizes), preserving color consistency.
  * - Availability: a color is only ever packed into bag sizes that actually
  *   exist for it in `DRILL_VARIANTS[dmcCode][shape]`.
+ * - Cost minimization: for bulk orders (> 800), pick the CHEAPEST combination of
+ *   the color's available bulk sizes that covers the required count (never mixing
+ *   200s in), using the caller's per-bag `priceDb`. This avoids fragmentation
+ *   like `1×1000 + 2×500` where a single `1×2000` is fewer bags and cheaper.
+ *
+ * `checkout.ts::compileShopifyCartLink` calls this with the same `priceDb`, so
+ * the Shopify cart and the legend estimate always pack identically.
  *
  * Pure module: no Preact, no DOM, no persistence. Never throws in the render
  * path — an unknown/unavailable color yields an empty pack.
@@ -30,64 +37,93 @@ const DYE_LOT_CEILING = 800;
  * actually available for this DMC code + shape. Returns an empty pack for an
  * unknown code or a color with no available sizes (never throws).
  */
-export function packColor(dmcCode: string, shape: Shape, requiredCount: number): ColorPack {
+export function packColor(
+  dmcCode: string,
+  shape: Shape,
+  requiredCount: number,
+  priceDb: Record<number, number>
+): ColorPack {
   const empty: ColorPack = { bySize: {}, totalDrills: 0, packets: 0 };
   const mapping = DRILL_VARIANTS[dmcCode]?.[shape];
   if (!mapping || Object.keys(mapping).length === 0 || requiredCount <= 0) {
-    return { bySize: {}, totalDrills: 0, packets: 0 };
+    return empty;
   }
 
-  // Sizes present for this color, largest first.
   const availableSizes = Object.keys(mapping)
     .map(Number)
-    .filter(size => mapping[size as keyof VariantMapping] !== undefined)
-    .sort((a, b) => b - a);
+    .filter(size => mapping[size as keyof VariantMapping] !== undefined);
 
-  const bySize: Record<number, number> = {};
-  const add = (size: number, qty: number) => {
-    if (qty <= 0) return;
-    bySize[size] = (bySize[size] || 0) + qty;
+  const pack200 = (count: number): ColorPack => {
+    const qty = Math.ceil(count / 200);
+    return { bySize: { 200: qty }, totalDrills: qty * 200, packets: qty };
   };
 
-  let remaining = requiredCount;
-
-  if (remaining <= DYE_LOT_CEILING && availableSizes.includes(200)) {
-    // Dye-lot rule: keep small orders on a single 200-count size.
-    add(200, Math.ceil(remaining / 200));
-    remaining = 0;
-  } else {
-    // Greedily pack bulk sizes first (largest to smallest, skipping 200).
-    for (const size of availableSizes) {
-      if (size === 200) continue;
-      const qty = Math.floor(remaining / size);
-      if (qty > 0) {
-        add(size, qty);
-        remaining = remaining % size;
-      }
-    }
-
-    // Cover any remainder with the smallest bulk size that fits, else 200-bags.
-    if (remaining > 0) {
-      const bulkSizes = availableSizes.filter(s => s > 200).sort((a, b) => a - b);
-      if (bulkSizes.length > 0) {
-        const fitSize = bulkSizes.find(s => s >= remaining) || bulkSizes[bulkSizes.length - 1];
-        add(fitSize, 1);
-      } else if (availableSizes.includes(200)) {
-        add(200, Math.ceil(remaining / 200));
-      } else {
-        // No available size can cover it — leave it unpacked (caller still lists the color).
-        return empty;
-      }
-    }
+  // Dye-lot rule: <= 800 drills stay on a single 200-count size (color consistency).
+  if (requiredCount <= DYE_LOT_CEILING && availableSizes.includes(200)) {
+    return pack200(requiredCount);
   }
 
+  // Bulk order: never mix 200s in — cost-minimize over the available bulk sizes.
+  const bulkSizes = availableSizes.filter(s => s > 200);
+  if (bulkSizes.length === 0) {
+    return availableSizes.includes(200) ? pack200(requiredCount) : empty;
+  }
+
+  return minCostBulk(requiredCount, bulkSizes, priceDb);
+}
+
+/**
+ * Cheapest combination of the given bulk sizes that covers >= requiredCount.
+ * Bounded search: iterate counts of every size except the smallest; the smallest
+ * ceil-fills the remainder, so the whole solution space is covered with only a
+ * few hundred evaluations even for large counts.
+ */
+function minCostBulk(
+  requiredCount: number,
+  bulkSizes: number[],
+  priceDb: Record<number, number>
+): ColorPack {
+  const sizesDesc = [...bulkSizes].sort((a, b) => b - a);
+  const smallest = sizesDesc[sizesDesc.length - 1];
+  const larger = sizesDesc.slice(0, -1); // sizes above the smallest, largest first
+  const priceOf = (size: number) => priceDb[size] ?? 0;
+
+  let bestCounts: number[] = [];
+  let bestCost = Infinity;
+  const counts = new Array(larger.length).fill(0);
+
+  const search = (idx: number, covered: number, cost: number) => {
+    if (idx === larger.length) {
+      const remaining = Math.max(0, requiredCount - covered);
+      const nSmall = Math.ceil(remaining / smallest);
+      const total = cost + nSmall * priceOf(smallest);
+      if (total < bestCost - 1e-9) {
+        bestCost = total;
+        bestCounts = [...counts, nSmall];
+      }
+      return;
+    }
+    const size = larger[idx];
+    const maxN = Math.ceil(requiredCount / size);
+    for (let n = 0; n <= maxN; n++) {
+      counts[idx] = n;
+      search(idx + 1, covered + n * size, cost + n * priceOf(size));
+    }
+    counts[idx] = 0;
+  };
+  search(0, 0, 0);
+
+  const bySize: Record<number, number> = {};
   let totalDrills = 0;
   let packets = 0;
-  for (const [size, qty] of Object.entries(bySize)) {
-    totalDrills += Number(size) * qty;
-    packets += qty;
-  }
-
+  sizesDesc.forEach((size, i) => {
+    const qty = bestCounts[i];
+    if (qty > 0) {
+      bySize[size] = qty;
+      totalDrills += size * qty;
+      packets += qty;
+    }
+  });
   return { bySize, totalDrills, packets };
 }
 
@@ -138,8 +174,8 @@ export function planColorSupply(
   count: number,
   priceDb: Record<number, number>
 ): ColorSupplyRow {
-  const exact = packColor(dmcCode, shape, count);
-  const safety = packColor(dmcCode, shape, withSafetyMargin(dmcCode, shape, count));
+  const exact = packColor(dmcCode, shape, count, priceDb);
+  const safety = packColor(dmcCode, shape, withSafetyMargin(dmcCode, shape, count), priceDb);
 
   const parts = Object.keys(safety.bySize)
     .map(Number)

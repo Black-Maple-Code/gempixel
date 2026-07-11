@@ -955,7 +955,7 @@ export function App() {
       };
     });
 
-    const result = compileShopifyCartLink(items, affiliateTag, affiliateApp);
+    const result = compileShopifyCartLink(items, affiliateTag, affiliateApp, priceDb);
     
     if (result.unmappedItems.length > 0) {
       const savedLog = JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
