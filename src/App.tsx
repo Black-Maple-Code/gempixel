@@ -75,6 +75,9 @@ export function App() {
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
+  // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
+  // ingestion settings sit near the top without scrolling; user can reopen it.
+  const [imageSourceOpen, setImageSourceOpen] = useState(true);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');
@@ -274,6 +277,7 @@ export function App() {
   const resetWorkspace = () => {
     setActiveProjectId(null);
     setImage(null);
+    setImageSourceOpen(true);
     setImageName('');
     setCols(80);
     setRows(53);
@@ -734,6 +738,7 @@ export function App() {
         }
         setRows(newRows);
         setImage(img);
+        setImageSourceOpen(false);
 
         // Add to recent images history (limit to 5)
         setRecentImages(prev => {
@@ -780,6 +785,7 @@ export function App() {
       }
       setRows(newRows);
       setImage(img);
+      setImageSourceOpen(false);
     };
     img.src = entry.dataUrl;
   };
@@ -1096,6 +1102,8 @@ export function App() {
             imageName={imageName}
             dropZoneRef={dropZoneRef}
             isDragOver={isDragOver}
+            imageSourceOpen={imageSourceOpen}
+            setImageSourceOpen={setImageSourceOpen}
             recentImages={recentImages}
             recentUploadsOpen={recentUploadsOpen}
             setRecentUploadsOpen={setRecentUploadsOpen}
@@ -1301,7 +1309,7 @@ export function App() {
               disabled={!wizard.canEnter(wizard.step + 1)}
               className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
             >
-              Next Step &gt;
+              Next Step →
             </button>
           ) : (
             <div className="text-xs font-bold text-indigo-750/0 select-none cursor-default w-[72px]">&nbsp;</div>
@@ -1352,7 +1360,7 @@ export function App() {
               <button
                 onClick={wizard.next}
                 disabled={!(wizard.canEnter(wizard.step + 1) || isTestEnv)}
-                className="btn-chunk rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="btn-chunk rounded-md px-5 py-2 text-xs font-bold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Next Step →
               </button>
@@ -1385,12 +1393,16 @@ export function App() {
         {rightPanelCollapsed && (
           <button
             onClick={() => setRightPanelCollapsed(false)}
-            className="absolute top-16 right-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
-            title="Expand Workspace"
+            className="absolute top-16 right-4 z-50 flex items-center gap-2 pl-2 pr-3 py-2 bg-panel hover:bg-border text-ink rounded-lg shadow-xl border border-border transition-all duration-200 cursor-pointer hidden md:flex hover:scale-105 active:scale-95"
+            title="Expand color legend"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7M17 19l-7-7 7-7" />
             </svg>
+            <div className="flex flex-col items-start leading-tight">
+              <span className="text-xs font-bold text-ink">Color Legend</span>
+              <span className="text-[9px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
+            </div>
           </button>
         )}
 
@@ -1467,7 +1479,7 @@ export function App() {
               {/* Low zoom warning */}
               {viewportMode === 'symbols' && zoomScale * 16 < 10 && (
                 <div className="tooltip-group flex items-center border-l border-slate-800 pl-3">
-                  <div className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-bold select-none cursor-default flex items-center gap-1 animate-pulse">
+                  <div className="px-2 py-1 rounded bg-warn/15 border border-warn/40 text-warn text-[10px] font-bold select-none cursor-default flex items-center gap-1 whitespace-nowrap animate-pulse">
                     ⚠️ Low Zoom
                   </div>
                   <div className="tooltip-box">Zoom in to view symbol overlays (disabled at &lt;10px cell size)</div>
@@ -1497,7 +1509,7 @@ export function App() {
                   ref={canvasRef}
                   width={800}
                   height={600}
-                  className={`shadow-2xl border border-slate-800 bg-slate-900 print:border-none print:shadow-none ${
+                  className={`shadow-2xl border border-slate-800 bg-slate-950 print:border-none print:shadow-none ${
                     (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
                   }`}
                 />
@@ -1584,7 +1596,7 @@ export function App() {
       </main>
       {/* Right Sidebar Checklist & Legend */}
       <aside
-        className={`bg-slate-900/60 backdrop-blur-md border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300 relative ${
+        className={`bg-panel border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300 relative ${
           rightPanelCollapsed ? 'w-0 border-l-0 p-0' : 'w-96'
         }`}
       >

@@ -619,8 +619,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(rightSidebar.className).toContain('w-0');
     });
 
-    // Pushed expand button should now be visible in main area
-    const expandBtn = container.querySelector('button[title="Expand Workspace"]') as HTMLButtonElement;
+    // Pushed expand button (labeled "Color Legend") should now be visible in main area
+    const expandBtn = container.querySelector('button[title="Expand color legend"]') as HTMLButtonElement;
     expect(expandBtn).not.toBeNull();
     expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
 
@@ -672,26 +672,38 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     render(<App />, container);
 
-    // 1. Upload mock image
+    // 1. Upload mock image (the Source Image menu auto-collapses once it loads)
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File([''], 'scenery.png', { type: 'image/png' });
     Object.defineProperty(fileInput, 'files', { value: [file], writable: true });
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Wait for image onload and state updates
+    // Wait for the collapsed Source Image summary to appear.
+    const expandSource = () => (container.querySelector('#source-image-toggle') as HTMLElement).click();
     await vi.waitFor(() => {
-      const recentList = container.querySelector('div[title="scenery.png"]');
-      expect(recentList).not.toBeNull();
+      expect(container.querySelector('#source-image-toggle')).not.toBeNull();
     });
 
-    // 2. Click thumbnail to load image
-    const thumbnail = container.querySelector('div[title="scenery.png"]') as HTMLElement;
-    thumbnail.click();
+    // 2. Expand the menu — the recent upload is now tracked inside it.
+    expandSource();
+    await vi.waitFor(() => {
+      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
+    });
+
+    // 3. Click thumbnail to load image; loading re-collapses the menu, so the
+    //    recents disappearing is the deterministic signal that the load ran.
+    (container.querySelector('div[title="scenery.png"]') as HTMLElement).click();
     await vi.waitFor(() => {
       expect(container.querySelector('canvas')).not.toBeNull();
+      expect(container.querySelector('div[title="scenery.png"]')).toBeNull();
     });
 
-    // 3. Delete recent image
+    // 4. Re-expand and delete the recent image
+    expandSource();
+    await vi.waitFor(() => {
+      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
+    });
+    const thumbnail = container.querySelector('div[title="scenery.png"]') as HTMLElement;
     const deleteBtn = thumbnail.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
     expect(deleteBtn).not.toBeNull();
     deleteBtn.click();

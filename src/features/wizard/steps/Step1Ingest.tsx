@@ -12,6 +12,8 @@ export interface Step1IngestProps {
   imageName: string;
   dropZoneRef: RefObject<HTMLDivElement>;
   isDragOver: boolean;
+  imageSourceOpen: boolean;
+  setImageSourceOpen: (v: boolean) => void;
   recentImages: RecentImage[];
   recentUploadsOpen: boolean;
   setRecentUploadsOpen: (v: boolean) => void;
@@ -52,6 +54,8 @@ export function Step1Ingest(props: Step1IngestProps) {
     imageName,
     dropZoneRef,
     isDragOver,
+    imageSourceOpen,
+    setImageSourceOpen,
     recentImages,
     recentUploadsOpen,
     setRecentUploadsOpen,
@@ -86,14 +90,62 @@ export function Step1Ingest(props: Step1IngestProps) {
     handleHeightChange,
   } = props;
 
+  // Recent Uploads strip — shown before an image is chosen, and inside the
+  // expanded Source Image menu afterwards (declared once, reused in both).
+  const recentUploads =
+    recentImages.length > 0 ? (
+      <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0 no-print">
+        <button
+          onClick={() => setRecentUploadsOpen(!recentUploadsOpen)}
+          className="w-full flex justify-between items-center text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recentUploadsOpen ? 'rotate-90' : ''}`}>▶</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recent Uploads</span>
+          </div>
+          <span className="text-[9px] text-slate-500 font-medium">({recentImages.length})</span>
+        </button>
+        {recentUploadsOpen && (
+          <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
+            {recentImages.map(imgEntry => (
+              <div
+                key={imgEntry.id}
+                onClick={() => loadRecentImage(imgEntry)}
+                className="relative w-10 h-10 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-indigo-500/75 group shrink-0 overflow-hidden transition-all"
+                title={imgEntry.name}
+              >
+                <img
+                  src={imgEntry.dataUrl}
+                  alt={imgEntry.name}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={(e) => deleteRecentImage(imgEntry.id, e)}
+                  className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-slate-950/80 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
+                  title="Delete Image"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+
   return (
         <div className="flex flex-col gap-4">
-          {/* File Ingestion */}
-          <div className="flex flex-col gap-1.5 shrink-0">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Load Image</label>
-            {image ? (
-              <div className="flex items-center justify-between bg-slate-950/40 border border-slate-850 rounded-lg p-2 shrink-0">
+          {/* Source Image — collapses to a compact summary once an image is loaded,
+              freeing vertical space for the ingestion settings below. */}
+          {image ? (
+            <div className="border border-slate-850 rounded bg-slate-950/30 shrink-0 overflow-hidden">
+              <div
+                id="source-image-toggle"
+                onClick={() => setImageSourceOpen(!imageSourceOpen)}
+                className="w-full flex items-center justify-between gap-2 p-2 cursor-pointer select-none hover:bg-slate-900/40 transition-colors"
+              >
                 <div className="flex items-center gap-2 min-w-0">
+                  <span className={`text-[8px] text-slate-500 transition-transform duration-200 shrink-0 ${imageSourceOpen ? 'rotate-90' : ''}`}>▶</span>
                   <div className="w-8 h-8 rounded bg-slate-800 overflow-hidden shrink-0 border border-slate-800 flex items-center justify-center">
                     <img src={image.src} alt="Uploaded thumbnail" className="w-full h-full object-cover" />
                   </div>
@@ -103,95 +155,53 @@ export function Step1Ingest(props: Step1IngestProps) {
                   </div>
                 </div>
                 <button
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                  className="text-[9px] text-indigo-400 hover:text-indigo-300 font-bold border border-indigo-500/20 px-2 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-all cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); document.getElementById('file-upload')?.click(); }}
+                  className="text-[9px] text-indigo-400 hover:text-indigo-300 font-bold border border-indigo-500/20 px-2 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-all cursor-pointer shrink-0"
                 >
                   Replace
                 </button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
               </div>
-            ) : (
-              <div
-                ref={dropZoneRef}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[90px] ${
-                  isDragOver
-                    ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
-                    : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
-                }`}
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                <span className="text-[11px] text-slate-400 leading-relaxed max-w-[200px]">Drag & Drop Image or Click to Browse</span>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
-            )}
-          </div>
 
-          {/* Recent Uploads */}
-          {recentImages.length > 0 && (
-            <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0 no-print">
-              <button
-                onClick={() => setRecentUploadsOpen(!recentUploadsOpen)}
-                className="w-full flex justify-between items-center text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${recentUploadsOpen ? 'rotate-90' : ''}`}>▶</span>
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recent Uploads</span>
-                </div>
-                <span className="text-[9px] text-slate-500 font-medium">({recentImages.length})</span>
-              </button>
-              {recentUploadsOpen && (
-                <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
-                  {recentImages.map(imgEntry => (
-                    <div
-                      key={imgEntry.id}
-                      onClick={() => loadRecentImage(imgEntry)}
-                      className="relative w-10 h-10 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-indigo-500/75 group shrink-0 overflow-hidden transition-all"
-                      title={imgEntry.name}
-                    >
-                      <img
-                        src={imgEntry.dataUrl}
-                        alt={imgEntry.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        onClick={(e) => deleteRecentImage(imgEntry.id, e)}
-                        className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-slate-950/80 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
-                        title="Delete Image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+              {imageSourceOpen && (
+                <div className="flex flex-col gap-3 p-2 pt-0">
+                  {recentUploads}
+                  <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Reference Image</span>
+                    <img
+                      src={image.src}
+                      alt="Reference Preview"
+                      className="w-full max-h-24 object-contain rounded border border-slate-800 bg-slate-950/50"
+                    />
+                  </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Reference Image Thumbnail */}
-          {image && (
-            <div className="flex flex-col gap-1.5 border border-slate-850 p-2 rounded bg-slate-950/30 shrink-0">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Reference Image</span>
-              <img
-                src={image.src}
-                alt="Reference Preview"
-                className="w-full max-h-24 object-contain rounded border border-slate-800 bg-slate-950/50"
-              />
+              {/* Hidden input backing the Replace button */}
+              <input id="file-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             </div>
+          ) : (
+            <>
+              {/* No image yet: prominent drop zone */}
+              <div className="flex flex-col gap-1.5 shrink-0">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Load Image</label>
+                <div
+                  ref={dropZoneRef}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[90px] ${
+                    isDragOver
+                      ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
+                      : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
+                  }`}
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                  <span className="text-[11px] text-slate-400 leading-relaxed max-w-[200px]">Drag & Drop Image or Click to Browse</span>
+                  <input id="file-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                </div>
+              </div>
+              {recentUploads}
+            </>
           )}
           <details open className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded border border-slate-850/40 cursor-pointer">
             <summary className="font-bold text-xs uppercase text-indigo-400 select-none flex items-center gap-2 cursor-pointer pb-2 border-b border-slate-850/30">
