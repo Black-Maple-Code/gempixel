@@ -6,14 +6,14 @@ current_phase: 13
 current_phase_name: performance-off-main-thread-decode
 status: executing
 stopped_at: Phase 13 context gathered
-last_updated: "2026-07-12T18:21:18.532Z"
+last_updated: "2026-07-12T18:27:16.608Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 14
   completed_phases: 9
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 64
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 ## Current Position
 
 Phase: 13 (performance-off-main-thread-decode) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 13 execution started
 
@@ -72,6 +72,7 @@ Last activity: 2026-07-12 — Phase 13 execution started
 | Phase 11 P01 | 6min | 2 tasks | 4 files |
 | Phase 11 P02 | 12min | 2 tasks | 3 files |
 | Phase 11 P03 | 30min | 3 tasks | 2 files |
+| Phase 13 P02 | 5min | 2 tasks | 1 files |
 
 ## Risk & Health
 
@@ -98,7 +99,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T18:21:18.519Z
+Last session: 2026-07-12T18:26:26.511Z
 Stopped at: Phase 13 context gathered
 Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.md
 
@@ -107,3 +108,5 @@ Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.m
 - [Phase ?]: 11-01: Per-type storage codecs preserve legacy on-disk formats (no blanket JSON codec); safeStorage is the single guarded audit point for localStorage
 - [Phase 11]: 11-02: migrated App.tsx 7 persisted settings onto usePersistentState (IN-01); safeStorage import deferred to 11-03 under noUnusedLocals; canvasTemplate uses a custom normalization codec (Pitfall 4)
 - [Phase ?]: ERR-01: unified actionError banner folds saveErrorMsg; guarded checkout unmapped-log parse via safeStorage (corrupt -> [] + banner, checkout proceeds)
+- [Phase 13]: D-09: single loading overlay branches on loadingPhase — indeterminate 'Preparing image…' during off-thread decode, determinate 'Matching colors: {progress}%' on first worker progress
+- [Phase 13]: D-10: match-error banner copy generalized to stage-agnostic 'Couldn't process the image: {matchError}', staying a plain JSX text child

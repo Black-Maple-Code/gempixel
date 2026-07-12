@@ -308,7 +308,7 @@ Plans:
   1. Loading/re-matching a large source image (e.g. 4000×3000) keeps the UI responsive; decode/downsample no longer block paint on the main thread. (review W8)
   2. Matching output is unchanged from the current main-thread pipeline (parity test on a fixture image).
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 Plans:
 **Wave 1**
@@ -317,7 +317,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 13-02-PLAN.md — Wire the phase-labeled loading overlay ("Preparing image…" → "Matching colors: {n}%") and generalize the error-banner copy in App.tsx. (PERF-01)
+- [x] 13-02-PLAN.md — Wire the phase-labeled loading overlay ("Preparing image…" → "Matching colors: {n}%") and generalize the error-banner copy in App.tsx. (PERF-01)
 
 **Wave 3** *(blocked on Wave 2 — manual gate)*
 
