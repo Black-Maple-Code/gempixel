@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 Phase: 9 — COMPLETE
 Plan: 2 of 2 in current phase
 Status: Phase 9 complete (milestone v2.0 done). Post-milestone maintenance underway.
-Last activity: 2026-07-12 — Completed quick task 260712-05k: fix blocker B3 (silent quota eviction data loss) + W9 (CSPRNG UUIDs)
+Last activity: 2026-07-12 — Completed quick task 260712-0io: fix blocker B4 (symbol pool wraparound → duplicate legend symbols). All 4 review blockers resolved.
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Last activity: 2026-07-12 — Completed quick task 260712-05k: fix blocker B3 (s
 | 260711-wvv | Fix blocker B1 (worker matching errors → stuck loading) + W5 inline error banner | 2026-07-12 | 790bb21..19a2dfa | [260711-wvv-fix-blocker-b1-worker-matching-errors-le](./quick/260711-wvv-fix-blocker-b1-worker-matching-errors-le/) |
 | 260711-x6p | Fix blocker B2 (match-abort race → stale wrong-dimension grid) via monotonic run-id | 2026-07-12 | 6a3e563..43b267f | [260711-x6p-fix-blocker-b2-match-abort-concurrency-r](./quick/260711-x6p-fix-blocker-b2-match-abort-concurrency-r/) |
 | 260712-05k | Fix blocker B3 (silent quota eviction → data loss) + W9 (CSPRNG UUIDs); save() returns status + UI warning | 2026-07-12 | 65f3b1a..e75a7f5 | [260712-05k-fix-blocker-b3-warning-w9-projectstore-s](./quick/260712-05k-fix-blocker-b3-warning-w9-projectstore-s/) |
+| 260712-0io | Fix blocker B4 (symbol pool wraps at 82 → duplicate legend symbols); unique multi-char overflow symbols | 2026-07-12 | cdac74e | [260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s](./quick/260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s/) |
 
 ## Continuity & Handoff
 
