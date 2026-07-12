@@ -23,7 +23,7 @@ Address the remaining warnings from the maintenance code review (`.planning/code
 **Active scope (2026-07-12 decision):** Phases **11** (storage robustness + error surface) and **13** (off-main-thread decode). Phases **10**, **12**, and **14** are **deferred** to a later version / the feature roadmap — kept below as backlog, not in the current execution scope.
 
 - [ ] **Phase 10: Project Load Correctness** *(deferred)* - Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved. (LOAD-01, LOAD-02)
-- [ ] **Phase 11: Storage Robustness & Error Feedback** *(active)* - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01)
+- [x] **Phase 11: Storage Robustness & Error Feedback** *(active)* - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01) (completed 2026-07-12)
 - [ ] **Phase 12: Supply Pricing Accuracy** *(deferred)* - Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test. (PRICE-01, PRICE-02, DATA-01)
 - [ ] **Phase 13: Performance — Off-Main-Thread Decode** *(active)* - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01)
 - [ ] **Phase 14: Security & Cleanup** *(deferred)* - Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path. (SEC-01)
@@ -268,7 +268,7 @@ Plans:
   2. All persisted settings flow through a single `usePersistentState` helper; the duplicated lazy-init/effect boilerplate is removed. (review W3, IN-01)
   3. A failed save, download, or checkout shows a clear inline message instead of a silent no-op; the unmapped-colors-log parse is guarded. (review W4, W5)
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -281,7 +281,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 — same App.tsx file)*
 
-- [ ] 11-03-PLAN.md — Unified actionError banner for download/checkout/save failures, guard the checkout log parse, ERR-01 integration tests + banner human-verify. (ERR-01)
+- [x] 11-03-PLAN.md — Unified actionError banner for download/checkout/save failures, guard the checkout log parse, ERR-01 integration tests + banner human-verify. (ERR-01)
 
 ### Phase 12: Supply Pricing Accuracy
 
