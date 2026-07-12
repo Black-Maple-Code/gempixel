@@ -18,7 +18,12 @@ export class MatcherClient {
     candidates: DmcColor[],
     onProgress: (percent: number) => void,
     onComplete: (result: { matches: string[]; counts: Record<string, number> }) => void,
-    onError?: (message: string) => void
+    onError?: (message: string) => void,
+    // Parity cap source (ME-01): the pre-orientation source dimensions the removed
+    // getImagePixels used to size its resample canvas (image.naturalWidth/naturalHeight).
+    // When omitted the worker falls back to the transferred bitmap's own dimensions.
+    srcWidth?: number,
+    srcHeight?: number
   ): void {
     const paletteHash = candidates.map((c) => c.dmc).sort().join(',');
     const clearCache = paletteHash !== this.currentPaletteHash;
@@ -36,6 +41,8 @@ export class MatcherClient {
         candidates,
         clearCache,
         runId,
+        srcWidth,
+        srcHeight,
       },
       [bitmap]
     );

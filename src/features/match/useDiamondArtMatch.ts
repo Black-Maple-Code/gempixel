@@ -165,6 +165,13 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
           bitmap.close();
           return;
         }
+        // Parity cap source (ME-01): the removed getImagePixels sized its resample canvas from
+        // image.naturalWidth/naturalHeight (falling back to width/height), then drew the
+        // orientation-corrected element into that box. Pass the SAME source so the worker caps
+        // on it — keeping output byte-identical even for EXIF-rotated inputs, where the oriented
+        // bitmap.width/height can diverge from the natural dimensions.
+        const srcWidth = image.naturalWidth || image.width;
+        const srcHeight = image.naturalHeight || image.height;
         client.match(
           bitmap,
           cols,
@@ -182,7 +189,9 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
             console.error('Match failed:', message);
             setLoading(false);
             setError(message);
-          }
+          },
+          srcWidth,
+          srcHeight
         );
       } catch (err) {
         // A rejected createImageBitmap routes to the same reactive error signal (D-10).

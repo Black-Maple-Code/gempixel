@@ -57,11 +57,17 @@ ctx.onmessage = async (e: MessageEvent) => {
     isAborted = true;
   } else if (kind === 'match') {
     isAborted = false;
-    const { bitmap, cols, rows, candidates, clearCache, runId } = e.data;
+    const { bitmap, cols, rows, candidates, clearCache, runId, srcWidth, srcHeight } = e.data;
     currentRunId = runId; // adopt the client-supplied id — supersedes any prior run
     try {
       // Decode + resample + readback now live here (off the main thread, PERF-01/D-01).
-      const { w, h } = capDims(bitmap.width, bitmap.height, MAX_DIMENSION);
+      // Cap on the client-supplied source dims (ME-01) — the removed getImagePixels sized its
+      // canvas from image.naturalWidth/naturalHeight, which can differ from the oriented
+      // bitmap.width/height for EXIF-rotated images; falling back to the bitmap's own dims
+      // keeps the identity behavior for callers/tests that don't supply them.
+      const capW = srcWidth ?? bitmap.width;
+      const capH = srcHeight ?? bitmap.height;
+      const { w, h } = capDims(capW, capH, MAX_DIMENSION);
       // Close the transferred bitmap even if the decode throws (getImageData OOM, missing 2D
       // context) — the worker is long-lived, so a skipped close orphans it until GC (LO-01).
       let pixels: Uint8ClampedArray;
