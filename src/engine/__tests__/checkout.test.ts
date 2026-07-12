@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost } from '../checkout';
+import { compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost, normalizeVendor } from '../checkout';
 
 // The dye-lot aggregate `optimizeBags(count)` was removed in the Candidate 1
 // consolidation (unused in production). Its dye-lot rule is now covered per-color
@@ -111,7 +111,7 @@ describe('Checkout and Sizing Integration', () => {
     });
 
     it('handles exact matches for other vendors', () => {
-      expect(calculateCanvasCost(12, 16, 'inch', 'prodigi')).toBe(9.00);
+      // 12x16 inches = 192 sq in
       expect(calculateCanvasCost(12, 16, 'inch', 'finerworks')).toBe(11.00);
     });
 
@@ -123,10 +123,10 @@ describe('Checkout and Sizing Integration', () => {
       expect(calculateCanvasCost(16, 16, 'inch', 'lumaprints')).toBe(7.50);
 
       // Area = 18x24 = 432 sq in
-      // For Prodigi: between 320 ($11.50) and 560 ($16.00)
+      // For FinerWorks: between 320 ($14.00) and 560 ($19.50)
       // Fraction = (432 - 320) / (560 - 320) = 112 / 240 = 0.46667
-      // Price = 11.50 + 0.46667 * (16.00 - 11.50) = 11.50 + 2.10 = 13.60
-      expect(calculateCanvasCost(18, 24, 'inch', 'prodigi')).toBe(13.60);
+      // Price = 14.00 + 0.46667 * (19.50 - 14.00) = 14.00 + 2.5667 = 16.57
+      expect(calculateCanvasCost(18, 24, 'inch', 'finerworks')).toBe(16.57);
     });
 
     it('falls back to custom square inch rate when area is below minimum tier', () => {
@@ -139,8 +139,8 @@ describe('Checkout and Sizing Integration', () => {
 
     it('falls back to custom square inch rate when area is above maximum tier', () => {
       // Area = 50x60 = 3000 sq in (above 2400)
-      // For Prodigi: 3000 * 0.048 = 144.00
-      expect(calculateCanvasCost(50, 60, 'inch', 'prodigi')).toBe(144.00);
+      // For FinerWorks: 3000 * 0.058 = 174.00
+      expect(calculateCanvasCost(50, 60, 'inch', 'finerworks')).toBe(174.00);
     });
 
     it('performs unit conversions correctly', () => {
@@ -151,6 +151,25 @@ describe('Checkout and Sizing Integration', () => {
       // Cm unit: w = cm/2.54, h = cm/2.54
       // 30.48 x 40.64 cm = 12 x 16 inches = 192 sq in
       expect(calculateCanvasCost(30.48, 40.64, 'cm', 'lumaprints')).toBe(6.50);
+    });
+  });
+
+  describe('Unknown-vendor guard + normalizeVendor migration', () => {
+    it('returns null (never 0) for a vendor outside the narrowed union', () => {
+      // Guard: a removed/tampered vendor must NOT yield a free $0 canvas (T-15-01).
+      expect(calculateCanvasCost(12, 16, 'inch', 'prodigi' as any)).toBe(null);
+      expect(calculateCanvasCost(12, 16, 'inch', 'prodigi' as any)).not.toBe(0);
+    });
+
+    it('migrates legacy and tampered vendor values to lumaprints', () => {
+      expect(normalizeVendor('prodigi')).toBe('lumaprints');
+      expect(normalizeVendor('nonsense')).toBe('lumaprints');
+      expect(normalizeVendor(undefined)).toBe('lumaprints');
+    });
+
+    it('passes valid vendors through unchanged', () => {
+      expect(normalizeVendor('finerworks')).toBe('finerworks');
+      expect(normalizeVendor('lumaprints')).toBe('lumaprints');
     });
   });
 });

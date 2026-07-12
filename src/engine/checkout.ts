@@ -116,7 +116,15 @@ export interface VendorConfig {
   uploadUrl: string;
 }
 
-export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', VendorConfig> = {
+/**
+ * The narrowed set of supported canvas print vendors (VENDOR-02). A third vendor
+ * was removed here; a removed vendor must not leave a $0 free-canvas hole. Keep
+ * this union narrow (never widen to `string`) so `calculateCanvasCost` and the
+ * vendor dropdown stay exhaustively type-checked.
+ */
+export type CanvasVendor = 'lumaprints' | 'finerworks';
+
+export const VENDOR_REGISTRY: Record<CanvasVendor, VendorConfig> = {
   lumaprints: {
     name: 'Lumaprints',
     baseShipping: 4.99,
@@ -127,18 +135,6 @@ export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', Ve
       { areaSqIn: 320, price: 8.50 },  // 16x20
       { areaSqIn: 560, price: 12.00 }, // 20x28
       { areaSqIn: 2400, price: 28.00 } // 40x60
-    ]
-  },
-  prodigi: {
-    name: 'Prodigi',
-    baseShipping: 5.00,
-    sqInchRate: 0.048,
-    uploadUrl: 'https://www.prodigi.com/products/canvas/rolled-canvas/',
-    pricingPoints: [
-      { areaSqIn: 192, price: 9.00 },
-      { areaSqIn: 320, price: 11.50 },
-      { areaSqIn: 560, price: 16.00 },
-      { areaSqIn: 2400, price: 35.00 }
     ]
   },
   finerworks: {
@@ -156,17 +152,31 @@ export const VENDOR_REGISTRY: Record<'lumaprints' | 'prodigi' | 'finerworks', Ve
 };
 
 /**
+ * Normalizes a persisted/restored/tampered vendor value to a valid {@link CanvasVendor}.
+ * Returns `raw` when it is exactly `'lumaprints'` or `'finerworks'`; every other value
+ * (a legacy removed-vendor key, `undefined`, or any tampered string) maps to
+ * `'lumaprints'` (the first remaining vendor) — the locked removed-vendor migration
+ * decision (VENDOR-02, threat T-15-02). Read-only and non-destructive: a corrupt
+ * vendor can never corrupt the rest of a restored project.
+ */
+export function normalizeVendor(raw: unknown): CanvasVendor {
+  return raw === 'lumaprints' || raw === 'finerworks' ? raw : 'lumaprints';
+}
+
+/**
  * Calculates canvas base cost using tier matching, linear interpolation, or custom sq inch rates.
+ * Returns `null` (never `0.0`) for a vendor outside the narrowed union so a
+ * tampered/legacy vendor can never yield a free $0 canvas (Pitfall 7, threat T-15-01).
  * [VERIFIED: Matches all core mathematical specifications defined in Phase 8 rules]
  */
 export function calculateCanvasCost(
   width: number,
   height: number,
   unit: 'grid' | 'cm' | 'inch',
-  vendorKey: 'lumaprints' | 'prodigi' | 'finerworks'
-): number {
+  vendorKey: CanvasVendor
+): number | null {
   const config = VENDOR_REGISTRY[vendorKey];
-  if (!config) return 0.0;
+  if (!config) return null;
 
   // 1. Convert inputs to inches
   let widthIn = width;
