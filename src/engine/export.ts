@@ -4,6 +4,16 @@ import { getContrastColor } from './symbols';
 const OUTER_MARGIN_CELLS = 3;
 
 /**
+ * Physical blank gap between the grid picture and the legend column, so a framer
+ * can wrap a border over the artwork edge without covering the color key. A drill
+ * cell is one dot at 10 dots/inch = 2.54mm, so 3cm ≈ 11.8 cells; at `cellScale`
+ * px/cell that is `3 / 0.254 * cellScale` px.
+ */
+const LEGEND_GAP_CM = 3;
+const CM_PER_CELL = 0.254; // 2.54mm per drill (10 dots/inch)
+const legendGapPx = (cellScale: number) => Math.round((LEGEND_GAP_CM / CM_PER_CELL) * cellScale);
+
+/**
  * Wider white wrap-margin (in grid cells) for the standalone Canvas Grid PNG.
  * At 10 dots/inch this is ~2 inches per side — enough blank canvas for a framer
  * to gallery-wrap / stretch the finished piece. Exported so the sizing advice
@@ -120,8 +130,12 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   // Extra white wrap margin around the whole sheet (matches drawCanvasOnly).
   const outerMargin = OUTER_MARGIN_CELLS * cellScale;
 
-  // Canvas dimensions (legend margin + outer white margin on all sides)
-  const canvasWidth = gridWidth + marginWidth * 2 + outerMargin * 2;
+  // 3cm of blank canvas between the grid and the legend (border/frame room).
+  const legendGap = legendGapPx(cellScale);
+
+  // Canvas dimensions (blank left margin + grid + legend gap + legend margin +
+  // outer white margin on all sides). The gap is added only on the legend side.
+  const canvasWidth = gridWidth + marginWidth * 2 + outerMargin * 2 + legendGap;
   const canvasHeight = innerAreaHeight + marginWidth * 2 + outerMargin * 2;
 
   const canvas = document.createElement('canvas');
@@ -164,9 +178,10 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
     }
   }
 
-  // 2. Draw Margins (split into columns on the right side)
+  // 2. Draw Margins (split into columns on the right side), pushed past the 3cm
+  //    blank gap so the color key never sits on the framer's border allowance.
   ctx.textBaseline = 'middle';
-  const startX = outerMargin + marginWidth + gridWidth;
+  const startX = outerMargin + marginWidth + gridWidth + legendGap;
   const colSpacing = Math.floor((marginWidth - 25) / numCols); // distribute columns
 
   allLegendColors.forEach((item, index) => {

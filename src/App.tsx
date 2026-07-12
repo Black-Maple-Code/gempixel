@@ -419,12 +419,30 @@ export function App() {
   });
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
-    const mid = Math.ceil(activeCandidates.length / 2);
+    // The printable/exported legend is a KEY for the grid, so it must list only
+    // the colors actually used in the (smoothed) grid and in the SAME order the
+    // grid symbols are assigned — most-used first. That makes it read A, B, C…
+    // top-to-bottom with every swatch's symbol matching the grid exactly.
+    // (Previously this listed the entire kit in DMC order, so unused colors —
+    // which fall through to the glyph tier — dominated and hid the letters.)
+    const counts = matchResult?.counts || {};
+    const used = Object.keys(counts)
+      .sort((a, b) => {
+        // Mirror generateSymbolAllocation: frequency desc, alphabetical tie-break.
+        if (counts[b] !== counts[a]) return counts[b] - counts[a];
+        return a.localeCompare(b);
+      })
+      .map(dmc => {
+        const info =
+          activeCandidates.find(c => c.dmc === dmc) || DMC_PALETTE.find(c => c.dmc === dmc);
+        return { dmc, hex: info?.hex || '#2D3748' };
+      });
+    const mid = Math.ceil(used.length / 2);
     return {
-      leftLegendColors: activeCandidates.slice(0, mid),
-      rightLegendColors: activeCandidates.slice(mid)
+      leftLegendColors: used.slice(0, mid),
+      rightLegendColors: used.slice(mid)
     };
-  }, [activeCandidates]);
+  }, [matchResult, activeCandidates]);
 
   // Persist recent image list to localStorage (quota eviction handled in projectStore).
   useEffect(() => {

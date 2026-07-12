@@ -102,7 +102,9 @@ describe('Canvas PNG Exporter Rendering', () => {
       marginWidth: 140
     });
 
-    expect(canvas.width).toBe(600); // 10 * 20 + 2 * 140 + 2 * (3 * 20) outer margin
+    // Width: gridWidth 200 + 2*140 margins + 2*(3*20) outer + legendGap.
+    // legendGap = round(3 / 0.254 * 20) = 236 (3cm border room before the key).
+    expect(canvas.width).toBe(836);
     // Height: max(gridHeight = 300, legendHeight = 1 * 18 + 30 = 48) + 2 * 140 + 2 * 60 => 300 + 280 + 120 = 700
     expect(canvas.height).toBe(700);
   });
