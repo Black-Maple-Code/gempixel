@@ -1,0 +1,36 @@
+name: Web CI
+
+on:
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: web-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build integrity
+        run: ./scripts/verify-web-export.sh dist
