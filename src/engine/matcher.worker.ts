@@ -62,8 +62,14 @@ ctx.onmessage = async (e: MessageEvent) => {
     try {
       // Decode + resample + readback now live here (off the main thread, PERF-01/D-01).
       const { w, h } = capDims(bitmap.width, bitmap.height, MAX_DIMENSION);
-      const pixels = decodeToPixels(bitmap, w, h);
-      bitmap.close();
+      // Close the transferred bitmap even if the decode throws (getImageData OOM, missing 2D
+      // context) — the worker is long-lived, so a skipped close orphans it until GC (LO-01).
+      let pixels: Uint8ClampedArray;
+      try {
+        pixels = decodeToPixels(bitmap, w, h);
+      } finally {
+        bitmap.close();
+      }
       // A run superseded during decode bails at the existing abort boundary (D-05) —
       // before any box-sample/match work, posting nothing further.
       if (runId !== currentRunId || isAborted) return;
