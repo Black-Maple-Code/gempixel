@@ -2,6 +2,35 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
 import { App } from '../App';
+import { projectStore } from '../engine/projectStore';
+
+// ERR-01: force the canvas download to fail so the action-error banner path is
+// exercised deterministically (jsdom has no 2D context, but this guarantees the
+// catch fires regardless). All other export helpers stay real.
+vi.mock('../engine/export', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../engine/export')>();
+  return {
+    ...actual,
+    triggerCanvasDownload: vi.fn(() => {
+      throw new Error('mock download failure');
+    }),
+  };
+});
+
+// ERR-01: make checkout report an unmapped item so handleShopifyCheckout reliably
+// enters the (guarded) unmapped-colors-log read/write branch. calculateCanvasCost
+// and VENDOR_REGISTRY (used by the cost tests) stay real.
+vi.mock('../engine/checkout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../engine/checkout')>();
+  return {
+    ...actual,
+    compileShopifyCartLink: vi.fn(() => ({
+      url: 'https://example.com/cart',
+      isUrlTooLong: false,
+      unmappedItems: [{ dmcCode: '939', handle: '' }],
+    })),
+  };
+});
 
 // Mock worker client and canvas viewer
 vi.mock('../engine/worker-client', () => {
@@ -886,6 +915,124 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       // Cleanup globals
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe('ERR-01 unified action-error banner', () => {
+    const projectId = 'test-project-err01';
+
+    // Seeds a loadable project whose gridData restores matchResult, which enables
+    // the download/checkout controls in Step 3 (mirrors the unmapped-log test seed).
+    const seedProject = () => {
+      const nowStr = new Date().toISOString();
+      const summary = {
+        id: projectId,
+        name: 'ERR01 Project',
+        thumbnail: '',
+        dateModified: nowStr,
+        dateCreated: nowStr,
+      };
+      const data = {
+        id: projectId,
+        name: 'ERR01 Project',
+        dateCreated: nowStr,
+        dateModified: nowStr,
+        dimensions: { cols: 80, rows: 53 },
+        unit: 'grid',
+        excludedColors: [],
+        drillStyle: 'square',
+        selectedBaseKit: 'all',
+        drillType: 'standard',
+        canvasBaseCost: 15,
+        drillPacketCost: 0.25,
+        drillBagSize: 200,
+        laborFee: 25,
+        markupType: 'fixed',
+        optimizeBagsCost: true,
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [0, 1],
+      };
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+      localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+    };
+
+    // Renders <App/>, loads the seeded project, and advances the wizard to targetStep.
+    const loadProjectToStep = async (targetStep: number) => {
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+      expect(rowBtn).toBeTruthy();
+      rowBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+      for (let s = 1; s < targetStep; s++) {
+        (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+        await new Promise(r => setTimeout(r, 10));
+      }
+    };
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('shows the actionError banner when a canvas download fails (W5)', async () => {
+      seedProject();
+      await loadProjectToStep(3);
+
+      // triggerCanvasDownload is mocked to throw → the handler's catch must surface
+      // the unified banner instead of a silent console.error-only no-op.
+      const downloadBtn = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent?.includes('Download Canvas Grid (PNG)')
+      ) as HTMLButtonElement;
+      expect(downloadBtn).toBeTruthy();
+      expect(downloadBtn.disabled).toBe(false);
+      downloadBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      expect(container.textContent).toMatch(/could not generate the download/i);
+    });
+
+    it('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
+      seedProject();
+      await loadProjectToStep(3);
+
+      // Seed the corrupt value AFTER mount: usePersistentState's write-effect rewrites
+      // this key to '[]' on mount, so it must be corrupted just before checkout reads it.
+      localStorage.setItem('gempixel_unmapped_colors_log', '{not json');
+
+      const checkoutBtn = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent?.includes('Order Drills')
+      ) as HTMLButtonElement;
+      expect(checkoutBtn).toBeTruthy();
+
+      // The unguarded JSON.parse would have thrown here (W4) — must not now.
+      expect(() => checkoutBtn.click()).not.toThrow();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Banner surfaced …
+      expect(container.textContent).toMatch(/could not read the saved unmapped-colors log/i);
+      // … and checkout proceeded: the corrupt value was replaced with a valid log
+      // built from the [] fallback + the new unmapped code (no silent abort).
+      expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
+    });
+
+    it('surfaces the banner when a save hits the storage quota (B3 regression, folded into actionError)', async () => {
+      seedProject();
+      await loadProjectToStep(4);
+
+      // Force a quota failure through the unified banner (formerly saveErrorMsg).
+      vi.spyOn(projectStore, 'save').mockReturnValue({ ok: false, reason: 'quota' } as ReturnType<typeof projectStore.save>);
+
+      const updateBtn = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent === 'Update'
+      ) as HTMLButtonElement;
+      expect(updateBtn).toBeTruthy();
+      updateBtn.click();
+      await new Promise(r => setTimeout(r, 10));
+
+      expect(container.textContent).toMatch(/storage is full/i);
     });
   });
 });
