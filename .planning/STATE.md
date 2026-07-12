@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 Phase: 9 — COMPLETE
 Plan: 2 of 2 in current phase
 Status: Phase 9 complete (milestone v2.0 done). Post-milestone maintenance underway.
-Last activity: 2026-07-12 — Completed quick task 260711-wvv: fix blocker B1 (worker error → stuck loading) + W5 error surface
+Last activity: 2026-07-12 — Completed quick task 260711-x6p: fix blocker B2 (match-abort race → wrong-dimension grid) via monotonic run-id
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Last activity: 2026-07-12 — Completed quick task 260711-wvv: fix blocker B1 (w
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260711-wvv | Fix blocker B1 (worker matching errors → stuck loading) + W5 inline error banner | 2026-07-12 | 790bb21..19a2dfa | [260711-wvv-fix-blocker-b1-worker-matching-errors-le](./quick/260711-wvv-fix-blocker-b1-worker-matching-errors-le/) |
+| 260711-x6p | Fix blocker B2 (match-abort race → stale wrong-dimension grid) via monotonic run-id | 2026-07-12 | 6a3e563..43b267f | [260711-x6p-fix-blocker-b2-match-abort-concurrency-r](./quick/260711-x6p-fix-blocker-b2-match-abort-concurrency-r/) |
 
 ## Continuity & Handoff
 
