@@ -401,7 +401,7 @@ export function App() {
   // dimension-sync effect's double-source-of-truth fragility is addressed separately.
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
-  const { matchResult, symbolMap, loading, progress, restore } = useDiamondArtMatch({
+  const { matchResult, symbolMap, loading, progress, restore, error: matchError } = useDiamondArtMatch({
     image,
     cols,
     rows,
@@ -1632,6 +1632,17 @@ export function App() {
                 <div className="bg-indigo-500 h-full transition-all duration-100" style={{ width: `${progress}%` }} />
               </div>
               <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
+            </div>
+          )}
+
+          {/* Match error banner — surfaces worker/synchronous match failures (B1/W5).
+              loading is cleared on error (see the hook), so this never co-displays with
+              the spinner. Text-only content (never dangerouslySetInnerHTML) so a crafted
+              worker error string cannot inject markup. Clears automatically on the next
+              match, which resets the hook's error to null. */}
+          {matchError && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
+              Color matching failed: {matchError}
             </div>
           )}
         </div>
