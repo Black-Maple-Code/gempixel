@@ -5,6 +5,7 @@ import { App } from '../App';
 import { MatcherClient } from '../engine/worker-client';
 import { CanvasViewer } from '../engine/viewer';
 import { DMC_PALETTE } from '../engine/palette';
+import { __setOffscreenSupportForTest } from '../features/match/useDiamondArtMatch';
 
 // Mock canvas viewer spies
 const mockSetData = vi.fn();
@@ -59,11 +60,23 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     vi.clearAllMocks();
+    // The hook now decodes off-thread via createImageBitmap + a worker OffscreenCanvas
+    // path; jsdom has neither, so force the capability probe true (D-08) and stub the
+    // cheap main-thread createImageBitmap so matching still triggers.
+    __setOffscreenSupportForTest(true);
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(async () => ({ width: 10, height: 10, close: vi.fn() }))
+    );
   });
 
   afterEach(() => {
     render(null, container);
     container.remove();
+    __setOffscreenSupportForTest(null);
+    // NOTE: intentionally NOT calling vi.unstubAllGlobals() here — several tests below
+    // rely on Image/FileReader global stubs leaking from an earlier test to load an image.
+    // The per-test beforeEach re-stubs createImageBitmap regardless.
   });
 
   it('renders base checklist options correctly', async () => {
@@ -146,8 +159,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     expect(MatcherClient).toHaveBeenCalled();
     expect(mockMatch).toHaveBeenCalled();
 
-    // The first call should have all colors active (none in excludedColors)
-    const initialCandidates = mockMatch.mock.calls[mockMatch.mock.calls.length - 1][1];
+    // The first call should have all colors active (none in excludedColors).
+    // New match() signature: (bitmap, cols, rows, candidates, ...) → candidates at index 3.
+    const initialCandidates = mockMatch.mock.calls[mockMatch.mock.calls.length - 1][3];
     expect(initialCandidates.length).toBe(DMC_PALETTE.length);
 
     // Clear call history
@@ -179,8 +193,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Worker match should be triggered again
     expect(mockMatch).toHaveBeenCalled();
 
-    // Candidate list passed should now be 1 less
-    const updatedCandidates = mockMatch.mock.calls[mockMatch.mock.calls.length - 1][1];
+    // Candidate list passed should now be 1 less (candidates at index 3 in the new signature)
+    const updatedCandidates = mockMatch.mock.calls[mockMatch.mock.calls.length - 1][3];
     expect(updatedCandidates.length).toBe(DMC_PALETTE.length - 1);
 
     // Clean up globals
@@ -233,8 +247,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       return null;
     });
 
-    // 2. Set up MatcherClient mock to return matches when called
-    mockMatch.mockImplementationOnce((_pixels, _candidates, _onProgress, onSuccess) => {
+    // 2. Set up MatcherClient mock to return matches when called.
+    // New signature: (bitmap, cols, rows, candidates, onProgress, onComplete, onError).
+    mockMatch.mockImplementationOnce((_bitmap, _cols, _rows, _candidates, _onProgress, onSuccess) => {
       // Immediately succeed with mock results: 1 cell of color '310'
       onSuccess({
         matches: ['310'],

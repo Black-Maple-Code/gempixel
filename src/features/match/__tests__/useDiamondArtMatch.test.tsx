@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
-import { useDiamondArtMatch, type MatchInputs, type MatchState } from '../useDiamondArtMatch';
+import {
+  useDiamondArtMatch,
+  __setOffscreenSupportForTest,
+  type MatchInputs,
+  type MatchState,
+} from '../useDiamondArtMatch';
 import { DMC_PALETTE } from '../../../engine/palette';
 
 // Mirror App.test.tsx's MatcherClient mock; the mocked match invokes progress+complete
@@ -14,12 +19,13 @@ vi.mock('../../../engine/worker-client', () => ({
   MatcherClient: class MockMatcherClient {
     match = vi.fn(
       (
-        _pixels: Uint8ClampedArray,
+        _bitmap: ImageBitmap,
+        _cols: number,
+        _rows: number,
         _candidates: unknown,
         onProgress: (p: number) => void,
         onComplete: (r: { matches: string[]; counts: Record<string, number> }) => void,
-        onError?: (message: string) => void,
-        _cols?: number
+        onError?: (message: string) => void
       ) => {
         if (control.mode === 'error') {
           onError?.('worker exploded');
@@ -36,16 +42,37 @@ vi.mock('../../../engine/worker-client', () => ({
   },
 }));
 
-// jsdom has no canvas 2d context; stub it so getImagePixels can produce pixels.
+// The hook now decodes off-thread via createImageBitmap + an OffscreenCanvas worker path.
+// jsdom exposes neither, so force the capability probe true (D-08 seam) and stub the cheap
+// main-thread createImageBitmap; the mocked MatcherClient owns the rest.
 beforeEach(() => {
   instances.length = 0;
   control.mode = 'complete';
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-    drawImage: vi.fn(),
-    getImageData: (_x: number, _y: number, w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
-  } as any);
+  __setOffscreenSupportForTest(true);
+  (globalThis as any).createImageBitmap = vi.fn(
+    async () => ({ width: 4, height: 4, close: vi.fn() } as unknown as ImageBitmap)
+  );
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  __setOffscreenSupportForTest(null);
+  delete (globalThis as any).createImageBitmap;
+});
+
+// Poll (rerender each tick) until the hook's state satisfies `predicate` — robust against
+// the extra async createImageBitmap hop the effect now awaits before dispatching match().
+async function settle(
+  h: { rerender: () => void; state: MatchState },
+  predicate: () => boolean,
+  ms = 1000
+) {
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    await new Promise(r => setTimeout(r, 5));
+    h.rerender();
+    if (predicate()) return;
+  }
+}
 
 // Render harness: capture the latest MatchState the hook returns.
 function mount(getInputs: () => MatchInputs) {
@@ -89,8 +116,7 @@ const baseInputs = (over: Partial<MatchInputs> = {}): MatchInputs => ({
 describe('useDiamondArtMatch', () => {
   it('dispatches a match and flows progress -> result -> loading false', async () => {
     const h = mount(() => baseInputs({ image: fakeImage }));
-    await new Promise(r => setTimeout(r, 0));
-    h.rerender();
+    await settle(h, () => h.state.progress === 100);
     expect(h.state.progress).toBe(100);
     expect(h.state.loading).toBe(false);
     expect(h.state.matchResult).not.toBeNull();
@@ -103,8 +129,7 @@ describe('useDiamondArtMatch', () => {
     // mocked), so that seam is covered by tsc/build rather than this unit test.
     control.mode = 'error';
     const h = mount(() => baseInputs({ image: fakeImage }));
-    await new Promise(r => setTimeout(r, 0));
-    h.rerender();
+    await settle(h, () => h.state.error != null);
     expect(h.state.loading).toBe(false);
     expect(h.state.error).toBe('worker exploded');
   });

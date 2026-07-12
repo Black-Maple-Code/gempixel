@@ -30,6 +30,17 @@ const mockCandidates: DmcColor[] = [
 let workerOnMessage: ((e: MessageEvent) => void) | null = null;
 let activeWorkers: MockWorker[] = [];
 
+// The worker now decodes a transferred ImageBitmap. node has no ImageBitmap/OffscreenCanvas,
+// so we feed the pre-sampled pixels through a fake bitmap whose width/height equal the grid
+// dims — capDims is then identity and boxSampleImage(pixels, cols, rows, cols, rows) is an
+// identity resample, so the same pixels reach runMatching (D-08 decode seam).
+function makeBitmap(pixels: Uint8ClampedArray, width: number, height: number): ImageBitmap {
+  return { width, height, close() {}, __pixels: pixels } as unknown as ImageBitmap;
+}
+
+// Captured in beforeAll so beforeEach can re-inject after vi.restoreAllMocks().
+let injectDecoder: () => void = () => {};
+
 class MockWorker implements Worker {
   public url: string | URL;
   public options?: WorkerOptions;
@@ -97,8 +108,14 @@ beforeAll(async () => {
   (globalThis as any).Worker = MockWorker;
 
   // Import the worker code so it registers on globalThis.onmessage
-  await import('../matcher.worker');
+  const workerModule = await import('../matcher.worker');
   workerOnMessage = (globalThis as any).onmessage;
+
+  // Inject a stub decoder that returns the pixels carried on the fake bitmap — node has no
+  // OffscreenCanvas, so the real decodeToPixels is never reached (D-08).
+  injectDecoder = () =>
+    workerModule.__setDecoderForTest((bitmap) => (bitmap as any).__pixels);
+  injectDecoder();
 });
 
 afterAll(() => {
@@ -108,6 +125,7 @@ afterAll(() => {
 beforeEach(() => {
   activeWorkers = [];
   vi.restoreAllMocks();
+  injectDecoder(); // survive restoreAllMocks
 });
 
 describe('MatcherClient and Web Worker Integration', () => {
@@ -133,17 +151,18 @@ describe('MatcherClient and Web Worker Integration', () => {
     const progressValues: number[] = [];
 
     const result = await new Promise<{ matches: string[]; counts: Record<string, number> }>((resolve) => {
+      // 2x2 grid: fake bitmap dims = cols/rows so the sample is identity.
       client.match(
-        pixels,
+        makeBitmap(pixels, 2, 2),
+        2, // cols
+        2, // rows
         mockCandidates,
         (percent) => {
           progressValues.push(percent);
         },
         (res) => {
           resolve(res);
-        },
-        undefined, // onError
-        2 // cols = 2, so 2 rows total
+        }
       );
     });
 
@@ -165,7 +184,9 @@ describe('MatcherClient and Web Worker Integration', () => {
     let progressValues: number[] = [];
 
     client.match(
-      pixels,
+      makeBitmap(pixels, 1, 10),
+      1, // cols = 1 pixel per row
+      10, // rows = 10
       mockCandidates,
       (percent) => {
         progressValues.push(percent);
@@ -176,9 +197,7 @@ describe('MatcherClient and Web Worker Integration', () => {
       },
       () => {
         completeCalled = true;
-      },
-      undefined, // onError
-      1 // 1 pixel per row, total 10 rows
+      }
     );
 
     // Wait some time to let async processing proceed
@@ -201,7 +220,7 @@ describe('MatcherClient and Web Worker Integration', () => {
 
     // Run 1: with mockCandidates (Black, White). Red blends to solid Red.
     const res1 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), undefined, 1);
+      client.match(makeBitmap(pixels, 1, 1), 1, 1, mockCandidates, () => {}, (res) => resolve(res));
     });
 
     expect(matchColorSpy).toHaveBeenCalledTimes(1);
@@ -209,7 +228,7 @@ describe('MatcherClient and Web Worker Integration', () => {
 
     // Run 2: same palette, should hit cache and NOT call matchColor
     const res2 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), undefined, 1);
+      client.match(makeBitmap(pixels, 1, 1), 1, 1, mockCandidates, () => {}, (res) => resolve(res));
     });
 
     expect(res2.matches).toEqual(res1.matches);
@@ -231,7 +250,7 @@ describe('MatcherClient and Web Worker Integration', () => {
     ];
 
     const res3 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, newCandidates, () => {}, (res) => resolve(res), undefined, 1);
+      client.match(makeBitmap(pixels, 1, 1), 1, 1, newCandidates, () => {}, (res) => resolve(res));
     });
 
     // Should map to the new candidate "606"
@@ -253,26 +272,26 @@ describe('MatcherClient and Web Worker Integration', () => {
     let firedB = false;
 
     client.match(
-      pixelsA,
+      makeBitmap(pixelsA, 1, 10),
+      1, // cols = 1 -> run A's 10-row dimension
+      10, // rows
       mockCandidates,
       (percent) => {
         // On the FIRST real progress from A, launch B — superseding A mid-run.
         if (percent > 0 && !firedB) {
           firedB = true;
           client.match(
-            pixelsB,
+            makeBitmap(pixelsB, 2, 1),
+            2, // cols = 2 -> run B's 1-row dimension
+            1, // rows
             mockCandidates,
             () => {},
-            (res) => results.push(res),
-            undefined,
-            2 // cols = 2 -> run B's 1-row dimension
+            (res) => results.push(res)
           );
         }
       },
       // A's own onComplete MUST NOT be called — its stale, wrong-dimension result is superseded.
-      (res) => results.push(res),
-      undefined, // onError
-      1 // cols = 1 -> run A's 10-row dimension
+      (res) => results.push(res)
     );
 
     // Let both runs drain.
