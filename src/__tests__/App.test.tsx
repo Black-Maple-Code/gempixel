@@ -1018,6 +1018,29 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
+    it('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
+      seedProject();
+      await loadProjectToStep(3);
+
+      // A value that is valid JSON but the wrong shape ('5' -> number 5): the old
+      // guard only caught parse THROWS, so [...5] on the next line threw a TypeError
+      // outside the try, killing checkout. The shape check must now fall back to [].
+      localStorage.setItem('gempixel_unmapped_colors_log', '5');
+
+      const checkoutBtn = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent?.includes('Order Drills')
+      ) as HTMLButtonElement;
+      expect(checkoutBtn).toBeTruthy();
+
+      // Must not throw (the non-iterable spread would have) …
+      expect(() => checkoutBtn.click()).not.toThrow();
+      await new Promise(r => setTimeout(r, 10));
+
+      // … banner surfaced and checkout proceeded with the [] fallback + new code.
+      expect(container.textContent).toMatch(/could not read the saved unmapped-colors log/i);
+      expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
+    });
+
     it('surfaces the banner when a save hits the storage quota (B3 regression, folded into actionError)', async () => {
       seedProject();
       await loadProjectToStep(4);

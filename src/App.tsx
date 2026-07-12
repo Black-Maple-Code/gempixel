@@ -994,7 +994,13 @@ export function App() {
       const savedLog: string[] = (() => {
         const raw = safeStorage.getItem('gempixel_unmapped_colors_log');
         try {
-          return JSON.parse(raw ?? '[]') as string[];
+          const parsed = JSON.parse(raw ?? '[]');
+          // Shape-check inside the guard (WR-02): a valid-JSON non-array (stored '5'
+          // -> 5, '{}' -> {}) parses without throwing, then the spread below would
+          // do [...5] and throw OUTSIDE this try. Reject non-arrays so the fallback
+          // actually applies and checkout proceeds with [].
+          if (!Array.isArray(parsed)) throw new Error('not an array');
+          return parsed as string[];
         } catch {
           setActionError('Could not read the saved unmapped-colors log; continuing without it.');
           return [];
