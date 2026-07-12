@@ -74,6 +74,8 @@ export function App() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  // Quota-full warning surfaced when projectStore.save() returns { ok:false } (CR-02/B3).
+  const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
   // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
   // ingestion settings sit near the top without scrolling; user can reopen it.
@@ -323,8 +325,9 @@ export function App() {
     wizard.reset();
   };
 
-  const handleSaveProject = (name: string, forceNewId = false) => {
-    if (!name.trim()) return;
+  const handleSaveProject = (name: string, forceNewId = false): boolean => {
+    if (!name.trim()) return false;
+    setSaveErrorMsg('');
 
     const projectId = (forceNewId ? '' : activeProjectId) || generateUUID();
     const nowStr = new Date().toISOString();
@@ -368,11 +371,20 @@ export function App() {
       gridData
     };
 
-    projectStore.save(projectSummary, projectData);
+    // CR-02/B3: on a quota failure, surface a warning and abort the "saved" side
+    // effects — do NOT mark the project active or close the modal, since nothing
+    // durable was persisted and other stored projects are left untouched.
+    const result = projectStore.save(projectSummary, projectData);
+    if (!result.ok) {
+      setSaveErrorMsg('Storage is full. Delete a saved project to free space, then try again — your current work was not saved.');
+      return false;
+    }
+
     setProjectsRegistry(projectStore.list());
 
     setActiveProjectId(projectId);
     setSaveModalOpen(false);
+    return true;
   };
 
   const showSaveSuccess = () => {
@@ -1643,6 +1655,17 @@ export function App() {
           {matchError && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
               Color matching failed: {matchError}
+            </div>
+          )}
+
+          {/* Storage-full warning banner (CR-02/B3) — shown when projectStore.save()
+              returns { ok:false }. Fixed + z-[60] so it sits above the Save Project
+              Modal (z-50) regardless of whether the save was triggered from the wizard
+              panel or the modal. Text-only (never dangerouslySetInnerHTML). Clears on
+              the next save attempt via setSaveErrorMsg('') in handleSaveProject. */}
+          {saveErrorMsg && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/95 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
+              {saveErrorMsg}
             </div>
           )}
         </div>

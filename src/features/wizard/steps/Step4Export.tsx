@@ -17,7 +17,7 @@ export interface Step4ExportProps {
   setSaveProjectName: (v: string) => void;
   activeProjectId: string | null;
   saveSuccessMsg: string;
-  handleSaveProject: (name: string, forceNewId?: boolean) => void;
+  handleSaveProject: (name: string, forceNewId?: boolean) => boolean;
   showSaveSuccess: () => void;
   resetWorkspace: () => void;
 }
@@ -92,8 +92,7 @@ export function Step4Export(props: Step4ExportProps) {
                     <>
                       <button
                         onClick={() => {
-                          handleSaveProject(saveProjectName);
-                          showSaveSuccess();
+                          if (handleSaveProject(saveProjectName)) showSaveSuccess();
                         }}
                         className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
                       >
@@ -101,8 +100,7 @@ export function Step4Export(props: Step4ExportProps) {
                       </button>
                       <button
                         onClick={() => {
-                          handleSaveProject(saveProjectName, true);
-                          showSaveSuccess();
+                          if (handleSaveProject(saveProjectName, true)) showSaveSuccess();
                         }}
                         className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
                       >
@@ -112,8 +110,7 @@ export function Step4Export(props: Step4ExportProps) {
                   ) : (
                     <button
                       onClick={() => {
-                        handleSaveProject(saveProjectName);
-                        showSaveSuccess();
+                        if (handleSaveProject(saveProjectName)) showSaveSuccess();
                       }}
                       className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded cursor-pointer transition-colors"
                     >
