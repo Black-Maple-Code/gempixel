@@ -1,4 +1,5 @@
 import { blendAlpha, matchColor, clearCache } from './color';
+import { boxSampleImage } from './ingest';
 import { DmcColor } from './types';
 
 // Cast self (or globalThis in Node testing) to any to avoid type conflicts
@@ -8,6 +9,41 @@ const ctx: Worker = (typeof self !== 'undefined' ? self : globalThis) as any;
 const rgbaCache = new Map<number, string>();
 
 let isAborted = false;
+
+// Parity cap with the removed main-thread getImagePixels path (D-02): the resample
+// target's larger axis never exceeds this.
+const MAX_DIMENSION = 2000;
+
+// Injectable decode seam (D-08). The default draws the transferred ImageBitmap to an
+// OffscreenCanvas at the capped size and reads the pixels back — replicating the removed
+// getImagePixels draw path EXACTLY (same size, no imageSmoothing overrides) so the
+// resampled bytes stay bit-identical. Node/jsdom have no OffscreenCanvas, so
+// worker.test.ts swaps this via __setDecoderForTest.
+type Decoder = (bitmap: ImageBitmap, w: number, h: number) => Uint8ClampedArray;
+let decodeToPixels: Decoder = (bitmap, w, h) => {
+  const off = new OffscreenCanvas(w, h);
+  const c = off.getContext('2d');
+  if (!c) throw new Error('OffscreenCanvas 2D context unavailable');
+  // Do NOT set imageSmoothingEnabled/imageSmoothingQuality — inherit the same defaults
+  // the removed main-thread canvas used; parity depends on the resample bytes (D-02).
+  c.drawImage(bitmap, 0, 0, w, h);
+  return c.getImageData(0, 0, w, h).data;
+};
+
+/** Test seam (D-08): swap the OffscreenCanvas decoder for a deterministic stub in node. */
+export function __setDecoderForTest(fn: Decoder) {
+  decodeToPixels = fn;
+}
+
+// Pure sizing helper migrated verbatim from getImagePixels (lines 55-60): scale the larger
+// axis down to `max` when either axis exceeds it, else identity.
+function capDims(w: number, h: number, max: number): { w: number; h: number } {
+  if (w > max || h > max) {
+    const scale = max / Math.max(w, h);
+    return { w: Math.round(w * scale), h: Math.round(h * scale) };
+  }
+  return { w, h };
+}
 
 // Monotonic id adopted from the incoming match message. A match run captures its own
 // runId; once a newer match message arrives, currentRunId moves on and the older run is
@@ -21,10 +57,18 @@ ctx.onmessage = async (e: MessageEvent) => {
     isAborted = true;
   } else if (kind === 'match') {
     isAborted = false;
-    const { pixels, candidates, clearCache, cols, runId } = e.data;
+    const { bitmap, cols, rows, candidates, clearCache, runId } = e.data;
     currentRunId = runId; // adopt the client-supplied id — supersedes any prior run
     try {
-      await runMatching(runId, pixels, candidates, cols, clearCache);
+      // Decode + resample + readback now live here (off the main thread, PERF-01/D-01).
+      const { w, h } = capDims(bitmap.width, bitmap.height, MAX_DIMENSION);
+      const pixels = decodeToPixels(bitmap, w, h);
+      bitmap.close();
+      // A run superseded during decode bails at the existing abort boundary (D-05) —
+      // before any box-sample/match work, posting nothing further.
+      if (runId !== currentRunId || isAborted) return;
+      const sampled = boxSampleImage(pixels, w, h, cols, rows);
+      await runMatching(runId, sampled, candidates, cols, clearCache);
     } catch (err: any) {
       ctx.postMessage({ kind: 'error', runId, error: err.message || String(err) });
     }
