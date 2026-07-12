@@ -6,14 +6,14 @@ current_phase: 11
 current_phase_name: Storage Robustness & Error Feedback
 status: executing
 stopped_at: Phase 9 execution completed
-last_updated: "2026-07-12T15:26:21.053Z"
+last_updated: "2026-07-12T15:37:10.986Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 14
   completed_phases: 8
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 57
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 ## Current Position
 
 Phase: 11 (Storage Robustness & Error Feedback) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 11 execution started
 
@@ -69,6 +69,7 @@ Last activity: 2026-07-12 — Phase 11 execution started
 | Phase 04 P02 | 120 | 3 tasks | 3 files |
 | Phase 04 P03 | 95 | 3 tasks | 3 files |
 | Phase 11 P01 | 6min | 2 tasks | 4 files |
+| Phase 11 P02 | 12min | 2 tasks | 3 files |
 
 ## Risk & Health
 
@@ -95,10 +96,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T15:25:48.259Z
+Last session: 2026-07-12T15:36:10.260Z
 Stopped at: Phase 9 execution completed
 Resume file: None
 
 ## Decisions
 
 - [Phase ?]: 11-01: Per-type storage codecs preserve legacy on-disk formats (no blanket JSON codec); safeStorage is the single guarded audit point for localStorage
+- [Phase 11]: 11-02: migrated App.tsx 7 persisted settings onto usePersistentState (IN-01); safeStorage import deferred to 11-03 under noUnusedLocals; canvasTemplate uses a custom normalization codec (Pitfall 4)

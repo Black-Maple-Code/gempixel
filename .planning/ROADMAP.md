@@ -268,7 +268,7 @@ Plans:
   2. All persisted settings flow through a single `usePersistentState` helper; the duplicated lazy-init/effect boilerplate is removed. (review W3, IN-01)
   3. A failed save, download, or checkout shows a clear inline message instead of a silent no-op; the unmapped-colors-log parse is guarded. (review W4, W5)
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 Plans:
 **Wave 1**
@@ -277,7 +277,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 11-02-PLAN.md — Migrate the 7 persisted App.tsx settings onto usePersistentState, guard Step3Canvas clear-log, add blocked-storage mount test. (STORE-01, STORE-02)
+- [x] 11-02-PLAN.md — Migrate the 7 persisted App.tsx settings onto usePersistentState, guard Step3Canvas clear-log, add blocked-storage mount test. (STORE-01, STORE-02)
 
 **Wave 3** *(blocked on Wave 2 — same App.tsx file)*
 
