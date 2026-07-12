@@ -157,7 +157,15 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
           bitmap.close();
           return;
         }
-        clientRef.current?.match(
+        // Unmount (or worker-init teardown) nulls clientRef while a decode is in flight; the
+        // resolved bitmap would then be neither transferred nor closed — close the orphan
+        // rather than leaking it (LO-02).
+        const client = clientRef.current;
+        if (!client) {
+          bitmap.close();
+          return;
+        }
+        client.match(
           bitmap,
           cols,
           rows,
