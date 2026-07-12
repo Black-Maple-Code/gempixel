@@ -1,0 +1,39 @@
+---
+description: Strands Agent SOP workflows available in this project
+alwaysApply: true
+---
+
+# Agent SOPs (Strands)
+
+This project uses [Strands Agent SOPs](https://github.com/strands-agents/agent-sop) for structured, multi-step agent workflows.
+
+## Slash commands
+
+Type `/` in Cursor chat and pick a command:
+
+| Command | Purpose |
+|---------|---------|
+| `/code-assist.sop` | TDD implementation (Explore → Plan → Code → Commit) |
+| `/codebase-summary.sop` | Analyze and document the codebase |
+| `/pdd.sop` | Prompt-driven development / design planning |
+| `/code-task-generator.sop` | Break requirements into code tasks |
+| `/eval.sop` | Agent evaluation workflow |
+
+Commands live in `.cursor/commands/`. When invoked, prompt the user for required parameters before executing the workflow.
+
+## Artifact directories
+
+SOP outputs go under `.agents/`:
+
+- `summary/` — codebase docs (commit)
+- `planning/` — design docs (often commit)
+- `tasks/` — generated code tasks (optional commit)
+- `scratchpad/` — transient work (gitignored)
+
+## MCP
+
+The `agent-sops` MCP server is configured in `.cursor/mcp.json`. After config changes, reload MCP servers in **Cursor Settings → MCP**.
+
+## Authoring new SOPs
+
+Follow the format in `.cursor/rules/agent-sop-format.mdc`. Custom SOPs use the `.sop.md` extension.
