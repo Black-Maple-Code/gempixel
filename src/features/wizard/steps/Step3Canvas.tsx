@@ -1,4 +1,4 @@
-import { VENDOR_REGISTRY } from '../../../engine/checkout';
+import { VENDOR_REGISTRY, type CanvasVendor } from '../../../engine/checkout';
 import { safeStorage } from '../../../engine/safeStorage';
 
 /**
@@ -22,8 +22,8 @@ export interface SizingAdvice {
 }
 
 export interface Step3CanvasProps {
-  selectedVendor: 'lumaprints' | 'prodigi' | 'finerworks';
-  setSelectedVendor: (v: 'lumaprints' | 'prodigi' | 'finerworks') => void;
+  selectedVendor: CanvasVendor;
+  setSelectedVendor: (v: CanvasVendor) => void;
   canvasBaseCost: number;
   setCanvasBaseCost: (v: number) => void;
   canvasShippingEstimate: number;
@@ -102,7 +102,6 @@ export function Step3Canvas(props: Step3CanvasProps) {
                 className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[32px]"
               >
                 <option value="lumaprints">Lumaprints (Default)</option>
-                <option value="prodigi">Prodigi</option>
                 <option value="finerworks">FinerWorks</option>
               </select>
             </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
-import { compileShopifyCartLink, calculateCanvasCost, VENDOR_REGISTRY } from './engine/checkout';
+import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 import { resolveActiveCandidates } from './engine/candidates';
@@ -165,7 +165,7 @@ export function App() {
     'gempixel_unmapped_colors_log', [], codecs.stringArray()
   );
 
-  const [selectedVendor, setSelectedVendor] = useState<'lumaprints' | 'prodigi' | 'finerworks'>('lumaprints');
+  const [selectedVendor, setSelectedVendor] = useState<CanvasVendor>('lumaprints');
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
@@ -199,7 +199,11 @@ export function App() {
     const h = parseFloat(heightInput);
     if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
       const cost = calculateCanvasCost(w, h, unit, selectedVendor);
-      setCanvasBaseCost(cost);
+      // Never set a $0 base cost on the null guard (T-15-01): an unknown vendor
+      // must not silently zero out the canvas price.
+      if (cost !== null) {
+        setCanvasBaseCost(cost);
+      }
       const config = VENDOR_REGISTRY[selectedVendor];
       if (config) {
         setCanvasShippingEstimate(config.baseShipping);
@@ -249,6 +253,10 @@ export function App() {
     setCanvasTemplate(project.canvasTemplate || '');
     setAffiliateTag(project.affiliateTag || '');
     setAffiliateApp(project.affiliateApp || 'ref');
+    // Migrate any legacy/unknown persisted vendor (e.g. a removed vendor or a
+    // tampered blob) to a valid CanvasVendor before it reaches the pricing engine
+    // (VENDOR-02, T-15-02).
+    setSelectedVendor(normalizeVendor((project as any).selectedVendor));
     setUnit('grid');
     setWidthInput(project.dimensions.cols.toString());
     setHeightInput(project.dimensions.rows.toString());
@@ -347,7 +355,8 @@ export function App() {
       canvasTemplate,
       affiliateTag,
       affiliateApp,
-      gridData
+      gridData,
+      selectedVendor
     };
 
     // CR-02/B3: on a quota failure, surface a warning and abort the "saved" side

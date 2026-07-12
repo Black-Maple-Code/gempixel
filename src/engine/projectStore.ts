@@ -8,6 +8,8 @@
  * `RecentImage` is newly named here from the inline shape App used for recents.
  */
 
+import type { CanvasVendor } from './checkout';
+
 const REGISTRY_KEY = 'gempixel_workspace_registry';
 const RECENTS_KEY = 'gempixel_recent_images';
 const projectKey = (id: string) => `gempixel_project_${id}`;
@@ -40,6 +42,13 @@ export interface ProjectData {
   affiliateTag: string;
   affiliateApp: 'ref' | 'rfsn' | 'none';
   gridData: number[] | null;
+  /**
+   * Selected canvas print vendor. Optional so existing saved blobs (persisted
+   * before VENDOR-02) keep loading — additive/frozen-shape discipline. A restored
+   * legacy/unknown value (e.g. a removed vendor) is remapped via `normalizeVendor`
+   * at load time.
+   */
+  selectedVendor?: CanvasVendor;
 }
 
 export interface RecentImage {
