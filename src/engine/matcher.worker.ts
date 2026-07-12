@@ -9,6 +9,11 @@ const rgbaCache = new Map<number, string>();
 
 let isAborted = false;
 
+// Monotonic id adopted from the incoming match message. A match run captures its own
+// runId; once a newer match message arrives, currentRunId moves on and the older run is
+// considered superseded — it must stop at its next yield and post nothing further (B2).
+let currentRunId = 0;
+
 ctx.onmessage = async (e: MessageEvent) => {
   const { kind } = e.data;
 
@@ -16,11 +21,12 @@ ctx.onmessage = async (e: MessageEvent) => {
     isAborted = true;
   } else if (kind === 'match') {
     isAborted = false;
-    const { pixels, candidates, clearCache, cols } = e.data;
+    const { pixels, candidates, clearCache, cols, runId } = e.data;
+    currentRunId = runId; // adopt the client-supplied id — supersedes any prior run
     try {
-      await runMatching(pixels, candidates, cols, clearCache);
+      await runMatching(runId, pixels, candidates, cols, clearCache);
     } catch (err: any) {
-      ctx.postMessage({ kind: 'error', error: err.message || String(err) });
+      ctx.postMessage({ kind: 'error', runId, error: err.message || String(err) });
     }
   }
 };
@@ -28,6 +34,7 @@ ctx.onmessage = async (e: MessageEvent) => {
 const yieldToEventLoop = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function runMatching(
+  runId: number,
   pixels: Uint8ClampedArray,
   candidates: DmcColor[],
   cols?: number,
@@ -47,7 +54,7 @@ async function runMatching(
 
 
   for (let r = 0; r < numRows; r++) {
-    if (isAborted) {
+    if (isAborted || runId !== currentRunId) {
       return;
     }
 
@@ -83,14 +90,14 @@ async function runMatching(
     const yieldInterval = Math.max(1, Math.floor(numRows / 20));
     if ((r + 1) % yieldInterval === 0 || r === numRows - 1) {
       const percent = Math.round(((r + 1) / numRows) * 100);
-      ctx.postMessage({ kind: 'progress', percent });
+      ctx.postMessage({ kind: 'progress', runId, percent });
       await yieldToEventLoop();
     }
   }
 
-  if (isAborted) {
+  if (isAborted || runId !== currentRunId) {
     return;
   }
 
-  ctx.postMessage({ kind: 'result', matches, counts });
+  ctx.postMessage({ kind: 'result', runId, matches, counts });
 }

@@ -3,6 +3,9 @@ import { DmcColor } from './types';
 export class MatcherClient {
   private worker: Worker;
   private currentPaletteHash: string = '';
+  // Monotonic per-call run id. Each match() stamps its messages with the next id so a
+  // superseded in-flight run's late replies can be filtered out client-side (B2).
+  private runSeq = 0;
 
   constructor(workerUrl: URL | string) {
     this.worker = new Worker(workerUrl, { type: 'module' });
@@ -20,16 +23,19 @@ export class MatcherClient {
     const clearCache = paletteHash !== this.currentPaletteHash;
     this.currentPaletteHash = paletteHash;
 
-    this.worker.postMessage({ kind: 'abort' });
+    const runId = ++this.runSeq;
     this.worker.postMessage({
       kind: 'match',
       pixels,
       candidates,
       clearCache,
       cols,
+      runId,
     });
 
     this.worker.onmessage = (e) => {
+      // Drop stale replies from a superseded run — only the live runId's messages apply (B2).
+      if (e.data.runId !== runId) return;
       if (e.data.kind === 'progress') {
         onProgress(e.data.percent);
       } else if (e.data.kind === 'result') {
