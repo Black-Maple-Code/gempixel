@@ -39,6 +39,19 @@ export const codecs = {
     parse: (r: string) => JSON.parse(r) as T,
     serialize: (v: T) => JSON.stringify(v),
   }),
+  // Shape-checked array-of-strings codec (WR-01). On-disk format is identical to
+  // codecs.json (JSON.stringify of an array), but parse validates that the decoded
+  // value is actually an array and throws otherwise, so a valid-JSON-but-wrong-type
+  // stored value (e.g. '"310"' -> "310", '5' -> 5) makes the hook fall back to
+  // `initial` instead of yielding a non-array that later crashes a `.map`/spread.
+  stringArray: (): Codec<string[]> => ({
+    parse: (r: string) => {
+      const v = JSON.parse(r);
+      if (!Array.isArray(v)) throw new Error('not an array'); // -> hook falls back to initial
+      return v.map(String);
+    },
+    serialize: (v: string[]) => JSON.stringify(v),
+  }),
 };
 
 /**

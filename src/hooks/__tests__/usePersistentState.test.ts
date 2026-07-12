@@ -63,6 +63,20 @@ describe('codecs — format-preserving', () => {
     expect(codecs.json<number[]>().serialize([1, 2])).toBe('[1,2]');
     expect(() => codecs.json<number[]>().parse('{bad')).toThrow();
   });
+
+  it('stringArray codec round-trips arrays but throws on valid-JSON non-arrays (WR-01)', () => {
+    // Same on-disk format as json (JSON.stringify of an array).
+    expect(codecs.stringArray().parse('["310","939"]')).toEqual(['310', '939']);
+    expect(codecs.stringArray().serialize(['310', '939'])).toBe('["310","939"]');
+    // Non-array elements are coerced to strings for a uniform string[].
+    expect(codecs.stringArray().parse('[310,5]')).toEqual(['310', '5']);
+    // Valid JSON but wrong type must THROW (so the hook falls back to initial),
+    // rather than yielding a non-array that later crashes a .map/spread.
+    expect(() => codecs.stringArray().parse('"310"')).toThrow();
+    expect(() => codecs.stringArray().parse('5')).toThrow();
+    expect(() => codecs.stringArray().parse('{}')).toThrow();
+    expect(() => codecs.stringArray().parse('{bad')).toThrow();
+  });
 });
 
 describe('usePersistentState', () => {
@@ -91,6 +105,19 @@ describe('usePersistentState', () => {
     localStorage.setItem('k', '{bad');
     const out = mountHook<number[]>('k', [], codecs.json<number[]>());
     expect(out.value).toEqual([]);
+  });
+
+  it('falls back to initial (empty array) for a valid-JSON non-array under stringArray (WR-01)', () => {
+    // '"310"' parses to the string "310" (valid JSON, wrong shape). The stringArray
+    // codec must reject it so the hook falls back to [] instead of a non-array value.
+    localStorage.setItem('gempixel_unmapped_colors_log', '"310"');
+    const outStr = mountHook<string[]>('gempixel_unmapped_colors_log', [], codecs.stringArray());
+    expect(outStr.value).toEqual([]);
+
+    // '5' parses to the number 5 — also rejected -> fallback.
+    localStorage.setItem('gempixel_unmapped_colors_log', '5');
+    const outNum = mountHook<string[]>('gempixel_unmapped_colors_log', [], codecs.stringArray());
+    expect(outNum.value).toEqual([]);
   });
 
   it('round-trips bool to exactly "true" on disk', () => {

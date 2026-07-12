@@ -157,7 +157,7 @@ export function App() {
   // Lazy-init read migrated onto the guarded hook; the imperative checkout writes
   // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here.
   const [unmappedLog, setUnmappedLog] = usePersistentState<string[]>(
-    'gempixel_unmapped_colors_log', [], codecs.json<string[]>()
+    'gempixel_unmapped_colors_log', [], codecs.stringArray()
   );
 
   const [selectedVendor, setSelectedVendor] = useState<'lumaprints' | 'prodigi' | 'finerworks'>('lumaprints');
