@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: — Post-Review Remediation
-current_phase: 12
-current_phase_name: Supply Pricing Accuracy
+current_phase: 13
+current_phase_name: performance-off-main-thread-decode
 status: executing
 stopped_at: Phase 13 context gathered
-last_updated: "2026-07-12T17:57:15.301Z"
+last_updated: "2026-07-12T18:21:18.532Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 14
   completed_phases: 9
-  total_plans: 22
-  completed_plans: 21
+  total_plans: 25
+  completed_plans: 22
   percent: 64
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-07)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 11 — Storage Robustness & Error Feedback
+**Current focus:** Phase 13 — performance-off-main-thread-decode
 
 ## Current Position
 
-Phase: 12 — Supply Pricing Accuracy
-Plan: Not started
+Phase: 13 (performance-off-main-thread-decode) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-12 — Phase 11 complete, transitioned to Phase 12
+Last activity: 2026-07-12 — Phase 13 execution started
 
 ## Performance Metrics
 
@@ -98,7 +98,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T17:09:56.780Z
+Last session: 2026-07-12T18:21:18.519Z
 Stopped at: Phase 13 context gathered
 Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.md
 

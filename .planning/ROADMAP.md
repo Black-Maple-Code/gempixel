@@ -308,12 +308,12 @@ Plans:
   1. Loading/re-matching a large source image (e.g. 4000×3000) keeps the UI responsive; decode/downsample no longer block paint on the main thread. (review W8)
   2. Matching output is unchanged from the current main-thread pipeline (parity test on a fixture image).
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — Relocate resample/readback/box-sample into matcher.worker.ts behind the transferred-ImageBitmap message contract (worker + client + hook + tests, atomic). (PERF-01)
+- [x] 13-01-PLAN.md — Relocate resample/readback/box-sample into matcher.worker.ts behind the transferred-ImageBitmap message contract (worker + client + hook + tests, atomic). (PERF-01)
 
 **Wave 2** *(blocked on Wave 1)*
 

@@ -94,7 +94,7 @@ blockers (B1–B4) were already fixed via quick tasks (260711-wvv, 260711-x6p, 2
 
 ### Performance
 
-- [ ] **PERF-01**: Loading or re-matching a large source image keeps the UI responsive — image decode and box-sampling do not block the main thread. (review W8)
+- [x] **PERF-01**: Loading or re-matching a large source image keeps the UI responsive — image decode and box-sampling do not block the main thread. (review W8)
 
 ### Security & Cleanup
 
@@ -150,7 +150,7 @@ blockers (B1–B4) were already fixed via quick tasks (260711-wvv, 260711-x6p, 2
 | PRICE-01 | Phase 12 | Pending |
 | PRICE-02 | Phase 12 | Pending |
 | DATA-01 | Phase 12 | Pending |
-| PERF-01 | Phase 13 | Pending |
+| PERF-01 | Phase 13 | Complete |
 | SEC-01 | Phase 14 | Pending |
 
 **Coverage:**
