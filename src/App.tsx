@@ -6,6 +6,7 @@ import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
+import { safeStorage } from './engine/safeStorage';
 import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
 import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
@@ -90,8 +91,11 @@ export function App() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
-  // Quota-full warning surfaced when projectStore.save() returns { ok:false } (CR-02/B3).
-  const [saveErrorMsg, setSaveErrorMsg] = useState('');
+  // Unified one-shot action-error banner (ERR-01). Surfaces imperative failures —
+  // save quota-full (CR-02/B3, folded in from the former saveErrorMsg), download
+  // generation failures, and a corrupt checkout unmapped-colors log. Each action
+  // handler clears it at its start (clear-then-act) and it is dismissible.
+  const [actionError, setActionError] = useState<string | null>(null);
   const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
   // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
   // ingestion settings sit near the top without scrolling; user can reopen it.
@@ -297,7 +301,7 @@ export function App() {
 
   const handleSaveProject = (name: string, forceNewId = false): boolean => {
     if (!name.trim()) return false;
-    setSaveErrorMsg('');
+    setActionError(null);
 
     const projectId = (forceNewId ? '' : activeProjectId) || generateUUID();
     const nowStr = new Date().toISOString();
@@ -346,7 +350,7 @@ export function App() {
     // durable was persisted and other stored projects are left untouched.
     const result = projectStore.save(projectSummary, projectData);
     if (!result.ok) {
-      setSaveErrorMsg('Storage is full. Delete a saved project to free space, then try again — your current work was not saved.');
+      setActionError('Storage is full. Delete a saved project to free space, then try again — your current work was not saved.');
       return false;
     }
 
@@ -830,6 +834,7 @@ export function App() {
 
   const handleDownloadCanvasOnly = async () => {
     if (!matchResult) return;
+    setActionError(null);
     try {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
@@ -847,11 +852,13 @@ export function App() {
       await triggerCanvasDownload(canvas, `${baseName}-canvas.png`);
     } catch (err) {
       console.error('Failed to download canvas grid:', err);
+      setActionError('Could not generate the download. Please try again.');
     }
   };
 
   const handleDownloadCombinedCanvasSheet = async () => {
     if (!matchResult) return;
+    setActionError(null);
     try {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
@@ -872,6 +879,7 @@ export function App() {
       await triggerCanvasDownload(canvas, `${baseName}-grid-legend.png`);
     } catch (err) {
       console.error('Failed to download canvas grid + legend:', err);
+      setActionError('Could not generate the download. Please try again.');
     }
   };
 
@@ -966,6 +974,7 @@ export function App() {
 
   const handleShopifyCheckout = () => {
     if (!matchResult) return;
+    setActionError(null);
     const items = Object.entries(matchResult.counts).map(([code, count]) => {
       const safety = Math.ceil(Math.round(count * 110) / 100);
       return {
@@ -978,10 +987,22 @@ export function App() {
     const result = compileShopifyCartLink(items, affiliateTag, affiliateApp, priceDb);
     
     if (result.unmappedItems.length > 0) {
-      const savedLog = JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
+      // Guard the stored-log read (W4 / T-11-06): a corrupt value (another tab or a
+      // manual edit) must not throw and silently kill checkout. On parse failure we
+      // fall back to [] and surface the banner — checkout still proceeds. Read/write
+      // route through safeStorage so a blocked/private-mode store never throws.
+      const savedLog: string[] = (() => {
+        const raw = safeStorage.getItem('gempixel_unmapped_colors_log');
+        try {
+          return JSON.parse(raw ?? '[]') as string[];
+        } catch {
+          setActionError('Could not read the saved unmapped-colors log; continuing without it.');
+          return [];
+        }
+      })();
       const newCodes = result.unmappedItems.map(item => item.dmcCode);
       const updatedLog = Array.from(new Set([...savedLog, ...newCodes]));
-      localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(updatedLog));
+      safeStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(updatedLog));
       setUnmappedLog(updatedLog);
     }
     
@@ -1628,14 +1649,27 @@ export function App() {
             </div>
           )}
 
-          {/* Storage-full warning banner (CR-02/B3) — shown when projectStore.save()
-              returns { ok:false }. Fixed + z-[60] so it sits above the Save Project
-              Modal (z-50) regardless of whether the save was triggered from the wizard
-              panel or the modal. Text-only (never dangerouslySetInnerHTML). Clears on
-              the next save attempt via setSaveErrorMsg('') in handleSaveProject. */}
-          {saveErrorMsg && (
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/95 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-              {saveErrorMsg}
+          {/* Unified action-error banner (ERR-01) — one surface for imperative
+              one-shot failures: save quota-full (CR-02/B3), download-generation
+              failures, and a corrupt checkout unmapped-colors log (W4). Fixed +
+              z-[60] so it sits above the Save Project Modal (z-50). Offset to top-16
+              (distinct from the matchError banner at top-4) so the two never overlap
+              (UX directive: no overlapping indicators). Text-only — {actionError} is
+              rendered as a plain JSX text child, never dangerouslySetInnerHTML, so a
+              crafted error/stored string cannot inject markup (ASVS output-encoding,
+              T-11-07). Dismissible via the × so a stale one-shot error doesn't linger;
+              each action handler also clears it at its start (clear-then-act). */}
+          {actionError && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] no-print max-w-md flex items-start gap-3 px-4 py-2.5 rounded-lg bg-rose-950/95 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
+              <span>{actionError}</span>
+              <button
+                type="button"
+                aria-label="Dismiss error"
+                onClick={() => setActionError(null)}
+                className="shrink-0 -mr-1 -mt-0.5 px-1 text-rose-300 hover:text-rose-100 transition-colors text-sm leading-none"
+              >
+                ×
+              </button>
             </div>
           )}
         </div>
