@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, h } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { act } from 'preact/test-utils';
 import { usePersistentState, codecs } from '../usePersistentState';
 
 const throwBlocked = () => {
@@ -25,16 +25,16 @@ afterEach(() => {
 // Minimal harness: render a component that uses the hook and exposes its current
 // value + setter to the test via out-params, mirroring the App.test.tsx container style.
 function mountHook<T>(key: string, initial: T, codec: typeof codecs.bool | any) {
-  const out: { value?: T; setValue?: (v: T) => void } = {};
+  const out: { value?: T; set?: (v: T) => void } = {};
   function Probe() {
     const [value, setValue] = usePersistentState<T>(key, initial, codec);
-    useEffect(() => {
-      out.value = value;
-      out.setValue = setValue;
-    });
+    out.value = value; // captured synchronously during render
+    out.set = (v: T) => act(() => setValue(v)); // flushes re-render + write effect
     return null;
   }
-  render(h(Probe, null), container);
+  act(() => {
+    render(h(Probe, null), container);
+  });
   return out;
 }
 
@@ -95,25 +95,25 @@ describe('usePersistentState', () => {
 
   it('round-trips bool to exactly "true" on disk', () => {
     const out = mountHook<boolean>('k', false, codecs.bool);
-    out.setValue!(true);
+    out.set!(true);
     expect(localStorage.getItem('k')).toBe('true');
   });
 
   it('round-trips int to exactly "15" on disk', () => {
     const out = mountHook<number>('k', 0, codecs.int(0));
-    out.setValue!(15);
+    out.set!(15);
     expect(localStorage.getItem('k')).toBe('15');
   });
 
   it('round-trips string to a raw (non-JSON) value on disk', () => {
     const out = mountHook<string>('k', '', codecs.string);
-    out.setValue!('mytag');
+    out.set!('mytag');
     expect(localStorage.getItem('k')).toBe('mytag');
   });
 
   it('does not throw when writing to blocked storage', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(throwBlocked);
     const out = mountHook<boolean>('k', false, codecs.bool);
-    expect(() => out.setValue!(true)).not.toThrow();
+    expect(() => out.set!(true)).not.toThrow();
   });
 });
