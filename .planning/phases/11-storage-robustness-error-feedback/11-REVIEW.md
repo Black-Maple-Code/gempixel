@@ -16,7 +16,17 @@ findings:
   warning: 3
   info: 3
   total: 6
-status: issues_found
+status: resolved
+resolution:
+  reviewed_by: gsd-execute-phase code_review_gate
+  warnings_fixed: 3
+  info_deferred: 3
+  fixed: 2026-07-12
+  commits:
+    - "27284c7 fix(11): shape-check unmapped-colors log codec (WR-01)"
+    - "8eaf073 fix(11): shape-check checkout unmapped-log read (WR-02)"
+    - "0bf02ce fix(11): restore empty-template default fallback (WR-03)"
+  note: "All 3 Warning findings fixed + regression tests added (suite 170->178 green). Info items (IN-01/02/03) deferred as advisory; IN-03's wrong-type coverage gap was closed by the WR-01/WR-02 tests."
 ---
 
 # Phase 11: Code Review Report
