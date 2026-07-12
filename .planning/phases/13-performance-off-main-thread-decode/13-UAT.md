@@ -1,22 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 13-performance-off-main-thread-decode
 source: [13-VERIFICATION.md]
 started: 2026-07-12T18:50:09Z
-updated: 2026-07-12T18:50:09Z
+updated: 2026-07-12T19:05:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Large-image UI responsiveness (PERF-01 / D-09)
-expected: |
-  Loading and re-matching a large source image (e.g. 4000×3000) keeps the UI
-  responsive — the "Preparing image…" indeterminate overlay shows during the
-  off-thread decode/resample, the page stays interactive (no frozen paint),
-  then flips to the determinate "Matching colors: {n}%". Before this phase the
-  same action janked the main thread on every match trigger.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -26,7 +18,7 @@ expected: |
   reads "Preparing image…" (indeterminate) and the UI stays responsive (scroll,
   hover, palette toggles do not freeze); it then flips to "Matching colors: {n}%"
   (determinate) once worker progress starts. No main-thread jank on match triggers.
-result: [pending]
+result: pass
 
 ### 2. Bit-identical parity vs the pre-phase pipeline (D-11 / ME-01)
 expected: |
@@ -37,7 +29,7 @@ expected: |
   How to diff: check out the baseline (e.g. a second clone/worktree at 2249a34),
   run the same fixture + same rows/cols/palette, and compare the supply counts /
   exported grid against the current build. Zero differences = pass.
-result: [pending]
+result: pass
 
 ### 3. Unsupported-browser hard-fail (D-07)
 expected: |
@@ -47,14 +39,15 @@ expected: |
   ("Couldn't process the image…" / update-your-browser) via the reactive error
   path. No crash, no infinite spinner, and the banner does not co-display with
   the loading overlay.
-result: [pending]
+result: pass
+note: Driven in-app browser — forced OffscreenCanvas undefined before match, injected a test image; banner "Couldn't process the image: Please update your browser — off-thread image decoding (OffscreenCanvas) is unavailable." rendered with no overlay co-displayed and no console errors.
 
 ## Summary
 
 total: 3
-passed: 0
+passed: 3
 issues: 0
-pending: 3
+pending: 0
 skipped: 0
 blocked: 0
 
