@@ -573,11 +573,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       expect(thresholdInput.value).toBe('50');
 
-      // Toggling the checkbox off hides the threshold controls
+      // Toggling the checkbox off hides the threshold controls. Scope to the
+      // substitution slider (max=500); the smoothing slider (max=3) is separate.
       subCheckbox.click();
       await new Promise(r => setTimeout(r, 10));
       expect(subCheckbox.checked).toBe(false);
-      expect(container.querySelector('input[type="range"]')).toBeNull();
+      expect(container.querySelector('input[type="range"][max="500"]')).toBeNull();
     });
 
     it('renders logged unmapped colors lists and handles clear action in settings', async () => {

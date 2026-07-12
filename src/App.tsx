@@ -134,6 +134,16 @@ export function App() {
     const saved = localStorage.getItem('gempixel_substitution_threshold');
     return saved ? parseInt(saved, 10) : 15;
   });
+  const [enableSmoothing, setEnableSmoothing] = useState<boolean>(() => {
+    // Default ON (Light) — clean orphan drills / blotchy edges unless opted out.
+    const saved = localStorage.getItem('gempixel_enable_smoothing');
+    return saved === null ? true : saved === 'true';
+  });
+  const [smoothingStrength, setSmoothingStrength] = useState<number>(() => {
+    // Default 1 (Light) — minimal shape change; user can push to Medium/Strong.
+    const saved = localStorage.getItem('gempixel_smoothing_strength');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [unmappedLog, setUnmappedLog] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
@@ -150,6 +160,14 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('gempixel_substitution_threshold', substitutionThreshold.toString());
   }, [substitutionThreshold]);
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_enable_smoothing', enableSmoothing.toString());
+  }, [enableSmoothing]);
+
+  useEffect(() => {
+    localStorage.setItem('gempixel_smoothing_strength', smoothingStrength.toString());
+  }, [smoothingStrength]);
   const [selectedVendor, setSelectedVendor] = useState<'lumaprints' | 'prodigi' | 'finerworks'>('lumaprints');
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
@@ -390,6 +408,8 @@ export function App() {
     activeCandidates,
     enableSubstitution,
     substitutionThreshold,
+    enableSmoothing,
+    smoothingStrength,
   });
 
   const wizard = useWizard({
@@ -1150,6 +1170,10 @@ export function App() {
             setEnableSubstitution={setEnableSubstitution}
             substitutionThreshold={substitutionThreshold}
             setSubstitutionThreshold={setSubstitutionThreshold}
+            enableSmoothing={enableSmoothing}
+            setEnableSmoothing={setEnableSmoothing}
+            smoothingStrength={smoothingStrength}
+            setSmoothingStrength={setSmoothingStrength}
             excludeListOpen={excludeListOpen}
             setExcludeListOpen={setExcludeListOpen}
             excludedColors={excludedColors}

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { CURATED_SYMBOLS, generateSymbolAllocation, getContrastColor } from '../symbols';
+import {
+  CURATED_SYMBOLS,
+  LETTER_SYMBOLS,
+  NUMBER_SYMBOLS,
+  WINGDING_SYMBOLS,
+  generateSymbolAllocation,
+  getContrastColor,
+} from '../symbols';
 
 describe('Symbol Database & Allocation Engine', () => {
   describe('CURATED_SYMBOLS pool', () => {
@@ -11,11 +18,26 @@ describe('Symbol Database & Allocation Engine', () => {
       expect(uniqueSymbols.size).toBe(CURATED_SYMBOLS.length);
     });
 
-    it('contains no alphanumeric characters (letters or numbers)', () => {
+    it('is ordered Letters (A-Z) → Numbers (0-9) → Wingdings', () => {
+      // Tier 1: the first 26 symbols are the uppercase alphabet in order.
+      expect(CURATED_SYMBOLS.slice(0, 26)).toEqual(LETTER_SYMBOLS);
+      expect(LETTER_SYMBOLS).toEqual('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+
+      // Tier 2: the next 10 symbols are the digits 0-9 in order.
+      expect(CURATED_SYMBOLS.slice(26, 36)).toEqual(NUMBER_SYMBOLS);
+      expect(NUMBER_SYMBOLS).toEqual('0123456789'.split(''));
+
+      // Tier 3: everything after is the non-alphanumeric Wingding glyph pool.
+      expect(CURATED_SYMBOLS.slice(36)).toEqual(WINGDING_SYMBOLS);
       const alphanumerics = /[A-Za-z0-9]/;
-      CURATED_SYMBOLS.forEach(char => {
+      WINGDING_SYMBOLS.forEach(char => {
         expect(alphanumerics.test(char)).toBe(false);
       });
+    });
+
+    it('assigns the most-frequent color a plain letter, starting at A', () => {
+      expect(CURATED_SYMBOLS[0]).toBe('A');
+      expect(CURATED_SYMBOLS[1]).toBe('B');
     });
   });
 

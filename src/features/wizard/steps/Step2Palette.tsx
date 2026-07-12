@@ -28,6 +28,10 @@ export interface Step2PaletteProps {
   setEnableSubstitution: (v: boolean) => void;
   substitutionThreshold: number;
   setSubstitutionThreshold: (v: number) => void;
+  enableSmoothing: boolean;
+  setEnableSmoothing: (v: boolean) => void;
+  smoothingStrength: number;
+  setSmoothingStrength: (v: number) => void;
   excludeListOpen: boolean;
   setExcludeListOpen: (v: boolean) => void;
   excludedColors: Set<string>;
@@ -52,6 +56,10 @@ export function Step2Palette(props: Step2PaletteProps) {
     setEnableSubstitution,
     substitutionThreshold,
     setSubstitutionThreshold,
+    enableSmoothing,
+    setEnableSmoothing,
+    smoothingStrength,
+    setSmoothingStrength,
     excludeListOpen,
     setExcludeListOpen,
     excludedColors,
@@ -161,6 +169,50 @@ export function Step2Palette(props: Step2PaletteProps) {
                       </div>
                       <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
                         Fills colors with counts below threshold into their closest color.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Color-Boundary Smoothing Option */}
+                <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50 shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="smooth-colors-checkbox"
+                        type="checkbox"
+                        checked={enableSmoothing}
+                        onChange={(e) => setEnableSmoothing((e.target as HTMLInputElement).checked)}
+                        className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
+                      />
+                      <label htmlFor="smooth-colors-checkbox" className="text-xs font-semibold text-slate-350 cursor-pointer select-none">
+                        Clean color boundaries
+                      </label>
+                    </div>
+                    <div className="tooltip-group">
+                      <span className="text-[10px] text-slate-500 hover:text-slate-350 cursor-help w-3.5 h-3.5 rounded-full border border-slate-800 flex items-center justify-center font-bold">?</span>
+                      <div className="tooltip-box">Dissolves orphaned drills and straightens blotchy edges for a cleaner chart. Departs slightly from the original photo.</div>
+                    </div>
+                  </div>
+                  {enableSmoothing && (
+                    <div className="flex flex-col gap-1 mt-1.5 pl-5 select-none">
+                      <label className="text-[9px] uppercase tracking-wide text-slate-500 font-bold">Smoothing Strength</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="1"
+                          max="3"
+                          step="1"
+                          value={smoothingStrength}
+                          onInput={(e) => setSmoothingStrength(parseInt((e.target as HTMLInputElement).value, 10) || 1)}
+                          className="flex-1 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded appearance-none"
+                        />
+                        <span className="bg-slate-900 border border-slate-800/80 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono text-slate-200 shrink-0 w-14 text-center shadow-inner">
+                          {smoothingStrength === 1 ? 'Light' : smoothingStrength === 2 ? 'Medium' : 'Strong'}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 italic mt-0.5 leading-tight">
+                        Higher strength removes more speckle but reshapes fine detail.
                       </span>
                     </div>
                   )}

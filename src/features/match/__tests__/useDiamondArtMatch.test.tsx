@@ -71,6 +71,8 @@ const baseInputs = (over: Partial<MatchInputs> = {}): MatchInputs => ({
   activeCandidates: [c0, c1],
   enableSubstitution: false,
   substitutionThreshold: 2,
+  enableSmoothing: false,
+  smoothingStrength: 1,
   ...over,
 });
 
@@ -109,6 +111,25 @@ describe('useDiamondArtMatch', () => {
     await new Promise(r => setTimeout(r, 0));
     h.rerender();
     expect(h.state.matchResult!.counts[c1.dmc]).toBeUndefined();
+  });
+
+  it('applies spatial smoothing when enableSmoothing flips on', async () => {
+    let smooth = false;
+    const h = mount(() => baseInputs({ enableSmoothing: smooth, smoothingStrength: 1 }));
+    // 4x4 grid of c0 with a lone c1 orphan at center (index 5) — all neighbours c0.
+    const cells = new Array(16).fill(c0.dmc);
+    cells[5] = c1.dmc;
+    h.state.restore({ matches: cells, counts: { [c0.dmc]: 15, [c1.dmc]: 1 } });
+    await new Promise(r => setTimeout(r, 0));
+    h.rerender();
+    expect(h.state.matchResult!.counts[c1.dmc]).toBe(1); // orphan present, un-smoothed
+
+    smooth = true; // strength 1 dissolves the fully-surrounded orphan
+    h.rerender();
+    await new Promise(r => setTimeout(r, 0));
+    h.rerender();
+    expect(h.state.matchResult!.counts[c1.dmc]).toBeUndefined();
+    expect(h.state.matchResult!.counts[c0.dmc]).toBe(16);
   });
 
   it('terminates the worker on unmount (no leak)', async () => {

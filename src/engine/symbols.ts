@@ -1,22 +1,38 @@
-export const CURATED_SYMBOLS = [
-  // 1. Playing Card Suits (4)
+/**
+ * Symbol tiers, exhausted IN ORDER as colors are assigned by descending
+ * frequency: the most-used color gets 'A', the next 'B', ... through 'Z', then
+ * '0'–'9', then the Wingding-style glyph pool. This keeps the busiest colors on
+ * plain, instantly-legible letters and pushes ornate glyphs to rare colors.
+ */
+
+// Tier 1 — Letters A–Z (26). Most-frequent color = 'A'.
+export const LETTER_SYMBOLS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// Tier 2 — Numbers 0–9 (10).
+export const NUMBER_SYMBOLS = '0123456789'.split('');
+
+// Tier 3 — "Wingdings": distinguishable non-alphanumeric glyphs (46).
+export const WINGDING_SYMBOLS = [
+  // Playing Card Suits (4)
   '♣', '♦', '♥', '♠',
-  // 2. Geometric Filled (10)
+  // Geometric Filled (10)
   '▲', '▼', '◆', '●', '■', '★', '◀', '▶', '❖', '⬤',
-  // 3. Geometric Outlined (10)
+  // Geometric Outlined (10)
   '△', '▽', '◇', '○', '□', '☆', '◁', '▷', '⬡', '⭘',
-  // 4. Circles with Patterns (12)
+  // Circles with Patterns (12)
   '◎', '⊕', '⊖', '⊗', '⊘', '⊙', '⊚', '⊛', '⊜', '⊞', '⊟', '⊠',
-  // 5. Astrological & Weather (10)
-  '☼', '☽', '☾', '❄', '❅', '❆', '☄', '♀', '♂', '⚡',
-  // 6. Arrows (12)
-  '←', '↑', '→', '↓', '↔', '↕', '↖', '↗', '↘', '↙', '↚', '↛',
-  // 7. Block Fills & Textures (14)
-  '░', '▒', '▓', '█', '▄', '▀', '▌', '▐', '▖', '▗', '▘', '▙', '▚', '▛',
-  // 8. Math & Operators (16)
-  '+', '×', '÷', '=', '≠', '±', '∞', '√', '≈', '≤', '≥', '％', '＃', '＠', '？', '！',
-  // 9. Misc Glyphs (12)
-  '✦', '✧', '⬢', '⬣', '⭓', '⭔', '▰', '▱', '§', '¶', '†', '‡'
+  // Misc Glyphs (10)
+  '✦', '✧', '⬢', '⬣', '⭓', '⭔', '▰', '▱', '†', '‡',
+];
+
+/**
+ * The ordered allocation pool: Letters → Numbers → Wingdings (82 total).
+ * `generateSymbolAllocation` walks this by frequency rank.
+ */
+export const CURATED_SYMBOLS = [
+  ...LETTER_SYMBOLS,
+  ...NUMBER_SYMBOLS,
+  ...WINGDING_SYMBOLS,
 ];
 
 export interface ColorSymbolMap {
