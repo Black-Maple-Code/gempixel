@@ -85,37 +85,42 @@ Explicitly excluded from v3.0. Anti-features surfaced by research are documented
 
 ## Traceability
 
-Proposed phase mapping (phase numbers continue from the previous milestone's last phase, 14). Finalized by the roadmapper.
+Final phase mapping (phases 15–19, continuing from the previous milestone's last phase, 14). Finalized by the roadmapper 2026-07-12. Ordering respects the research's load-bearing dependency sequence: correctness → optimized supply plan → service fee + order packet → viewport wizard → mode split (last). The two UI reworks (Phase 18, Phase 19) are separate and never merged.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VENDOR-02 | Phase 15 — Vendor Cleanup | Pending |
-| PRICE-01 | Phase 16 — Pricing Accuracy | Pending |
-| PRICE-02 | Phase 16 — Pricing Accuracy | Pending |
-| PRICE-03 | Phase 16 — Pricing Accuracy | Pending |
-| DATA-01 | Phase 17 — Data Integrity | Pending |
-| BAG-01 | Phase 18 — Supply Optimization | Pending |
-| BAG-02 | Phase 18 — Supply Optimization | Pending |
-| BAG-03 | Phase 18 — Supply Optimization | Pending |
-| FEE-01 | Phase 19 — Service Fee & Quote | Pending |
-| ORDER-01 | Phase 20 — Customer Order Flow | Pending |
-| ORDER-02 | Phase 20 — Customer Order Flow | Pending |
-| ORDER-03 | Phase 20 — Customer Order Flow | Pending |
-| ORDER-04 | Phase 20 — Customer Order Flow | Pending |
-| ORDER-05 | Phase 20 — Customer Order Flow | Pending |
-| VIEWPORT-01 | Phase 21 — Viewport-Native Wizard | Pending |
-| VIEWPORT-02 | Phase 21 — Viewport-Native Wizard | Pending |
-| VIEWPORT-03 | Phase 21 — Viewport-Native Wizard | Pending |
-| MODE-01 | Phase 22 — Mode Split | Pending |
-| MODE-02 | Phase 22 — Mode Split | Pending |
-| MODE-03 | Phase 22 — Mode Split | Pending |
-| MODE-04 | Phase 22 — Mode Split | Pending |
+| VENDOR-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| PRICE-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| DATA-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| BAG-01 | Phase 16 — Optimized Supply Plan & Savings | Pending |
+| BAG-02 | Phase 16 — Optimized Supply Plan & Savings | Pending |
+| BAG-03 | Phase 16 — Optimized Supply Plan & Savings | Pending |
+| FEE-01 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| ORDER-01 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| ORDER-02 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| ORDER-03 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| ORDER-04 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| ORDER-05 | Phase 17 — Service Fee & Customer Order Packet | Pending |
+| VIEWPORT-01 | Phase 18 — Viewport-Native Wizard | Pending |
+| VIEWPORT-02 | Phase 18 — Viewport-Native Wizard | Pending |
+| VIEWPORT-03 | Phase 18 — Viewport-Native Wizard | Pending |
+| MODE-01 | Phase 19 — Two-Mode Split (Customer / Artist) | Pending |
+| MODE-02 | Phase 19 — Two-Mode Split (Customer / Artist) | Pending |
+| MODE-03 | Phase 19 — Two-Mode Split (Customer / Artist) | Pending |
+| MODE-04 | Phase 19 — Two-Mode Split (Customer / Artist) | Pending |
 
 **Coverage:**
 
 - Milestone v3.0 requirements: 21 total
-- Mapped to phases: 21 (proposed)
+- Mapped to phases: 21 (final)
 - Unmapped: 0 ✓
 
+**Notes on mode-conditional UI (each requirement still maps to exactly one phase):**
+
+- FEE-01 and ORDER-01..05 build their pure engine + base UI in **Phase 17** (assembled while the app is still the familiar wizard, before the UI reworks). Their **Customer-only** exposure/gating is wired during **Phase 19** (the capability map), but the requirements are owned by Phase 17.
+- BAG-02/BAG-03 (surfacing the optimizer + savings explainer) are UI mapped to **Phase 16** alongside the BAG-01 engine aggregator.
+
 ---
-*Requirements defined: 2026-07-12 — Milestone v3.0 Two-Mode Viewport Experience*
+*Requirements defined: 2026-07-12 — Milestone v3.0 Two-Mode Viewport Experience. Traceability finalized 2026-07-12 (phases 15–19).*

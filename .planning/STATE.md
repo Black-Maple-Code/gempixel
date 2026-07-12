@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Two-Mode Viewport Experience
 status: planning
-last_updated: "2026-07-12T20:32:12.402Z"
+last_updated: "2026-07-12T21:00:00.000Z"
 last_activity: 2026-07-12
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,27 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-07)
+See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 13 — performance-off-main-thread-decode
+**Current focus:** Phase 15 — Trustworthy Pricing & Data Foundation (v3.0 roadmap created; ready to plan)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 15 — Trustworthy Pricing & Data Foundation (Not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-12 — Milestone v3.0 started
+Status: Roadmap created — 5 phases (15–19), 21/21 requirements mapped. Ready for `/gsd-plan-phase 15`.
+Last activity: 2026-07-12 — v3.0 ROADMAP.md written; REQUIREMENTS.md traceability finalized (phases 15–19)
+
+**v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 15 | Trustworthy Pricing & Data Foundation | VENDOR-02, PRICE-01/02/03, DATA-01 |
+| 16 | Optimized Supply Plan & Savings | BAG-01/02/03 |
+| 17 | Service Fee & Customer Order Packet | FEE-01, ORDER-01..05 |
+| 18 | Viewport-Native Wizard (UI rework #1, ships green) | VIEWPORT-01/02/03 |
+| 19 | Two-Mode Split (UI rework #2, last) | MODE-01/02/03/04 |
 
 ## Performance Metrics
 
@@ -75,7 +85,7 @@ Last activity: 2026-07-12 — Milestone v3.0 started
 
 - **Code coverage rate:** 100%
 - **Build compiler rate:** 100%
-- **Requirement coverage rate:** 100% (NAV-01, NAV-02, NAV-03 completed)
+- **Requirement coverage rate:** 100% (v3.0: 21/21 requirements mapped to phases 15–19)
 
 ### Quick Tasks Completed
 
@@ -93,7 +103,7 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | deferred-phase | Phase 10: Project Load Correctness (LOAD-01, LOAD-02) | not planned — rewrite planned | v2.1 close |
-| deferred-phase | Phase 12: Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) | not planned — rewrite planned | v2.1 close |
+| deferred-phase | Phase 12: Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) | **superseded by v3.0 Phase 15** — carried into v3.0 | v2.1 close |
 | deferred-phase | Phase 14: Security & Cleanup (SEC-01) | not planned — rewrite planned | v2.1 close |
 | verification-gap | Phase 07 (07-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
 | verification-gap | Phase 08 (08-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
@@ -101,9 +111,9 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-12T18:26:26.511Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.md
+Last session: 2026-07-12T21:00:00.000Z
+Stopped at: v3.0 roadmap created (phases 15–19)
+Resume file: .planning/ROADMAP.md
 
 ## Decisions
 
@@ -112,7 +122,8 @@ Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.m
 - [Phase ?]: ERR-01: unified actionError banner folds saveErrorMsg; guarded checkout unmapped-log parse via safeStorage (corrupt -> [] + banner, checkout proceeds)
 - [Phase 13]: D-09: single loading overlay branches on loadingPhase — indeterminate 'Preparing image…' during off-thread decode, determinate 'Matching colors: {progress}%' on first worker progress
 - [Phase 13]: D-10: match-error banner copy generalized to stage-agnostic 'Couldn't process the image: {matchError}', staying a plain JSX text child
+- [v3.0 roadmap]: Compressed the research's 8-phase suggestion to 5 phases under standard granularity — single-requirement/thin phases (Vendor cleanup, Data integrity, Service fee) folded into their nearest coherent neighbor. Load-bearing dependency order preserved: correctness (15) → optimized supply plan (16) → fee + order packet (17) → viewport wizard (18) → mode split (19, last). The two UI reworks (18, 19) are kept as separate phases.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first v3.0 phase with `/gsd-plan-phase 15`
