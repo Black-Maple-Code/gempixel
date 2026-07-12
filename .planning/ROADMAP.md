@@ -308,7 +308,20 @@ Plans:
   1. Loading/re-matching a large source image (e.g. 4000×3000) keeps the UI responsive; decode/downsample no longer block paint on the main thread. (review W8)
   2. Matching output is unchanged from the current main-thread pipeline (parity test on a fixture image).
 
-**Plans**: TBD (run `/gsd-plan-phase 13`)
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 13-01-PLAN.md — Relocate resample/readback/box-sample into matcher.worker.ts behind the transferred-ImageBitmap message contract (worker + client + hook + tests, atomic). (PERF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 13-02-PLAN.md — Wire the phase-labeled loading overlay ("Preparing image…" → "Matching colors: {n}%") and generalize the error-banner copy in App.tsx. (PERF-01)
+
+**Wave 3** *(blocked on Wave 2 — manual gate)*
+
+- [ ] 13-03-PLAN.md — Human-verify responsiveness, bit-identical parity (D-11 one-time fixture diff), and the unsupported-browser hard-fail banner. (PERF-01)
 
 ### Phase 14: Security & Cleanup
 
