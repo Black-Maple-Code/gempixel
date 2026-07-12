@@ -65,9 +65,40 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Viewport HUD & Intuitive Wizard Navigation (Phase 9)
 
-- [ ] **NAV-01**: Replace or style Next/Back buttons to be intuitive, contextual, and prominent.
-- [ ] **NAV-02**: Move active layout, view toggles, color highlights, and basic canvas settings directly into a floating HUD overlay (Heads-Up Display) inside the canvas viewport, reducing sidebar clutter.
-- [ ] **NAV-03**: Re-organize settings logically, group them, and display clear tooltips or descriptive labels.
+- [x] **NAV-01**: Replace or style Next/Back buttons to be intuitive, contextual, and prominent.
+- [x] **NAV-02**: Move active layout, view toggles, color highlights, and basic canvas settings directly into a floating HUD overlay (Heads-Up Display) inside the canvas viewport, reducing sidebar clutter.
+- [x] **NAV-03**: Re-organize settings logically, group them, and display clear tooltips or descriptive labels.
+
+## Milestone v2.1 Requirements: Post-Review Remediation
+
+Derived from the maintenance code review (`.planning/codebase/REVIEW.md`). The four
+blockers (B1–B4) were already fixed via quick tasks (260711-wvv, 260711-x6p, 260712-05k,
+260712-0io); these requirements cover the remaining review warnings.
+
+### Project Load Correctness
+
+- [ ] **LOAD-01**: When a user reloads a saved project, its saved canvas price is preserved and not overwritten by the automatic cost recompute. (review W1)
+- [ ] **LOAD-02**: When a user reloads a saved project, the rendered grid matches what was saved, regardless of the session's current substitution/smoothing toggles. (review W2)
+
+### Storage Robustness & Error Feedback
+
+- [ ] **STORE-01**: The app loads and functions even when localStorage is unavailable or blocked (e.g. private browsing) — no storage read/write throws during mount. (review W3)
+- [ ] **STORE-02**: All persisted settings read/write through a single safe helper (`usePersistentState`), so a storage error in one setting cannot break the app and duplicated boilerplate is removed. (review W3, IN-01)
+- [ ] **ERR-01**: When a save, download, or checkout action fails, the user sees a clear message instead of a silent no-op (extends the match-error surface to the remaining paths). (review W4, W5)
+
+### Supply Pricing Accuracy
+
+- [ ] **PRICE-01**: The per-packet cost shown for a 500-count drill bag is correct and not priced as a larger/nonexistent tier. (review W6)
+- [ ] **PRICE-02**: An unpriced bag size is never treated as free ($0); cost minimization never selects a size because its price is missing. (review W7)
+- [ ] **DATA-01**: An automated integrity test verifies the drill-variant table — unique variant IDs, complete bag-size mappings, and every palette DMC has a mapping. (review IN-03)
+
+### Performance
+
+- [ ] **PERF-01**: Loading or re-matching a large source image keeps the UI responsive — image decode and box-sampling do not block the main thread. (review W8)
+
+### Security & Cleanup
+
+- [ ] **SEC-01**: A partner canvas URL is validated against an http/https allowlist before it can be opened, and the unfinished partner-link path is either wired up safely or removed. (review W10, IN-02)
 
 ## Out of Scope
 
@@ -108,20 +139,28 @@ Requirements for initial release. Each maps to roadmap phases.
 | EXPORT-01 | Phase 8 | Complete |
 | EXPORT-02 | Phase 8 | Complete |
 | VENDOR-01 | Phase 8 | Complete |
-| NAV-01 | Phase 9 | Pending |
-| NAV-02 | Phase 9 | Pending |
-| NAV-03 | Phase 9 | Pending |
+| NAV-01 | Phase 9 | Complete |
+| NAV-02 | Phase 9 | Complete |
+| NAV-03 | Phase 9 | Complete |
+| LOAD-01 | Phase 10 | Pending |
+| LOAD-02 | Phase 10 | Pending |
+| STORE-01 | Phase 11 | Pending |
+| STORE-02 | Phase 11 | Pending |
+| ERR-01 | Phase 11 | Pending |
+| PRICE-01 | Phase 12 | Pending |
+| PRICE-02 | Phase 12 | Pending |
+| DATA-01 | Phase 12 | Pending |
+| PERF-01 | Phase 13 | Pending |
+| SEC-01 | Phase 14 | Pending |
 
 **Coverage:**
 
 - Milestone v1.0 requirements: 17 total (17 complete)
-- Milestone v2.0 requirements: 4 total (4 complete)
-- Milestone v2.1 / Phase 7 requirements: 3 total (3 complete)
-- Milestone v2.2 / Phase 8 requirements: 3 total (3 complete)
-- Milestone v2.3 / Phase 9 requirements: 3 total (0 complete)
-- Mapped to phases: 30
+- Milestone v2.0 requirements (Phases 5–9): 13 total (13 complete)
+- Milestone v2.1 requirements (Phases 10–14, post-review remediation): 10 total (0 complete)
+- Mapped to phases: 40
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-10 after Phase 9 initiation*
+*Last updated: 2026-07-12 — opened Milestone v2.1 (post-review remediation)*

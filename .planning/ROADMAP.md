@@ -16,6 +16,16 @@ GemPixel is a client-side utility web application designed for diamond painting 
 - [x] **Phase 8: Custom Canvas Export & Multiple Vendor Integration** - Add high-resolution PNG downloads for Option C (combined sheet vs separate grid), Dynamic Sizing Advice, and integrate Lumaprints (default) alongside Prodigi/FinerWorks options. (completed 2026-07-09)
 - [x] **Phase 9: Viewport HUD Overlay & Intuitive Wizard Navigation UX** - Implement a floating viewport Heads-Up Display (HUD) overlay for interactive controls, redesign next/back step navigation buttons, and logically group sidebar settings. (completed 2026-07-10)
 
+### Milestone v2.1 — Post-Review Remediation
+
+Address the remaining warnings from the maintenance code review (`.planning/codebase/REVIEW.md`). Blockers B1–B4 already fixed via quick tasks.
+
+- [ ] **Phase 10: Project Load Correctness** - Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved. (LOAD-01, LOAD-02)
+- [ ] **Phase 11: Storage Robustness & Error Feedback** - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01)
+- [ ] **Phase 12: Supply Pricing Accuracy** - Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test. (PRICE-01, PRICE-02, DATA-01)
+- [ ] **Phase 13: Performance — Off-Main-Thread Decode** - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01)
+- [ ] **Phase 14: Security & Cleanup** - Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path. (SEC-01)
+
 ## Phase Details
 
 ### Phase 1: Core Engine & Color Mathematics
@@ -229,4 +239,72 @@ Plans:
 
 - [x] 09-01-PLAN.md — CanvasViewer Zoom APIs and stylesheet additions for glassmorphic Viewport HUD.
 - [x] 09-02-PLAN.md — App.tsx UI refactoring: stepper navigation, details accordions, viewport HUD integration, and unit tests alignment.
+
+### Phase 10: Project Load Correctness
+
+**Goal**: Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved.
+**Mode**: standard
+**Depends on**: Phase 9 (uses the commission workspace / project store)
+**Requirements**: LOAD-01, LOAD-02
+**Success Criteria** (what must be TRUE):
+
+  1. A user overrides the canvas price, saves, and reloads the project — the restored price is shown, not the auto-recomputed vendor cost. (review W1)
+  2. A project saved with a given substitution/smoothing state renders the same grid on reload, regardless of the session's current toggle state. (review W2)
+  3. A regression test covers the load path (restored price survives the cost-recompute effect; restored grid is not re-processed with current toggles).
+
+**Plans**: TBD (run `/gsd-plan-phase 10`)
+
+### Phase 11: Storage Robustness & Error Feedback
+
+**Goal**: Make localStorage access safe so the app mounts under blocked/private storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user.
+**Mode**: standard
+**Depends on**: Phase 10
+**Requirements**: STORE-01, STORE-02, ERR-01
+**Success Criteria** (what must be TRUE):
+
+  1. With site storage blocked (private browsing), the app still mounts and is usable — no unguarded read/write throws during render. (review W3)
+  2. All persisted settings flow through a single `usePersistentState` helper; the duplicated lazy-init/effect boilerplate is removed. (review W3, IN-01)
+  3. A failed save, download, or checkout shows a clear inline message instead of a silent no-op; the unmapped-colors-log parse is guarded. (review W4, W5)
+
+**Plans**: TBD (run `/gsd-plan-phase 11`)
+
+### Phase 12: Supply Pricing Accuracy
+
+**Goal**: Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test.
+**Mode**: standard
+**Depends on**: Phase 9 (supply/checkout engine)
+**Requirements**: PRICE-01, PRICE-02, DATA-01
+**Success Criteria** (what must be TRUE):
+
+  1. Selecting a 500-count default bag shows the correct per-packet cost (not the inflated 5000-tier fallback). (review W6)
+  2. A bag size with no price entry is never chosen as "cheapest" at $0; missing prices are treated as ineligible/unknown and surfaced. (review W7)
+  3. An automated test asserts drill-variant integrity: unique variant IDs, complete bag-size mappings, and every palette DMC has a mapping. (review IN-03)
+
+**Plans**: TBD (run `/gsd-plan-phase 12`)
+
+### Phase 13: Performance — Off-Main-Thread Decode
+
+**Goal**: Move image decode and box-sampling off the main thread so large images no longer jank the UI on every match trigger.
+**Mode**: standard
+**Depends on**: Phase 11 (error surface for worker-side decode failures)
+**Requirements**: PERF-01
+**Success Criteria** (what must be TRUE):
+
+  1. Loading/re-matching a large source image (e.g. 4000×3000) keeps the UI responsive; decode/downsample no longer block paint on the main thread. (review W8)
+  2. Matching output is unchanged from the current main-thread pipeline (parity test on a fixture image).
+
+**Plans**: TBD (run `/gsd-plan-phase 13`)
+
+### Phase 14: Security & Cleanup
+
+**Goal**: Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path.
+**Mode**: standard
+**Depends on**: Phase 9 (checkout module)
+**Requirements**: SEC-01
+**Success Criteria** (what must be TRUE):
+
+  1. A compiled partner canvas URL is rejected (not returned/opened) unless its scheme is http/https; `javascript:`/`data:` templates are blocked. (review W10)
+  2. The `canvasTemplate` / `compileCanvasPartnerUrl` path is either wired to an actual openable link (with the validation above) or removed along with its persisted state. (review IN-02)
+
+**Plans**: TBD (run `/gsd-plan-phase 14`)
 

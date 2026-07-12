@@ -21,12 +21,20 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Support custom sub-palette selection/filtering (allowing the artist to include or exclude specific colors from matching) (Validated in Phase 04: Supply Planning, Customization & Exports).
 - Display a supply specification report showing required color codes, names, and exact quantities of dots needed (Validated in Phase 04: Supply Planning, Customization & Exports).
 
+**Milestone v2.0 (shipped, Phases 5–9):**
+- Direct Canvas Ordering Partnership — order custom sticky-glue canvases matching the project layout from partnered suppliers (Validated in Phase 5).
+- Custom Drill Cart Checkout — compile affiliate/purchase cart links to Diamond Drills USA for the optimized drill bags (Validated in Phase 5).
+- Streamlined Commission Journey — 4-step wizard + local commission workspace (Validated in Phase 6).
+- Symbol-overlay canvas, margin legends, multi-vendor PNG export, and viewport HUD navigation (Validated in Phases 7–9).
+
 ### Active
 
-**Milestone v2.0: supply-partnerships-checkout-and-artist-UX**
-- [ ] Direct Canvas Ordering Partnership: Provide a way for artists to order custom sticky-glue canvases matching their project layout/dimensions from partnered canvas suppliers.
-- [ ] Custom Drill Cart Checkout: Compile and export direct affiliate/purchase cart links to Diamond Drills USA for the exact optimized bags (200, 500, 1000, 2000 sizes) of drills required for the canvas.
-- [ ] Streamlined Commission Journey: Simplify and restructure UI panels, inputs, and navigation to optimize the workflow of a professional diamond art artist quoting a commission.
+**Milestone v2.1: post-review remediation** — harden the codebase against the warnings surfaced by the maintenance code review (`.planning/codebase/REVIEW.md`); the four blockers were already fixed via quick tasks.
+- [ ] Project Load Correctness — restored projects keep their saved price and grid (LOAD-01, LOAD-02).
+- [ ] Storage Robustness & Error Feedback — app survives blocked storage; failures are surfaced, not silent (STORE-01, STORE-02, ERR-01).
+- [ ] Supply Pricing Accuracy — correct 500-bag pricing, no $0 unpriced sizes, variant integrity test (PRICE-01, PRICE-02, DATA-01).
+- [ ] Performance — off-main-thread image decode (PERF-01).
+- [ ] Security & Cleanup — validate/finish the partner-URL path (SEC-01).
 
 ### Out of Scope
 
@@ -59,7 +67,8 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | Zoom Anchor | Cursor-centered offset updates | — Implemented in viewer.ts (Phase 03) |
 | Viewport Rendering | Double-buffered offscreen canvas blitted to screen | — Implemented in viewer.ts (Phase 03) |
 | Grid Gaps Backing | Slate Gray `#2D3748` drawn behind cells | — Implemented in viewer.ts (Phase 03) |
-| Direct Cart & Canvas Partnerships | Integrate direct affiliate cart building and custom canvas ordering links to monetize the tool while maintaining client-side execution. | — Planned in Milestone v2.0 |
+| Direct Cart & Canvas Partnerships | Integrate direct affiliate cart building and custom canvas ordering links to monetize the tool while maintaining client-side execution. | — Shipped in Milestone v2.0 (Phase 5) |
+| Post-milestone maintenance review | Ran GSD map-codebase + a full deep code review before further feature work; fixed 4 blockers, roadmapped remaining warnings as Milestone v2.1. | — REVIEW.md; blockers fixed via quick tasks 2026-07-12 |
 
 ## Evolution
 
@@ -79,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Milestone v2.0 planning*
+*Last updated: 2026-07-12 — opened Milestone v2.1 (post-review remediation)*
