@@ -179,6 +179,10 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
       } catch (err) {
         // A rejected createImageBitmap routes to the same reactive error signal (D-10).
         console.error(err);
+        // A superseded decode that rejects late must not clobber the newer run's loading/error
+        // state — mirror the success path's supersede guard before touching shared UI state
+        // (HI-01).
+        if (mySeq !== seqRef.current) return;
         setLoading(false);
         setError(err instanceof Error ? err.message : String(err));
       }
