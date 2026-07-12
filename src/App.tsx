@@ -1666,14 +1666,16 @@ export function App() {
             </div>
           )}
 
-          {/* Match error banner — surfaces worker/synchronous match failures (B1/W5).
-              loading is cleared on error (see the hook), so this never co-displays with
-              the spinner. Text-only content (never dangerouslySetInnerHTML) so a crafted
-              worker error string cannot inject markup. Clears automatically on the next
-              match, which resets the hook's error to null. */}
+          {/* Match error banner — surfaces worker/synchronous failures across the whole
+              pipeline: off-thread decode-stage failures (D-10) as well as match-stage
+              failures (B1/W5). loading is cleared on error (see the hook), so this never
+              co-displays with the spinner. Copy is stage-agnostic so a decode-stage
+              message reads correctly. Text-only content (never dangerouslySetInnerHTML)
+              so a crafted worker error string cannot inject markup. Clears automatically
+              on the next match, which resets the hook's error to null. */}
           {matchError && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-              Color matching failed: {matchError}
+              Couldn't process the image: {matchError}
             </div>
           )}
 
