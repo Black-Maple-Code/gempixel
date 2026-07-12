@@ -2,18 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: — Post-Review Remediation
-current_phase: 14
-current_phase_name: Security & Cleanup
-status: Phase 13 shipped — pushed to origin/master (Black-Maple-Code/gempixel)
+current_phase: 1
+status: Awaiting next milestone
 stopped_at: Phase 13 context gathered
-last_updated: "2026-07-12T19:38:53.797Z"
+last_updated: "2026-07-12T20:13:43.606Z"
 last_activity: 2026-07-12
+last_activity_desc: Milestone v2.1 completed and archived
 progress:
   total_phases: 14
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 25
-  completed_plans: 23
-  percent: 64
+  completed_plans: 24
+  percent: 71
+current_phase_name: Security & Cleanup
 ---
 
 # Project State
@@ -27,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 
 ## Current Position
 
-Phase: 14 — Security & Cleanup
-Plan: Not started
-Status: Phase 13 shipped — pushed to origin/master (Black-Maple-Code/gempixel)
-Last activity: 2026-07-12
+Phase: Milestone v2.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-12 — Milestone v2.1 completed and archived
 
 ## Performance Metrics
 
@@ -91,11 +92,16 @@ Last activity: 2026-07-12
 
 ## Continuity & Handoff
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12), accepted as tech debt:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| deferred-phase | Phase 10: Project Load Correctness (LOAD-01, LOAD-02) | not planned — rewrite planned | v2.1 close |
+| deferred-phase | Phase 12: Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) | not planned — rewrite planned | v2.1 close |
+| deferred-phase | Phase 14: Security & Cleanup (SEC-01) | not planned — rewrite planned | v2.1 close |
+| verification-gap | Phase 07 (07-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
+| verification-gap | Phase 08 (08-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
+| verification-gap | Phase 09 (09-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
 
 ## Session Continuity
 
@@ -110,3 +116,7 @@ Resume file: .planning/phases/13-performance-off-main-thread-decode/13-CONTEXT.m
 - [Phase ?]: ERR-01: unified actionError banner folds saveErrorMsg; guarded checkout unmapped-log parse via safeStorage (corrupt -> [] + banner, checkout proceeds)
 - [Phase 13]: D-09: single loading overlay branches on loadingPhase — indeterminate 'Preparing image…' during off-thread decode, determinate 'Matching colors: {progress}%' on first worker progress
 - [Phase 13]: D-10: match-error banner copy generalized to stage-agnostic 'Couldn't process the image: {matchError}', staying a plain JSX text child
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
