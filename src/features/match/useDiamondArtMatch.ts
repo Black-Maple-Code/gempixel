@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'preact/hooks'
 import { substituteLowCountColors } from '../../engine/color';
 import { smoothMatches } from '../../engine/smoothing';
 import { MatcherClient } from '../../engine/worker-client';
-import { boxSampleImage } from '../../engine/ingest';
 import { generateSymbolAllocation, ColorSymbolMap } from '../../engine/symbols';
 import { DmcColor } from '../../engine/types';
 
@@ -40,32 +39,37 @@ export interface MatchState {
   symbolMap: ColorSymbolMap;
   loading: boolean;
   progress: number;
+  /**
+   * Which stage the loading overlay reflects: 'preparing' during the async
+   * createImageBitmap decode, then 'matching' the moment the worker's first onProgress
+   * fires (D-09). Consumed by Plan 13-02 for the overlay copy.
+   */
+  loadingPhase: 'preparing' | 'matching';
   /** Human-readable worker/synchronous match failure; null while healthy. Cleared on the next match. */
   error: string | null;
   /** Seed (project restore) or clear (reset/delete) the raw match without a worker run. */
   restore: (raw: RawMatch | null) => void;
 }
 
-// Extract pixels from an image, downscaling huge images for performance.
-function getImagePixels(img: HTMLImageElement): { pixels: Uint8ClampedArray; width: number; height: number } {
-  const canvas = document.createElement('canvas');
-  let w = img.naturalWidth || img.width;
-  let h = img.naturalHeight || img.height;
+/**
+ * Off-thread decode capability probe (D-07/D-08). The worker resamples on an
+ * OffscreenCanvas 2D context, so the actual gate is whether we can construct one — the
+ * `getContext('2d')` call is what rejects Safari 16.0–16.3 (which expose OffscreenCanvas
+ * but only a webgl context). Runs once at hook init, not per-image.
+ */
+export function detectOffscreenSupport(): boolean {
+  return (
+    typeof createImageBitmap === 'function' &&
+    typeof OffscreenCanvas !== 'undefined' &&
+    !!new OffscreenCanvas(1, 1).getContext('2d')
+  );
+}
 
-  const maxDimension = 2000;
-  if (w > maxDimension || h > maxDimension) {
-    const scale = maxDimension / Math.max(w, h);
-    w = Math.round(w * scale);
-    h = Math.round(h * scale);
-  }
-
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Failed to get 2d context for image pixels');
-  ctx.drawImage(img, 0, 0, w, h);
-  const imageData = ctx.getImageData(0, 0, w, h);
-  return { pixels: imageData.data, width: w, height: h };
+// Test seam (D-08): the node/jsdom Vitest env has no OffscreenCanvas, so tests force the
+// supported/unsupported branch deterministically. null = defer to detectOffscreenSupport().
+let offscreenSupportOverride: boolean | null = null;
+export function __setOffscreenSupportForTest(v: boolean | null) {
+  offscreenSupportOverride = v;
 }
 
 export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
@@ -83,8 +87,13 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
   const [rawMatchResult, setRawMatchResult] = useState<RawMatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [loadingPhase, setLoadingPhase] = useState<'preparing' | 'matching'>('preparing');
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<MatcherClient | null>(null);
+  // Monotonic id for the in-flight createImageBitmap decode. A superseded decode that
+  // resolves late is discarded (bitmap.close(), no match posted) — reuses the B2 supersede
+  // scheme rather than adding a second abort channel (D-05).
+  const seqRef = useRef(0);
 
   // Worker lifecycle: construct once, terminate on unmount (no leaked worker).
   useEffect(() => {
@@ -104,34 +113,65 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
     if (!image) return;
     if (activeCandidates.length === 0) return;
 
-    setLoading(true);
-    setProgress(0);
-    setError(null);
-
-    try {
-      const { pixels, width: srcW, height: srcH } = getImagePixels(image);
-      const downsampled = boxSampleImage(pixels, srcW, srcH, cols, rows);
-
-      clientRef.current?.match(
-        downsampled,
-        activeCandidates,
-        pct => setProgress(pct),
-        result => {
-          setLoading(false);
-          setRawMatchResult(result);
-        },
-        message => {
-          console.error('Match failed:', message);
-          setLoading(false);
-          setError(message);
-        },
-        cols
-      );
-    } catch (err) {
-      console.error(err);
+    // Hard-fail unsupported browsers into the reactive error banner (D-07) — never post
+    // to the worker and never flip loading on (preserves the loading-cleared-on-error /
+    // spinner-never-with-banner invariant, D-09).
+    const supported = offscreenSupportOverride ?? detectOffscreenSupport();
+    if (!supported) {
       setLoading(false);
-      setError(err instanceof Error ? err.message : String(err));
+      setError('Please update your browser — off-thread image decoding (OffscreenCanvas) is unavailable.');
+      return;
     }
+
+    setError(null);
+    setLoading(true);
+    setLoadingPhase('preparing');
+    setProgress(0);
+
+    // Effects can't be async directly; run the decode + transfer in an inner async fn.
+    const run = async () => {
+      const mySeq = ++seqRef.current;
+      try {
+        // Cheap on the main thread — the resample/readback now happen in the worker.
+        // Pin these three options exactly; parity depends on them (Pitfall 2 / D-01).
+        const bitmap = await createImageBitmap(image, {
+          imageOrientation: 'from-image',
+          premultiplyAlpha: 'none',
+          colorSpaceConversion: 'default',
+        });
+        // A newer trigger superseded this decode while it was in flight — discard the
+        // orphan bitmap and post nothing (D-05).
+        if (mySeq !== seqRef.current) {
+          bitmap.close();
+          return;
+        }
+        clientRef.current?.match(
+          bitmap,
+          cols,
+          rows,
+          activeCandidates,
+          pct => {
+            setLoadingPhase('matching');
+            setProgress(pct);
+          },
+          result => {
+            setLoading(false);
+            setRawMatchResult(result);
+          },
+          message => {
+            console.error('Match failed:', message);
+            setLoading(false);
+            setError(message);
+          }
+        );
+      } catch (err) {
+        // A rejected createImageBitmap routes to the same reactive error signal (D-10).
+        console.error(err);
+        setLoading(false);
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    };
+    run();
     // activeCandidates intentionally keyed via candidatesKey (stable) to avoid
     // re-running the match on every render from the fresh array reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,5 +218,5 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
 
   const restore = useCallback((raw: RawMatch | null) => setRawMatchResult(raw), []);
 
-  return { matchResult, symbolMap, loading, progress, error, restore };
+  return { matchResult, symbolMap, loading, progress, loadingPhase, error, restore };
 }
