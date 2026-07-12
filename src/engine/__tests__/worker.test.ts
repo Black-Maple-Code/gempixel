@@ -142,6 +142,7 @@ describe('MatcherClient and Web Worker Integration', () => {
         (res) => {
           resolve(res);
         },
+        undefined, // onError
         2 // cols = 2, so 2 rows total
       );
     });
@@ -176,6 +177,7 @@ describe('MatcherClient and Web Worker Integration', () => {
       () => {
         completeCalled = true;
       },
+      undefined, // onError
       1 // 1 pixel per row, total 10 rows
     );
 
@@ -199,7 +201,7 @@ describe('MatcherClient and Web Worker Integration', () => {
 
     // Run 1: with mockCandidates (Black, White). Red blends to solid Red.
     const res1 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), 1);
+      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), undefined, 1);
     });
 
     expect(matchColorSpy).toHaveBeenCalledTimes(1);
@@ -207,7 +209,7 @@ describe('MatcherClient and Web Worker Integration', () => {
 
     // Run 2: same palette, should hit cache and NOT call matchColor
     const res2 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), 1);
+      client.match(pixels, mockCandidates, () => {}, (res) => resolve(res), undefined, 1);
     });
 
     expect(res2.matches).toEqual(res1.matches);
@@ -229,7 +231,7 @@ describe('MatcherClient and Web Worker Integration', () => {
     ];
 
     const res3 = await new Promise<{ matches: string[] }>((resolve) => {
-      client.match(pixels, newCandidates, () => {}, (res) => resolve(res), 1);
+      client.match(pixels, newCandidates, () => {}, (res) => resolve(res), undefined, 1);
     });
 
     // Should map to the new candidate "606"

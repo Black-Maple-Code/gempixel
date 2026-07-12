@@ -13,6 +13,7 @@ export class MatcherClient {
     candidates: DmcColor[],
     onProgress: (percent: number) => void,
     onComplete: (result: { matches: string[]; counts: Record<string, number> }) => void,
+    onError?: (message: string) => void,
     cols?: number
   ): void {
     const paletteHash = candidates.map((c) => c.dmc).sort().join(',');
@@ -35,7 +36,16 @@ export class MatcherClient {
         onComplete({ matches: e.data.matches, counts: e.data.counts });
       } else if (e.data.kind === 'error') {
         console.error('Worker error:', e.data.error);
+        onError?.(e.data.error);
       }
+    };
+
+    // Uncaught worker exceptions (e.g. a crash outside the worker's try/catch) never
+    // arrive as a {kind:'error'} message, so surface them via onError too — otherwise
+    // the caller's loading state would strand forever (B1).
+    this.worker.onerror = (ev) => {
+      console.error('Worker crashed:', ev);
+      onError?.(ev.message || 'Worker crashed');
     };
   }
 

@@ -40,6 +40,8 @@ export interface MatchState {
   symbolMap: ColorSymbolMap;
   loading: boolean;
   progress: number;
+  /** Human-readable worker/synchronous match failure; null while healthy. Cleared on the next match. */
+  error: string | null;
   /** Seed (project restore) or clear (reset/delete) the raw match without a worker run. */
   restore: (raw: RawMatch | null) => void;
 }
@@ -81,6 +83,7 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
   const [rawMatchResult, setRawMatchResult] = useState<RawMatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<MatcherClient | null>(null);
 
   // Worker lifecycle: construct once, terminate on unmount (no leaked worker).
@@ -103,6 +106,7 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
 
     setLoading(true);
     setProgress(0);
+    setError(null);
 
     try {
       const { pixels, width: srcW, height: srcH } = getImagePixels(image);
@@ -116,11 +120,17 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
           setLoading(false);
           setRawMatchResult(result);
         },
+        message => {
+          console.error('Match failed:', message);
+          setLoading(false);
+          setError(message);
+        },
         cols
       );
     } catch (err) {
       console.error(err);
       setLoading(false);
+      setError(err instanceof Error ? err.message : String(err));
     }
     // activeCandidates intentionally keyed via candidatesKey (stable) to avoid
     // re-running the match on every render from the fresh array reference.
@@ -168,5 +178,5 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
 
   const restore = useCallback((raw: RawMatch | null) => setRawMatchResult(raw), []);
 
-  return { matchResult, symbolMap, loading, progress, restore };
+  return { matchResult, symbolMap, loading, progress, error, restore };
 }
