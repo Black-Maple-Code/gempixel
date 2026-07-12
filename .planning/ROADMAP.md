@@ -20,11 +20,13 @@ GemPixel is a client-side utility web application designed for diamond painting 
 
 Address the remaining warnings from the maintenance code review (`.planning/codebase/REVIEW.md`). Blockers B1–B4 already fixed via quick tasks.
 
-- [ ] **Phase 10: Project Load Correctness** - Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved. (LOAD-01, LOAD-02)
-- [ ] **Phase 11: Storage Robustness & Error Feedback** - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01)
-- [ ] **Phase 12: Supply Pricing Accuracy** - Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test. (PRICE-01, PRICE-02, DATA-01)
-- [ ] **Phase 13: Performance — Off-Main-Thread Decode** - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01)
-- [ ] **Phase 14: Security & Cleanup** - Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path. (SEC-01)
+**Active scope (2026-07-12 decision):** Phases **11** (storage robustness + error surface) and **13** (off-main-thread decode). Phases **10**, **12**, and **14** are **deferred** to a later version / the feature roadmap — kept below as backlog, not in the current execution scope.
+
+- [ ] **Phase 10: Project Load Correctness** *(deferred)* - Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved. (LOAD-01, LOAD-02)
+- [ ] **Phase 11: Storage Robustness & Error Feedback** *(active)* - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01)
+- [ ] **Phase 12: Supply Pricing Accuracy** *(deferred)* - Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test. (PRICE-01, PRICE-02, DATA-01)
+- [ ] **Phase 13: Performance — Off-Main-Thread Decode** *(active)* - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01)
+- [ ] **Phase 14: Security & Cleanup** *(deferred)* - Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path. (SEC-01)
 
 ## Phase Details
 
