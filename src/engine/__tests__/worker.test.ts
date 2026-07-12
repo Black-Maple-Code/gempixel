@@ -240,4 +240,48 @@ describe('MatcherClient and Web Worker Integration', () => {
 
     client.terminate();
   });
+
+  it('ignores a superseded run\'s result when an overlapping match arrives (B2)', async () => {
+    const client = new MatcherClient(new URL('http://localhost/matcher.worker.ts'));
+
+    // Run A: 10 pixels, cols = 1 -> 10 rows; yields after the first row, leaving A suspendable.
+    const pixelsA = new Uint8ClampedArray(10 * 4);
+    // Run B: 2 pixels, cols = 2 -> 1 row; a DIFFERENT grid dimension than A.
+    const pixelsB = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
+
+    const results: { matches: string[]; counts: Record<string, number> }[] = [];
+    let firedB = false;
+
+    client.match(
+      pixelsA,
+      mockCandidates,
+      (percent) => {
+        // On the FIRST real progress from A, launch B — superseding A mid-run.
+        if (percent > 0 && !firedB) {
+          firedB = true;
+          client.match(
+            pixelsB,
+            mockCandidates,
+            () => {},
+            (res) => results.push(res),
+            undefined,
+            2 // cols = 2 -> run B's 1-row dimension
+          );
+        }
+      },
+      // A's own onComplete MUST NOT be called — its stale, wrong-dimension result is superseded.
+      (res) => results.push(res),
+      undefined, // onError
+      1 // cols = 1 -> run A's 10-row dimension
+    );
+
+    // Let both runs drain.
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Only run B's result should have been delivered: length 1, sized for B (2 matches).
+    expect(results.length).toBe(1);
+    expect(results[0].matches.length).toBe(2);
+
+    client.terminate();
+  });
 });
