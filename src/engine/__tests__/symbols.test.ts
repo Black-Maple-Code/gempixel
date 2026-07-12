@@ -6,6 +6,7 @@ import {
   WINGDING_SYMBOLS,
   generateSymbolAllocation,
   getContrastColor,
+  symbolFontPx,
 } from '../symbols';
 
 describe('Symbol Database & Allocation Engine', () => {
@@ -99,19 +100,43 @@ describe('Symbol Database & Allocation Engine', () => {
       expect(uniqueAssigned.size).toBe(10);
     });
 
-    it('wraps around symbols pool correctly if active color count exceeds pool size', () => {
-      // Create more active codes than pool size
-      const codeCount = CURATED_SYMBOLS.length + 5;
+    it('keeps every symbol UNIQUE when active color count exceeds pool size (B4)', () => {
+      // The 200-color kit routinely activates >82 colors. The old `index % 82`
+      // wraparound reused glyphs (the 83rd color collided with the 1st), making the
+      // exported legend ambiguous. Each distinct color must now get a unique symbol.
+      const codeCount = 200;
       const activePaletteCodes = Array.from({ length: codeCount }, (_, i) => `COLOR_${String(i).padStart(3, '0')}`);
-      
+
       const allocation = generateSymbolAllocation([], activePaletteCodes);
-      
-      // First 5 elements of pool should be reassigned at the end
-      expect(allocation[`COLOR_000`]).toBe(CURATED_SYMBOLS[0]);
-      expect(allocation[`COLOR_${String(CURATED_SYMBOLS.length).padStart(3, '0')}`]).toBe(CURATED_SYMBOLS[0]);
-      
-      expect(allocation[`COLOR_004`]).toBe(CURATED_SYMBOLS[4]);
-      expect(allocation[`COLOR_${String(CURATED_SYMBOLS.length + 4).padStart(3, '0')}`]).toBe(CURATED_SYMBOLS[4]);
+
+      const assignedSymbols = Object.values(allocation);
+      expect(assignedSymbols.length).toBe(codeCount);
+      // No collisions across all 200 colors.
+      expect(new Set(assignedSymbols).size).toBe(codeCount);
+
+      // The first 82 (pool size) colors keep their single curated glyph.
+      const poolSize = CURATED_SYMBOLS.length;
+      expect(allocation['COLOR_000']).toBe(CURATED_SYMBOLS[0]);
+      expect(allocation[`COLOR_${String(poolSize - 1).padStart(3, '0')}`]).toBe(CURATED_SYMBOLS[poolSize - 1]);
+
+      // The 83rd color (index 82) falls back to a deterministic multi-char symbol
+      // (base glyph + tier suffix >= 1), which no longer collides with 'A'.
+      const overflowSymbol = allocation[`COLOR_${String(poolSize).padStart(3, '0')}`];
+      expect(overflowSymbol).toBe(`${CURATED_SYMBOLS[0]}1`);
+      expect(overflowSymbol).not.toBe(CURATED_SYMBOLS[0]);
+      expect(overflowSymbol.length).toBeGreaterThan(1);
+    });
+  });
+
+  describe('symbolFontPx', () => {
+    it('returns the base size for single-glyph symbols and scales multi-char ones down', () => {
+      expect(symbolFontPx(20, 'A')).toBe(20);
+      expect(symbolFontPx(20, '♣')).toBe(20);
+      // A 2-char overflow symbol shrinks so it still fits the single-glyph box.
+      expect(symbolFontPx(20, 'A1')).toBe(10);
+      expect(symbolFontPx(8, 'B3')).toBe(4);
+      // Never returns a sub-1px font.
+      expect(symbolFontPx(1, 'C2')).toBeGreaterThanOrEqual(1);
     });
   });
 

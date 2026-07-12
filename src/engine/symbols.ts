@@ -69,14 +69,34 @@ export function generateSymbolAllocation(
       return a.code.localeCompare(b.code);
     });
 
-  // Assign symbols from curated pool
+  // Assign symbols from curated pool. For the first 82 colors each gets a unique
+  // single glyph. Beyond that (e.g. the 200-color kit or 'all'), fall back to a
+  // deterministic multi-character symbol — base glyph + a tier suffix (>= 1) — so
+  // every distinct color keeps a UNIQUE symbol instead of the old `index % 82`
+  // wraparound that reused 'A' for the 83rd color and made the chart ambiguous (B4).
+  const poolSize = CURATED_SYMBOLS.length;
   const allocation: ColorSymbolMap = {};
   sortedColors.forEach((item, index) => {
-    const symbolIndex = index % CURATED_SYMBOLS.length;
-    allocation[item.code] = CURATED_SYMBOLS[symbolIndex];
+    if (index < poolSize) {
+      allocation[item.code] = CURATED_SYMBOLS[index];
+    } else {
+      const base = CURATED_SYMBOLS[index % poolSize];
+      const suffix = Math.floor(index / poolSize); // >= 1 here, so never collides
+      allocation[item.code] = `${base}${suffix}`; // with a single-glyph assignment
+    }
   });
 
   return allocation;
+}
+
+/**
+ * Pixel font size for drawing a cell/legend symbol. Single-glyph symbols use
+ * `basePx` as-is; multi-character overflow symbols (B4, >82 colors) are scaled
+ * down so they still fit the box a single glyph occupies.
+ */
+export function symbolFontPx(basePx: number, symbol: string): number {
+  if (symbol.length <= 1) return basePx;
+  return Math.max(1, Math.round(basePx / symbol.length));
 }
 
 /**

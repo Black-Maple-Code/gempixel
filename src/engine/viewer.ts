@@ -1,4 +1,4 @@
-import { getContrastColor } from './symbols';
+import { getContrastColor, symbolFontPx } from './symbols';
 
 /**
  * CanvasViewer handles interactive rendering of the gem art grid.
@@ -369,7 +369,7 @@ export class CanvasViewer {
     // Render symbol overlay if zoom is sufficient and viewMode is symbols
     if (this.viewMode === 'symbols' && scaledCellSize >= 10) {
       this.ctx.save();
-      this.ctx.font = `bold ${Math.floor(scaledCellSize * 0.65)}px 'Outfit', sans-serif`;
+      const baseSymbolPx = Math.floor(scaledCellSize * 0.65);
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
 
@@ -389,6 +389,7 @@ export class CanvasViewer {
             const isHighlighted = !this.highlightedColor || code === this.highlightedColor;
             this.ctx.globalAlpha = isHighlighted ? 1.0 : 0.2;
             this.ctx.fillStyle = getContrastColor(color);
+            this.ctx.font = `bold ${symbolFontPx(baseSymbolPx, symbol)}px 'Outfit', sans-serif`;
             const centerX = this.offsetX + (col + 0.5) * scaledCellSize;
             const centerY = this.offsetY + (row + 0.5) * scaledCellSize;
             this.ctx.fillText(symbol, centerX, centerY);

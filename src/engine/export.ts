@@ -1,4 +1,4 @@
-import { getContrastColor } from './symbols';
+import { getContrastColor, symbolFontPx } from './symbols';
 
 /** White wrap-margin (in grid cells) applied around the combined legend sheet. */
 const OUTER_MARGIN_CELLS = 3;
@@ -82,7 +82,7 @@ export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElem
       const symbol = symbolMap[dmcCode];
       if (symbol) {
         ctx.fillStyle = getContrastColor(color);
-        ctx.font = `bold ${Math.floor(cellScale * 0.65)}px 'Outfit', sans-serif`;
+        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Outfit', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, Math.round(x + cellScale / 2), Math.round(y + cellScale / 2));
@@ -170,7 +170,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
       const symbol = symbolMap[dmcCode];
       if (symbol) {
         ctx.fillStyle = getContrastColor(color);
-        ctx.font = `bold ${Math.floor(cellScale * 0.65)}px 'Outfit', sans-serif`;
+        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Outfit', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, Math.round(x + cellScale / 2), Math.round(y + cellScale / 2));
@@ -201,7 +201,7 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
 
     // Center Symbol inside swatch
     ctx.fillStyle = getContrastColor(item.hex);
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = `bold ${symbolFontPx(8, symbol)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(symbol, x + 5, y);
 
