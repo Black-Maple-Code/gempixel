@@ -19,14 +19,19 @@ import type { Codec } from './hooks/usePersistentState';
 
 // Default custom-canvas checkout URL template. Kept at module scope so the
 // custom codec below can reference it as its parse fallback.
-const DEFAULT_CANVAS_TEMPLATE =
+export const DEFAULT_CANVAS_TEMPLATE =
   'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
 
-// canvasTemplate persists as a raw string but normalizes the legacy
-// heartfuldiamonds host to the current adiamondpainting default on read
-// (RESEARCH Pitfall 4). serialize is identity so the on-disk format is unchanged.
-const customTemplateCodec: Codec<string> = {
-  parse: (raw: string) => (raw.includes('heartfuldiamonds') ? DEFAULT_CANVAS_TEMPLATE : raw),
+// canvasTemplate persists as a raw string but normalizes on read: an empty/
+// whitespace stored value resolves to the default (WR-03 — restores the pre-
+// migration `saved || DEFAULT` fallback, so a template-less/imported project
+// that persisted '' recovers the default instead of a broken checkout URL),
+// and the legacy heartfuldiamonds host maps to the current adiamondpainting
+// default (RESEARCH Pitfall 4). serialize is identity so the on-disk format
+// is unchanged.
+export const customTemplateCodec: Codec<string> = {
+  parse: (raw: string) =>
+    !raw.trim() || raw.includes('heartfuldiamonds') ? DEFAULT_CANVAS_TEMPLATE : raw,
   serialize: (value: string) => value,
 };
 
