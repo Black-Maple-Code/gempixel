@@ -2,3 +2,6 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Agent SOP transient working files
+.agents/scratchpad/

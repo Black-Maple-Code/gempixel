@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compute release version
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="${GITHUB_REPOSITORY}"
+          SHA="${GITHUB_SHA}"
+
+          COUNT="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq 'length')"
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "::error::No pull request linked to this merge commit. Direct pushes to master are not supported for automated releases."
+            exit 1
+          fi
+
+          HAS_MINOR="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0].labels | map(.name) | any(. == "release:minor")')"
+          HAS_MAJOR="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0].labels | map(.name) | any(. == "release:major")')"
+
+          if [ "${HAS_MINOR}" = "true" ] && [ "${HAS_MAJOR}" = "true" ]; then
+            echo "::error::PR has both release:minor and release:major — remove one label."
+            exit 1
+          fi
+
+          LATEST="$(git tag -l | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+          if [ -z "${LATEST}" ]; then
+            echo "version=0.0.1" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          IFS=. read -r MA MI PA <<< "${LATEST}"
+          if [ "${HAS_MAJOR}" = "true" ]; then
+            VERSION="$((MA + 1)).0.0"
+          elif [ "${HAS_MINOR}" = "true" ]; then
+            VERSION="${MA}.$((MI + 1)).0"
+          else
+            VERSION="${MA}.${MI}.$((PA + 1))"
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Publish web image
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 --no-cache \
+            -f docker/Dockerfile \
+            -t registry.fretted.io/gempixel:latest \
+            .
+          docker push registry.fretted.io/gempixel:latest
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git show-ref --tags --quiet --verify "refs/tags/${VERSION}"; then
+            echo "::error::Tag ${VERSION} already exists — refusing duplicate release."
+            exit 1
+          fi
+          NOTES_FILE="$(mktemp)"
+          {
+            echo "gempixel release **${VERSION}**."
+            echo ""
+            echo "**Deployment:** [\`registry.fretted.io/gempixel:latest\`](https://gempixel.io) — reload runs automatically on the homelab runner."
+            echo ""
+          } > "${NOTES_FILE}"
+          gh release create "${VERSION}" --target "${GITHUB_SHA}" --title "${VERSION}" --notes-file "${NOTES_FILE}"
+
+  deploy:
+    needs: release
+    runs-on: [self-hosted, gempixel]
+    timeout-minutes: 10
+    steps:
+      - name: Trigger Local Reload
+        run: |
+          cd /home/smith/infra
+          ./reload-gempixel.sh
+
+      - name: Workflow summary
+        if: success()
+        run: |
+          {
+            echo "### Deployment Successful"
+            echo "- **Version:** ${{ needs.release.outputs.version }}"
+            echo "- **Site:** https://gempixel.io"
+          } >> $GITHUB_STEP_SUMMARY
