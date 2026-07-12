@@ -268,7 +268,20 @@ Plans:
   2. All persisted settings flow through a single `usePersistentState` helper; the duplicated lazy-init/effect boilerplate is removed. (review W3, IN-01)
   3. A failed save, download, or checkout shows a clear inline message instead of a silent no-op; the unmapped-colors-log parse is guarded. (review W4, W5)
 
-**Plans**: TBD (run `/gsd-plan-phase 11`)
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 11-01-PLAN.md — Build the safeStorage guard module + usePersistentState hook with format-preserving codecs and unit tests. (STORE-01, STORE-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 11-02-PLAN.md — Migrate the 7 persisted App.tsx settings onto usePersistentState, guard Step3Canvas clear-log, add blocked-storage mount test. (STORE-01, STORE-02)
+
+**Wave 3** *(blocked on Wave 2 — same App.tsx file)*
+
+- [ ] 11-03-PLAN.md — Unified actionError banner for download/checkout/save failures, guard the checkout log parse, ERR-01 integration tests + banner human-verify. (ERR-01)
 
 ### Phase 12: Supply Pricing Accuracy
 
