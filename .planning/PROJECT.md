@@ -26,12 +26,12 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Custom Drill Cart Checkout — compile affiliate/purchase cart links to Diamond Drills USA for the optimized drill bags (Validated in Phase 5).
 - Streamlined Commission Journey — 4-step wizard + local commission workspace (Validated in Phase 6).
 - Symbol-overlay canvas, margin legends, multi-vendor PNG export, and viewport HUD navigation (Validated in Phases 7–9).
+- Storage robustness & error feedback — app survives blocked/private-mode storage, persisted settings centralized behind one `usePersistentState` helper, and save/download/checkout failures surfaced in a dismissible banner (Validated in Phase 11: Storage Robustness & Error Feedback).
 
 ### Active
 
 **Milestone v2.1: post-review remediation** — harden the codebase against the warnings surfaced by the maintenance code review (`.planning/codebase/REVIEW.md`); the four blockers were already fixed via quick tasks.
 - [ ] Project Load Correctness — restored projects keep their saved price and grid (LOAD-01, LOAD-02).
-- [ ] Storage Robustness & Error Feedback — app survives blocked storage; failures are surfaced, not silent (STORE-01, STORE-02, ERR-01).
 - [ ] Supply Pricing Accuracy — correct 500-bag pricing, no $0 unpriced sizes, variant integrity test (PRICE-01, PRICE-02, DATA-01).
 - [ ] Performance — off-main-thread image decode (PERF-01).
 - [ ] Security & Cleanup — validate/finish the partner-URL path (SEC-01).
@@ -88,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 — opened Milestone v2.1 (post-review remediation)*
+*Last updated: 2026-07-12 — Phase 11 (Storage Robustness & Error Feedback) complete; STORE-01/STORE-02/ERR-01 validated*
