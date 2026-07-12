@@ -50,12 +50,28 @@ export interface RecentImage {
   height: number;
 }
 
+/**
+ * Discriminated result of {@link projectStore.save}. On a quota failure the
+ * caller must surface a warning; `save()` never evicts or overwrites another
+ * stored project (CR-02 / B3).
+ */
+export type SaveResult = { ok: true } | { ok: false; reason: 'quota' };
+
+/**
+ * Generate an RFC-4122 v4 UUID from a CSPRNG. The id is used directly as a
+ * localStorage key (`gempixel_project_<id>`) and the registry primary key, so a
+ * collision would silently overwrite an existing project — never use Math.random
+ * (WR-02 / W9). Prefers `crypto.randomUUID`, falling back to `crypto.getRandomValues`.
+ */
 export function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0,
-      v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0'));
+  return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
 }
 
 export function generateThumbnail(canvas: HTMLCanvasElement): string {
@@ -100,35 +116,27 @@ export const projectStore = {
   },
 
   /**
-   * Upsert a project. Persists the project blob + registry, evicting the OLDEST
-   * *other* project (registry index 0 — projects are appended newest-last) on
-   * quota, then retrying. Never throws to the caller.
+   * Upsert a project (in-place by id, else append). Writes the project blob +
+   * registry inside a single try and returns `{ ok: true }`. On a
+   * QuotaExceededError it returns `{ ok: false, reason: 'quota' }` WITHOUT
+   * throwing and WITHOUT deleting or overwriting any other stored project —
+   * every previously saved project and the persisted registry stay intact
+   * (CR-02 / B3). Callers surface the quota status to the user; a
+   * written-but-unregistered blob is a harmless unreferenced orphan, not data loss.
    */
-  save(summary: ProjectSummary, data: ProjectData): void {
+  save(summary: ProjectSummary, data: ProjectData): SaveResult {
     const registry = readRegistry();
     const index = registry.findIndex(p => p.id === summary.id);
     if (index >= 0) registry[index] = summary;
     else registry.push(summary);
 
-    while (true) {
-      try {
-        localStorage.setItem(projectKey(data.id), JSON.stringify(data));
-        localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
-        return;
-      } catch (err) {
-        // Evict the oldest project that isn't the one being saved and retry.
-        const victimIdx = registry.findIndex(p => p.id !== summary.id);
-        if (victimIdx < 0) {
-          console.error('Failed to save project (storage full)', err);
-          return;
-        }
-        const [victim] = registry.splice(victimIdx, 1);
-        try {
-          localStorage.removeItem(projectKey(victim.id));
-        } catch {
-          /* ignore */
-        }
-      }
+    try {
+      localStorage.setItem(projectKey(data.id), JSON.stringify(data));
+      localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
+      return { ok: true };
+    } catch (err) {
+      console.error('Failed to save project (storage full)', err);
+      return { ok: false, reason: 'quota' };
     }
   },
 

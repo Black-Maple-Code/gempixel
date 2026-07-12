@@ -73,8 +73,12 @@ describe('projectStore (projects)', () => {
     expect(projectStore.load('bad')).toBeNull();
   });
 
-  it('evicts the OLDEST project (registry index 0) on quota, never the one being saved', () => {
-    projectStore.save(makeSummary('old'), makeData('old')); // appended first -> oldest
+  it('save returns { ok: true } on a successful write', () => {
+    expect(projectStore.save(makeSummary('ok'), makeData('ok'))).toEqual({ ok: true });
+  });
+
+  it('on quota returns { ok:false, reason:"quota" } and destroys NO other project (CR-02 / B3)', () => {
+    projectStore.save(makeSummary('old'), makeData('old')); // pre-existing saved project
     const realSet = Storage.prototype.setItem;
     let threw = false;
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
@@ -84,14 +88,18 @@ describe('projectStore (projects)', () => {
       }
       realSet.call(this, k, v);
     });
-    expect(() => projectStore.save(makeSummary('new'), makeData('new'))).not.toThrow();
+
+    let result: ReturnType<typeof projectStore.save> | undefined;
+    expect(() => {
+      result = projectStore.save(makeSummary('new'), makeData('new'));
+    }).not.toThrow();
     vi.restoreAllMocks();
 
-    const ids = projectStore.list().map(p => p.id);
-    expect(ids).toContain('new');
-    expect(ids).not.toContain('old');
-    expect(projectStore.load('old')).toBeNull();
-    expect(projectStore.load('new')).not.toBeNull();
+    // Quota status surfaced, not thrown.
+    expect(result).toEqual({ ok: false, reason: 'quota' });
+    // No data loss: the previously saved 'old' project still lists and loads intact.
+    expect(projectStore.list().map(p => p.id)).toContain('old');
+    expect(projectStore.load('old')).toEqual(makeData('old'));
   });
 });
 
@@ -129,6 +137,18 @@ describe('projectStore.recents', () => {
 describe('projectStore helpers', () => {
   it('generateUUID returns a v4-shaped id', () => {
     expect(generateUUID()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it('generateUUID produces unique, well-formed v4 ids across a large batch (WR-02 / W9)', () => {
+    const v4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    const N = 5000;
+    const ids = new Set<string>();
+    for (let i = 0; i < N; i++) {
+      const id = generateUUID();
+      expect(id).toMatch(v4);
+      ids.add(id);
+    }
+    expect(ids.size).toBe(N);
   });
 
   it('generateThumbnail returns a string and never throws without a 2d context', () => {
