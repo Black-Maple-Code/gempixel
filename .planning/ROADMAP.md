@@ -51,62 +51,88 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 *(Active milestone v3.0. Ordering is the load-bearing risk decision all four researchers converged on: pure-engine correctness first, then the viewport wizard as a mode-agnostic strangler that ships green, then the mode split last as a thin layer. The two UI reworks — Phase 18 and Phase 19 — are deliberately separate and never merged.)*
 
 ### Phase 15: Trustworthy Pricing & Data Foundation
+
 **Goal**: Every price, vendor, and drill-variant number the app shows is correct and test-guarded, so no downstream quote, fee, or order packet can compound a bad figure — landed while the app is still the familiar wizard, before any UI change.
 **Depends on**: Nothing new (builds on the shipped v2.1 baseline of 178 passing tests)
 **Requirements**: VENDOR-02, PRICE-01, PRICE-02, PRICE-03, DATA-01
 **Success Criteria** (what must be TRUE):
+
   1. Only Lumaprints and FinerWorks appear as selectable canvas vendors, and a saved project that referenced Prodigi opens on a valid vendor showing a real (never $0) canvas price — the unknown-vendor cost is guarded, not silently 0.
   2. A 500-count drill bag shows its own correct per-packet price (priced at a tier between 200 and 1000, never at the 5000 bulk tier).
   3. No customer-facing $0 line ever appears for a real billable item; an unpriced bag size is flagged or excluded and is never self-selected as the cheapest option.
   4. Itemized line items always sum exactly to the displayed total (integer-cents money math reconciles).
   5. An automated integrity test guards the drill-variant table (unique or explicitly allow-listed IDs, no empty reachable mappings, every palette color mapped), and any unmapped color is surfaced to the user rather than silently dropped.
-**Plans**: TBD
+
+**Plans**: 3 plans
+**Wave 1**
+
+- [ ] 15-01-PLAN.md — Vendor cleanup: remove Prodigi, narrow the vendor union, null-guard unknown-vendor cost, migrate persisted vendor (VENDOR-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 15-02-PLAN.md — Pricing accuracy: 500 tier, no $0-as-free (hasUnpricedSize), integer-cents money helper + reconciliation (PRICE-01/02/03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 15-03-PLAN.md — Data integrity: variant-table integrity test + unmapped-color surfacing + data-owner adjudication (DATA-01)
 
 ### Phase 16: Optimized Supply Plan & Savings
+
 **Goal**: The user can see a trustworthy, minimized gem-bag plan and understand why it is grouped the way it is and how much it saves.
 **Depends on**: Phase 15
 **Requirements**: BAG-01, BAG-02, BAG-03
 **Success Criteria** (what must be TRUE):
+
   1. The supply plan uses the fewest bags that still respect dye-lot color consistency, breaking ties by lowest total cost.
   2. The user sees the optimized plan — per-color bags, total bag count, and total cost — computed from the same shared engine the cart and order packet use, so the numbers cannot diverge.
   3. A plain-language explanation tells the user why bags are grouped the way they are (the dye-lot "why").
   4. The user can see how much the optimized plan saves versus a naive one-size-per-color purchase.
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 17: Service Fee & Customer Order Packet
+
 **Goal**: A finished design becomes a trustworthy itemized quote and a self-contained, fulfillment-ready order packet the user can review and hand off — the terminal engine flow, assembled as pure blocks before the UI reworks.
 **Depends on**: Phase 16
 **Requirements**: FEE-01, ORDER-01, ORDER-02, ORDER-03, ORDER-04, ORDER-05
 **Success Criteria** (what must be TRUE):
+
   1. A configurable percent-based service/handling fee shows as its own itemized line (percent and dollar amount), disclosed before the order is submitted.
   2. The user turns a finished design into a structured order packet (design PNG, canvas spec, optimized gem-bag list, itemized totals, and the fee), reviews an itemized summary before submitting, and receives a saved confirmation carrying a unique order reference ID.
   3. An order exceeding any configurable threshold (drill count, dollar total, color count, or physical canvas size) is automatically flagged for human review with "we'll confirm with you" messaging.
   4. The order packet is a versioned, self-contained, JSON-round-trippable document (quote snapshot in integer cents, no PII transmitted) whose schema is designed to be ingested unchanged by the future v4.0 backend.
   5. The user hands off the packet entirely client-side — download by default with a share/email fallback — and the design PNG is delivered as a file rather than embedded in localStorage.
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 18: Viewport-Native Wizard
+
 **Goal**: The guided design flow lives in the viewport — contextual in-canvas surfaces replace the expand/collapse sidebars and page-flip wizard — with no regression, and it stays strictly mode-agnostic (UI rework #1, ships green before any mode work).
 **Depends on**: Phase 17
 **Requirements**: VIEWPORT-01, VIEWPORT-02, VIEWPORT-03
 **Success Criteria** (what must be TRUE):
+
   1. The most-used design controls are available as contextual in-viewport surfaces (extending the Phase 9 HUD), so the user can complete core work without opening the sidebars.
   2. Step guidance appears in-context and the sidebars + page-flip wizard are progressively retired, with the 178-test baseline and the <1ms Grid/Symbol/Photo view switcher preserved (the phase ships green before any mode branching exists).
   3. A first-run, dismissible coach-mark tour introduces new users to the viewport controls using browser-native anchoring (no tour library).
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 19: Two-Mode Split (Customer / Artist)
+
 **Goal**: A thin capability-map layer riding on top of the stabilized viewport wizard gives Customer and Artist each a tailored path, applying the mode-conditional gating of the service fee, order packet, affiliate links, and price table — with no mode leakage (UI rework #2, last).
 **Depends on**: Phase 18
 **Requirements**: MODE-01, MODE-02, MODE-03, MODE-04
 **Success Criteria** (what must be TRUE):
+
   1. The user can choose between Customer and Artist mode; the choice is persisted, reversible, and preserves the current design when switched.
   2. Artist sees the editable cost table, affiliate links, and drill cart; Customer sees the guided buy flow, service fee, and order packet and never sees the raw price table, affiliate parameters, or the drill-cart link (verified by absence tests, not just presence tests).
   3. A URL parameter can launch the app directly into Customer or Artist mode.
   4. Saved projects carry a `mode` and `schemaVersion`; a pre-v3.0 project loads as Artist mode with a defined carry-over rule, so artist-only economics never leak into a customer quote.
+
 **Plans**: TBD
 **UI hint**: yes
 
