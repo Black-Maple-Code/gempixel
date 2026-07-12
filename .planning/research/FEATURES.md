@@ -1,160 +1,192 @@
-# GemPixel Features Research
+# Feature Research — v3.0 Two-Mode Viewport Experience
 
-This document analyzes the feature landscape for client-side image-to-pixel-art generators specifically focused on diamond painting/gem art supply planning. It establishes what is **table stakes** (essential to launch), what will make GemPixel **differentiate** in the market, and what are explicit **anti-features** to maintain project scope and efficiency.
+**Domain:** Client-side creative-commerce tool (image → gem-art planner) pivoting to a two-mode (self-serve Artist / done-for-you Customer) viewport-native experience with quote-based, manual/offline fulfillment.
+**Researched:** 2026-07-12
+**Confidence:** MEDIUM-HIGH — UX patterns grounded in how best-in-class creative tools (Figma, Canva) and custom / print-on-demand order flows behave; dependency notes grounded in a direct read of `checkout.ts`, `variants.ts`, `bagPlanner.ts`, PROJECT.md, and the v2.1 requirements archive. Manual/offline fulfillment for a made-to-order craft product is a lightly-standardized space, so some Customer-flow specifics are reasoned from adjacent industries (RFQ/quote requests, custom-commission Etsy shops) rather than a single canonical competitor.
 
----
+> Supersedes the earlier v1-era FEATURES.md (local-image / color-engine table stakes are now shipped features and out of scope to re-research). This edition covers only the five v3.0 target feature areas.
 
-## 1. Table Stakes (Must-Haves)
-These features are essential for a basic, functioning utility. If any of these are missing, users will not be able to complete their primary workflow of planning their diamond painting kits.
+## How the target features typically work (expected behavior)
 
-### 1.1 Local Image Loading (Client-Side Only)
-* **Description**: Users upload their custom image files (PNG, JPEG, WEBP) directly in the browser using the HTML5 `FileReader` API. 
-* **Rationale**: Privacy is paramount for artists working with custom commissions or personal photos. Zero server uploads ensure privacy and fast response times.
-* **Complexity**: **Low**
-* **Dependencies**: None
+### 1. Viewport-native interactive wizard
+Best-in-class creative tools (Figma, Canva, Photopea, Photoroom) do **not** drive users through page-flipping wizard screens. They keep the artboard/canvas central and surface controls **contextually**:
+- **Contextual toolbars / property panels** anchored to the current object or task, not a permanently-expanded sidebar (Figma's selection toolbar, Canva's floating context bar).
+- **Progressive disclosure**: only step-relevant controls are shown; advanced options sit behind a disclosure toggle.
+- **First-run coach marks / spotlight tours**: a lightweight, dismissible overlay pointing at one control at a time ("this is where you set canvas size"), with "seen" state persisted so it never re-nags. Escape / click-away always dismisses.
+- **A single prominent primary action** ("Next: choose colors", "Get my quote") always visible and contextual, rather than symmetric Back/Next chrome. GemPixel already moved this way in Phase 9 (NAV-01/02/03 HUD).
 
-### 1.2 Dual-Mode Canvas Resizing
-* **Description**: Two ways for the user to define their output grid dimensions:
-  1. **Direct Grid Dimensions**: Set explicit grid sizes (e.g., 40x40, 60x80 pixels).
-  2. **Physical Dimensions (Density-Based)**: Specify canvas in cm or inches (e.g., 30x40cm) and calculate the grid size automatically based on standard diamond painting dimensions (2.5mm per drill, which equals 4 drills/dots per cm or 10.16 dots per inch).
-* **Rationale**: Manufacturers sell blank canvases in standard physical sizes, while advanced planners think in grid count. Supporting both models is essential.
-* **Complexity**: **Low-Medium**
-* **Dependencies**: None
+Expected behavior: users stay focused on the image the whole time, act on in-canvas affordances, and are guided by *what appears next to what they're doing* rather than by navigating discrete screens.
 
-### 1.3 High-Fidelity Color Mapping Engine (Lab / Delta E)
-* **Description**: Converts the input image pixels to standard DMC color codes.
-* **Rationale**: Simple RGB Euclidean distance matches poorly with human color perception (e.g., mixing up dark greens with dark blues). We must convert RGB colors to CIELAB space and use a perceptual formula (CIEDE2000 or Delta E 1994) to match the closest available DMC thread color.
-* **Complexity**: **High**
-* **Dependencies**: *1.2 Dual-Mode Canvas Resizing* (must resize the image first before color-mapping pixels)
+### 2. Customer vs Artist mode split
+One product, two intents. Comparable patterns: Squarespace/Wix "what do you want to do" intent pickers, marketplace "buy vs sell" entry, Canva's "personal vs team" onboarding fork.
+- A **mode selector at entry** with plain-language descriptions ("I'm making my own canvas" vs "I want one made for me").
+- The choice is **persisted** (localStorage) and **reversible** at any time via an always-available switch — never a hard, irreversible gate.
+- Each mode **hides irrelevant surfaces** rather than forking into two apps: Artist sees drill-cart + self-order vendor links; Customer sees the quote + Buy / order-packet flow and hides the affiliate-cart plumbing.
 
-### 1.4 Manufacturer Palette Matching (Art Dot 100 & 200 Kits)
-* **Description**: Pre-defined indexes of standard DMC color mappings representing the specific color lists in the Art Dot 100-color and 200-color kits. Users select their kit, and the mapping engine restricts matches *only* to those colors.
-* **Rationale**: Users want to make custom canvas designs using the inventory they already have from buying standard Art Dot kits.
-* **Complexity**: **Medium**
-* **Dependencies**: *1.3 High-Fidelity Color Mapping Engine*
+Expected behavior: a returning user lands back in their last mode; a shared link can pre-select a mode; switching modes preserves the current design.
 
-### 1.5 Interactive Grid Preview (Zoom & Pan)
-* **Description**: An interactive canvas-based preview displaying the pixelated grid. Users can scroll to zoom in/out and drag to pan across large canvases.
-* **Rationale**: High-detail grids (e.g., 60x80 dots is 4,800 pixels) cannot be inspected effectively on a static screen. Users need to inspect micro-details and color groupings.
-* **Complexity**: **Medium**
-* **Dependencies**: *1.3 High-Fidelity Color Mapping Engine*
+### 3. Customer purchase flow with manual/offline fulfillment (order packet)
+For made-to-order / custom-commission products with no instant automated checkout, the established pattern is a **quote / order request**, not cart-and-pay. The customer reviews an itemized summary and submits a **structured order packet** that a human fulfills offline. A well-formed packet contains:
+- **Design artifact**: the grid/symbol preview PNG (what they're buying).
+- **Canvas spec**: size, shape (square/round), selected vendor, orientation.
+- **Optimized gem-bag list**: per-color bag breakdown, total bag count, dye-lot notes, safety margin.
+- **Price breakdown**: canvas cost + drills cost + **% service/handling fee** + shipping + grand total.
+- **Order metadata**: human-readable order/reference ID, timestamp, app version, customer contact info.
+- **Review-before-submit** screen and a **saved/downloadable confirmation** (the customer keeps a receipt).
 
-### 1.6 Supply Specification Report
-* **Description**: A tabular list of all mapped colors, displaying:
-  * Mapped DMC Code
-  * Visual Color Swatch
-  * DMC Color Name
-  * Exact quantity of drills required
-  * Standard +10% safety buffer count
-* **Rationale**: The final deliverable. Artists use this list to order beads, inventory their collection, and sort their organizer boxes before peeling the canvas adhesive.
-* **Complexity**: **Low-Medium**
-* **Dependencies**: *1.3 High-Fidelity Color Mapping Engine*
+**Large/complex orders are flagged for human review** against simple thresholds (total drills, color count, canvas area, dollar total) with clear messaging that the order is a *request* and someone will follow up — not an instant charge.
 
----
+Expected behavior: customer confirms an itemized summary, understands this is a request (not a paid checkout), submits, and receives a confirmation they can save.
 
-## 2. Differentiators (Competitive Advantage)
-These features set GemPixel apart from generic cross-stitch or pixel-art makers by solving real physical constraints faced by gem art hobbyists.
+### 4. Percent-based service/handling fee
+Marketplaces and done-for-you services (Etsy handling fees, delivery-app "service fees") show handling as its **own itemized line** with both the **percentage and the dollar amount**, computed on a defined base (goods subtotal). Disclosure is pre-submit, with a tooltip explaining what it covers (sourcing, quality check, packing). It is never silently baked into item prices.
 
-### 2.1 Active Sub-Palette Selector (Include/Exclude Toggles)
-* **Description**: A checklist of the selected manufacturer palette (Art Dot 100/200) where users can click to disable or enable specific colors. Disabling a color triggers an instant client-side recalculation, mapping pixels containing that color to the next closest available color.
-* **Rationale**: Artists frequently run out of specific colors in their inventory (e.g., running out of DMC 310 Black). Being able to exclude missing colors and let the algorithm adapt the pattern to what they *currently have* is a massive usability win.
-* **Complexity**: **Medium**
-* **Dependencies**: *1.4 Manufacturer Palette Matching*, *1.3 High-Fidelity Color Mapping Engine*
+### 5. Gem-bag purchase optimization surfaced to the user
+Users need to *trust* "fewest bags while keeping dye-lot consistency." What they need to see: the **per-color bag breakdown** ("2×200, 1×2000"), the **total bag count and cost**, and a plain-language explanation of **why** (a color under the dye-lot ceiling stays on a single 200-count bag so the color is consistent with no visible seams; bulk colors are cost-minimized). GemPixel's `bagPlanner.ts` already computes exactly this; v3.0's job is to *surface and explain* it trustworthily — which depends on the pricing being correct (PRICE-01/02).
 
-### 2.2 Drill Styling Engine (Square vs. Round Preview)
-* **Description**: Visual style options for the grid cells:
-  * **Square Drills**: Full-coverage grid cells representing square drills (mosaic look).
-  * **Round Drills**: Circular dots drawn with gaps in the corners, exposing the backing canvas color.
-* **Rationale**: Round vs. square canvases look radically different in real life. Round canvases show more gaps and look less dense; showing this realistically helps manage artist expectations before laying down physical drills.
-* **Complexity**: **Medium**
-* **Dependencies**: *1.5 Interactive Grid Preview*
+## Feature Landscape
 
-### 2.3 Legend Highlight (Hover/Click to Locate)
-* **Description**: Hovering over or clicking a row in the Supply Specification Report highlights all corresponding pixels on the visual preview canvas (making them blink or dimming all other colors).
-* **Rationale**: Helps the artist visually locate where rare or accent colors are positioned on the canvas. Useful during the actual assembly phase.
-* **Complexity**: **Medium**
-* **Dependencies**: *1.5 Interactive Grid Preview*, *1.6 Supply Specification Report*
+### Table Stakes (Users Expect These)
 
-### 2.4 Confetti Reduction Pass
-* **Description**: A processing step (such as a minor noise reduction or median filter) that groups isolated single pixels (known as "confetti" in the community) into their nearest neighboring color clusters.
-* **Rationale**: "Confetti" is the bane of diamond painting, as changing drill colors for a single dot is tedious and slows down workflow. Reducing confetti yields clean, solid blocks of color that are easier to construct.
-* **Complexity**: **Medium-High**
-* **Dependencies**: *1.3 High-Fidelity Color Mapping Engine*
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Contextual in-viewport controls (extend Phase 9 HUD) surfacing step-relevant options near the canvas | Modern creative tools keep the canvas central; sidebar-heavy flows feel dated | MEDIUM | Extends existing HUD (NAV-02). Migrate wizard-step controls into contextual panels; keep one prominent primary CTA |
+| Single always-visible primary action ("Next…", "Get quote") | Users need a clear "what next" without hunting | LOW | Already partly done (NAV-01). Make it mode- and step-aware |
+| Mode selector at entry (Artist vs Customer) with plain-language copy | Two audiences must self-identify before the flow tailors itself | LOW-MEDIUM | Persist via existing `usePersistentState` (STORE-02). Must be reversible |
+| Always-available mode switch that preserves the current design | Users mis-pick or want to explore the other path | LOW | Do NOT reset the project on switch |
+| Mode-conditional surfaces (hide irrelevant controls per mode) | Each audience should see only its tools | MEDIUM | Single flow, conditional rendering — not two apps |
+| Review-before-submit order summary (Customer) with itemized totals | Nobody submits an order without seeing what/why/how much | MEDIUM | Assemble from existing pricing pipeline + design preview |
+| Itemized price breakdown: canvas + drills + fee + shipping + total | Transparent pricing is the #1 customer expectation in custom/POD | LOW-MEDIUM | Depends on PRICE-01/02/DATA-01 fixes to be trustworthy |
+| Service/handling fee shown as its own line (% and $) pre-submit | Hidden fees destroy trust; itemization is the norm | LOW | Configurable %; tooltip explaining coverage |
+| Saved/downloadable order confirmation with a reference ID | Customer needs a receipt for an offline-fulfilled order | LOW-MEDIUM | PNG/PDF via existing print/export path + JSON packet |
+| Per-color gem-bag breakdown + total bags + total cost, visible | Trust that they aren't overbuying and colors will match | LOW | `bagPlanner.planColorSupply` already returns `bagsText`; surface it |
+| Plain-language dye-lot explanation (tooltip) | "Fewest bags" is meaningless without the *why* | LOW | One tooltip; rule already lives in `bagPlanner` (≤800 → single 200s) |
+| Correct, non-$0 bag pricing including the 500-count tier | A quote with a wrong/free bag price is not submittable | MEDIUM | **`bagPlanner.defaultPacketCost` currently has NO 500 tier** — the PRICE-01 bug; fix before quotes are trustworthy |
+| Dismissible-and-persisted first-run guidance | Users expect help once, not every visit | LOW-MEDIUM | Persist "seen" flag; escape / click-away dismiss |
+| Vendor cleanup — Lumaprints + FinerWorks only (remove Prodigi) | Offering a vendor you won't fulfill through is confusing | LOW | Edit `VENDOR_REGISTRY` + `calculateCanvasCost` vendorKey union in `checkout.ts` |
 
----
+### Differentiators (Competitive Advantage)
 
-## 3. Anti-Features (Out of Scope)
-To ensure high performance and a zero-maintenance client-side architecture, the following features are explicitly out of scope.
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Coach-mark spotlight tour that adapts to the chosen mode | Onboards each audience to only the controls it needs | MEDIUM | Build lightweight (see anti-features re: tour libs); tie to mode + HUD |
+| Self-contained order-packet file (JSON + human-readable PNG/PDF) that round-trips into the future v4.0 admin backend | Manual fulfillment now, zero rework when the backend lands | MEDIUM | Design the schema deliberately now; this is the bridge to v4.0 |
+| Automatic large/complex-order flagging with clear "we'll confirm" messaging | Sets expectations, prevents under-quoting, signals human care | LOW-MEDIUM | Simple thresholds (drills/colors/area/$). No backend needed |
+| "Why these bags" explainer showing dye-lot rule + savings vs naive packing | Turns an opaque optimizer into a trust-builder | LOW-MEDIUM | Compare `bagPlanner` output to a naive pack; both are pure functions |
+| Deep-link / URL param to launch directly into a mode | Artist shares a "design your own" link; a shop shares "order one" | LOW | Read a query param on mount; still client-side |
+| Mode-tailored, in-context guidance copy (Artist = self-serve tips; Customer = reassurance) | Same engine, two voices — feels purpose-built for each user | LOW | Copy + conditional rendering |
+| Configurable service-fee % with a value-explaining tooltip | Frames the fee as quality/handling, not a surcharge | LOW | Store the % in settings via `usePersistentState` |
 
-### 3.1 Server-Side User Accounts & Canvas Saving
-* **Avoid Because**: It introduces database maintenance, security requirements, user auth overhead, and hosting costs.
-* **Alternative**: Users can download a local JSON configuration file containing their grid settings, custom sub-palettes, and target image, which they can reload into the tool later.
+### Anti-Features (Commonly Requested, Often Problematic)
 
-### 3.2 Canvas Paint/Draw/Erase Tools
-* **Avoid Because**: Building a fully-featured, bug-free pixel-art canvas editor (pencil, eraser, paint bucket, undo/redo) is a massive frontend project that competes with existing tools like Aseprite or Piskel.
-* **Alternative**: The tool is a *generator and planner*. Image edits must be done in standard photo editing software (Photoshop, GIMP) before loading into GemPixel.
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Real in-app checkout / payment processing (Stripe, PayPal SDK) | "Buy" implies instant pay | Requires PCI-scope, server, secrets — breaks client-side/private ethos; explicitly deferred to v4.0 | Generate an order packet + manual/offline fulfillment; payment handled out-of-band this milestone |
+| Order-management backend / admin dashboard / order queue now | Someone has to receive the order | It's a whole backend — this milestone is frontend-first | Emit a v4.0-ready packet (download / `mailto:` / clipboard); build the backend in v4.0 |
+| User accounts / login / roles to gate the two modes | "Customer vs Artist sounds like user roles" | Auth = server + PII storage = breaks lightweight/private constraint | Mode is a persisted client preference, freely switchable — no identity required |
+| Forking into two separate apps/codebases for the two modes | "The flows are different" | Doubles maintenance; the v2.1 profile flags *regression* as a top frustration | One flow, mode-conditional surfaces and config |
+| Heavy guided-tour dependency (Shepherd.js, Intro.js, driver.js) | Fast way to add coach marks | Adds bundle weight; the stack explicitly avoids non-essential deps (GEMINI.md "what NOT to use") | ~1 lightweight positioned overlay component in Preact + a persisted "seen" flag |
+| Modal, canvas-blocking linear wizard (page-flip screens) | Familiar step-by-step pattern | Contradicts the viewport-native goal; hides the very image being designed | Non-modal contextual panels anchored in/around the viewport |
+| Server-side PII storage of customer contact details | "We need the customer's info to fulfill" | Storing PII server-side crosses privacy + compliance lines this milestone avoids | Contact info travels *inside* the exported packet the customer submits; nothing persisted server-side in v3.0 |
+| Real-time vendor inventory / stock checks against Diamond Drills / printers | "Show if bags are in stock" | Requires live vendor APIs = backend + fragility | Static variant table (`variants.ts`) + integrity test (DATA-01); flag *unmapped* colors, don't check stock |
+| Sales-tax / VAT calculation on the quote | "A real quote has tax" | Jurisdictional tax = rules engine or a taxed-checkout backend | Show subtotal + %-fee + shipping; taxes handled at manual fulfillment / v4.0 |
+| Exposing raw Shopify variant IDs or letting users hand-edit each bag | "Power users want control" | Leaks implementation detail; hand-tuning breaks the dye-lot / cost guarantees | Show human-readable `2×200, 1×2000`; keep packing automatic with a "why" explainer |
+| Emailing the order from the browser (SMTP / email API) | "Just email me the order" | Needs a mail backend / exposed API key | `mailto:` prefilled link or a downloadable packet the user sends — no server |
+| Gamified / progress-nagging onboarding (streaks, % complete badges) | "Boost engagement" | Nags a utility user; conflicts with the clean, design-conscious UX profile | Quiet, dismiss-once coach marks; a simple contextual "what next" |
 
-### 3.3 E-Commerce & Direct Drill Checkout
-* **Avoid Because**: Integrating Shopify, manufacturer APIs, or payment gateways introduces significant transaction security compliance, affiliate agreements, and api maintenance.
-* **Alternative**: Output a clean CSV/TXT export that users can copy-paste into third-party drill supplier sites (like ARTDOT, Diamond Art Club, or Etsy stores).
+## Feature Dependencies
 
-### 3.4 Vector Symbols Grid Export (Printable PDF Grid)
-* **Description**: Generating a high-resolution PDF where every single tiny pixel contains a vector symbol (cross-stitch style).
-* **Avoid Because**: Rendering thousands of symbols into a multi-page PDF entirely in-browser is highly resource-intensive and prone to browser crashes.
-* **Alternative**: Export a high-resolution PNG image grid alongside a structured text checklist.
-
----
-
-## 4. Feature Dependency & Complexity Matrix
-
-Below is a breakdown of the design requirements, development complexity, and immediate parent dependencies.
-
-| Feature ID | Feature Name | Category | Complexity | Dependencies |
-|------------|--------------|----------|------------|--------------|
-| **F01** | Local Image Loading | Table Stakes | Low | None |
-| **F02** | Dual-Mode Canvas Resizing | Table Stakes | Low-Medium | None |
-| **F03** | Color Mapping Engine (Lab) | Table Stakes | High | F02 |
-| **F04** | Art Dot Palette Indexes | Table Stakes | Medium | F03 |
-| **F05** | Zoom/Pan Grid Preview | Table Stakes | Medium | F03 |
-| **F06** | Supply Specification Report | Table Stakes | Low-Medium | F03 |
-| **F07** | Sub-Palette Exclusions | Differentiator | Medium | F03, F04 |
-| **F08** | Drill Styling (Round/Square) | Differentiator | Medium | F05 |
-| **F09** | Legend Highlight | Differentiator | Medium | F05, F06 |
-| **F10** | Confetti Reduction | Differentiator | High | F03 |
-
-### Dependency Flow
-
-```mermaid
-graph TD
-    %% Table Stakes
-    F01[F01: Local Image Loading]
-    F02[F02: Canvas Resizing]
-    F03[F03: Color Mapping Engine]
-    F04[F04: Art Dot Palette Indexes]
-    F05[F05: Zoom/Pan Grid Preview]
-    F06[F06: Supply Spec Report]
-    
-    %% Differentiators
-    F07[F07: Sub-Palette Exclusions]
-    F08[F08: Drill Styling Round/Square]
-    F09[F09: Legend Highlight]
-    F10[F10: Confetti Reduction]
-
-    %% Dependencies
-    F02 --> F03
-    F03 --> F04
-    F03 --> F05
-    F03 --> F06
-    F03 --> F10
-    
-    F04 & F03 --> F07
-    F05 --> F08
-    F05 & F06 --> F09
-
-    style F01 fill:#f9f,stroke:#333,stroke-width:2px
-    style F02 fill:#f9f,stroke:#333,stroke-width:2px
-    style F03 fill:#f9f,stroke:#333,stroke-width:2px
-    style F04 fill:#f9f,stroke:#333,stroke-width:2px
-    style F05 fill:#f9f,stroke:#333,stroke-width:2px
-    style F06 fill:#f9f,stroke:#333,stroke-width:2px
 ```
+Mode selector (Artist/Customer)
+    └──requires──> usePersistentState (STORE-02, shipped) for persistence
+    └──gates──────> mode-conditional viewport surfaces
+
+Viewport-native wizard
+    └──requires──> Phase 9 HUD (NAV-01/02/03, shipped)
+    └──requires──> App.tsx wizard state machine (ARTIST-02, shipped) — refactored, not replaced
+    └──enhanced-by> coach-mark tour (adapts to selected mode)
+
+Customer order packet ("Buy")
+    └──requires──> design preview export (export.ts / EXPORT-01, shipped) → PNG
+    └──requires──> bagPlanner.planColorSupply (shipped) → optimized gem-bag list
+    └──requires──> checkout.ts calculateCanvasCost + VENDOR_REGISTRY (shipped) → canvas spec + cost
+    └──requires──> project store (ARTIST-01, shipped) → reference / persistence
+    └──requires──> % service fee → trustworthy TOTAL
+    └──requires──> large-order flagging (thresholds)
+
+% service fee  &  Gem-bag optimization surfacing
+    └──both require──> PRICE-01, PRICE-02, DATA-01 (pulled into v3.0) — accurate pricing
+                         └── PRICE-01 blocker lives in bagPlanner.defaultPacketCost (missing 500 tier)
+
+Vendor cleanup (remove Prodigi)
+    └──touches──> checkout.ts VENDOR_REGISTRY + calculateCanvasCost vendorKey union
+    └──conflicts-with──> any UI still offering a Prodigi dropdown option (EXPORT/VENDOR-01)
+```
+
+### Dependency Notes
+- **Order packet requires accurate pricing (PRICE-01/02, DATA-01):** the packet's grand total = canvas + drills(+margin) + %fee + shipping. If a bag size is mispriced or treated as $0, the quote (and therefore the fee and total) is wrong. This is why PROJECT.md pulls the deferred pricing requirements into v3.0. The concrete blocker is visible in `bagPlanner.ts::defaultPacketCost` — it prices 200/1000/2000/5000 tiers but **omits the 500-count tier**, so a 500 bag falls through to a wrong/undefined price.
+- **Everything in Customer mode composes existing pure modules:** `bagPlanner`, `checkout.ts` (cost + vendor registry), `export.ts` (PNG), and the project store already exist and are pure/client-side. v3.0 is largely *composition + presentation*, not new engine work — which keeps it aligned with the client-side constraint.
+- **Mode split wraps, not replaces, the wizard:** the Phase 9 HUD and Phase 6 wizard state machine are the substrate; mode is a conditional layer over them. Avoid rebuilding the wizard from scratch.
+- **Vendor cleanup is a small but cross-cutting edit:** removing Prodigi changes the `'lumaprints' | 'prodigi' | 'finerworks'` union in `checkout.ts` (registry + `calculateCanvasCost` signature) and any UI dropdown; do it early so the Customer canvas-spec only ever offers fulfillable vendors.
+- **Watch `calculateCanvasCost` interpolation for the quote:** its linear interpolation between pricing points can yield unrounded, odd-looking quote figures — acceptable for an estimate, but for a customer-facing quote consider rounding to a tidy value so the total reads as trustworthy.
+- **Coach-mark tour conflicts with a tour-library dependency:** the value is a *lightweight* in-viewport tour; pulling in Intro.js/Shepherd would violate the stack's explicit "avoid non-essential deps" stance.
+
+## MVP Definition
+
+### Launch With (v3.0 core)
+- [ ] Mode selector (Artist/Customer) + persisted, reversible switch — the pivot's defining feature
+- [ ] Vendor cleanup (remove Prodigi; Lumaprints + FinerWorks only) — small, unblocks a clean canvas spec
+- [ ] Pricing accuracy: PRICE-01 (500-bag), PRICE-02 (no $0 size), DATA-01 (variant integrity test) — everything downstream trusts this
+- [ ] Customer "Buy" → structured order packet (design PNG + gem-bag list + canvas spec + %fee + itemized totals) with review-before-submit and a saved confirmation
+- [ ] % service fee as an itemized, disclosed line
+- [ ] Surface the existing gem-bag optimization (per-color bags, total, cost) + one dye-lot "why" tooltip
+- [ ] Migrate the most-used wizard controls into contextual in-viewport surfaces (extend HUD)
+
+### Add After Validation (v3.x)
+- [ ] Adaptive coach-mark first-run tour per mode — add once the two flows are stable
+- [ ] Large/complex-order auto-flagging with "we'll confirm" messaging — trigger: real orders start arriving
+- [ ] Deep-link/URL param to launch a specific mode — trigger: users want to share mode-specific links
+- [ ] "Why these bags" savings-vs-naive explainer — trigger: users question the bag counts
+
+### Future Consideration (v4.0+)
+- [ ] Order-management backend + admin dashboard (the packet's downstream consumer) — defer: it's a whole backend
+- [ ] Automated payments — defer: PCI/server scope; manual/offline is intentional for v3.0
+- [ ] Direct printer/vendor API fulfillment & live inventory — defer: external APIs + backend
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Mode selector + reversible switch | HIGH | LOW-MEDIUM | P1 |
+| Pricing accuracy (PRICE-01/02, DATA-01) | HIGH | MEDIUM | P1 |
+| Vendor cleanup (remove Prodigi) | MEDIUM | LOW | P1 |
+| Customer order packet + review-before-submit + confirmation | HIGH | MEDIUM | P1 |
+| Itemized % service fee | HIGH | LOW | P1 |
+| Surface gem-bag optimization + dye-lot tooltip | HIGH | LOW | P1 |
+| Migrate wizard controls into contextual HUD surfaces | MEDIUM-HIGH | MEDIUM | P1/P2 |
+| Large/complex-order flagging | MEDIUM | LOW-MEDIUM | P2 |
+| Adaptive coach-mark tour | MEDIUM | MEDIUM | P2 |
+| Mode deep-linking | LOW-MEDIUM | LOW | P3 |
+| "Why these bags" savings explainer | MEDIUM | LOW-MEDIUM | P3 |
+
+**Priority key:** P1 = must have for the milestone · P2 = should have, add when possible · P3 = nice to have.
+
+## Competitor / Reference Feature Analysis
+
+| Feature | Creative tools (Figma / Canva) | Custom-order / POD & marketplaces | GemPixel's v3.0 approach |
+|---------|--------------------------------|-----------------------------------|--------------------------|
+| Progressive guidance | Contextual toolbars + dismiss-once coach marks; canvas stays central | N/A | Extend Phase 9 HUD into contextual surfaces; lightweight, mode-aware coach marks (no tour lib) |
+| Audience/intent split | Onboarding forks (personal/team), persisted | Buyer vs seller dashboards (account-gated) | Persisted, reversible **client** mode preference — no accounts |
+| Purchase/fulfillment | N/A | Cart+pay OR custom "request a quote" for made-to-order | Quote/order **packet** for manual/offline fulfillment; payment out-of-band |
+| Fee disclosure | N/A | Itemized service/handling line (% + $), pre-checkout | Itemized, configurable %-fee line with a coverage tooltip |
+| Supply/bag optimization | N/A | Usually hidden backend logic | Surface the existing dye-lot-aware `bagPlanner` output + a plain-language "why" |
+
+## Sources
+
+- Figma vs Canva UX comparisons (contextual UI, canvas-centric interaction, onboarding/learning curve) — [Style Factory](https://www.stylefactoryproductions.com/blog/canva-vs-figma), [LogRocket](https://blog.logrocket.com/ux-design/figma-vs-canva/), [Designity](https://www.designity.com/blog/figma-vs-canva)
+- Print-on-demand / manual fulfillment order handling & customer expectations (transparent pricing, order-detail packets, manual order routing, communication) — [Order Desk POD fulfillment KB](https://help.orderdesk.com/order-desk-101/print-on-demand-fulfillment/), [Shopify: Print on Demand](https://www.shopify.com/blog/print-on-demand), [Printful](https://www.printful.com/print-on-demand)
+- GemPixel codebase (direct read): `src/engine/bagPlanner.ts` (dye-lot rule, cost minimization, `defaultPacketCost` missing 500 tier), `src/engine/checkout.ts` (`VENDOR_REGISTRY` incl. Prodigi, `calculateCanvasCost` interpolation), `src/engine/variants.ts` (drill variant lookup), `.planning/PROJECT.md`, `.planning/milestones/v2.1-REQUIREMENTS.md`
+
+---
+*Feature research for: two-mode viewport creative-commerce tool (GemPixel v3.0)*
+*Researched: 2026-07-12*

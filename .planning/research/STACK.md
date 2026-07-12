@@ -1,140 +1,191 @@
-# Technology Stack Dimension: GemPixel
+# Stack Research — v3.0 Two-Mode Viewport Experience
 
-This document defines the official technology stack for **GemPixel**, specifying libraries, build configurations, and client-side design decisions to implement a high-fidelity image-to-diamond-painting match utility. 
+**Domain:** Client-side gem-art / diamond-painting planner (Preact + Vite + Web Worker), frontend-first milestone
+**Researched:** 2026-07-12
+**Confidence:** HIGH
 
-GemPixel runs entirely client-side in the browser. It requires zero server infrastructure, ensuring fast rendering, privacy, and zero maintenance costs.
-
----
-
-## 1. Stack Selection Summary
-
-Below is the summary of the chosen technologies, versions, confidence levels, and roles.
-
-| Tech Layer | Prescriptive Recommendation | Version | Confidence Level | Core Role in GemPixel |
-| :--- | :--- | :--- | :--- | :--- |
-| **Bundler & Dev Server** | [Vite](https://vite.dev/) | `^6.0.0` | **High** | Code bundling, hot module replacement, TypeScript parsing, static asset packaging, and native Web Worker bundling. |
-| **Language** | [TypeScript](https://www.typescriptlang.org/) | `^5.0.0` | **High** | Static typing for color space models (RGB, XYZ, Lab), coordinate grids, state payloads, and canvas config interfaces. |
-| **View Framework** | [Preact](https://preactjs.com/) | `^10.25.0` | **High** | High-performance, lightweight UI engine (<4KB) to manage sidebar configurations, palette checkboxes, size fields, and supply stats. |
-| **Styling Framework** | [Tailwind CSS](https://tailwindcss.com/) | `^4.0.0` | **High** | Utility-first CSS for responsive dashboard Layout, modals, sliders, and color preview grids. |
-| **Color Science Library** | [Culori](https://culorijs.org/) | `^4.0.2` | **High** | Industry-standard, tree-shakable color library providing conversions to CIELAB space and CIEDE2000 distance matching formulas. |
-| **Concurrency API** | Native Browser Web Workers | — | **High** | Background threading to offload heavy color matching calculations and prevent main thread lockups. |
-| **File Access API** | HTML5 File API & Object URLs | — | **High** | High-performance file reading and memory references (`URL.createObjectURL`) for local images. |
-| **Grid Render Engine** | HTML5 Canvas 2D | — | **High** | Interactive canvas layer drawing drill shapes, gridlines, and symbols. Supports GPU-accelerated blitting and custom zoom/pan. |
-| **Data Export Layer** | Data URIs + CSS Print Styles | — | **High** | Tabular CSV export via browser download and PDF generation using browser printing (`window.print()`). |
+> **Scope of this document.** This is a *subsequent-milestone* stack review. The validated base stack
+> (Preact 10, Vite 6, TypeScript strict, Tailwind v4, `culori`, native Web Worker, `safeStorage` +
+> `usePersistentState`) is **fixed and NOT re-researched** — its rationale lives in the embedded stack
+> block of `.agents/GEMINI.md`. Everything below concerns only the *new* v3.0 capabilities and answers
+> one question per feature: **add a dependency, or stay browser-native?**
+>
+> **Headline verdict: v3.0 needs essentially ZERO new runtime dependencies.** The one dependency worth
+> considering is `@preact/signals` (first-party, ~1.6 KB) for the viewport/mode state, and it is
+> *optional*. Everything else — coach-marks, the order packet, the email/export path, and the gem-bag
+> optimizer — is best done with browser-native APIs and code the repo already has.
 
 ---
 
-## 2. Core Development Environment & Tooling
+## Recommended Stack (additions only)
 
-### Vite (`^6.0.0`) & TypeScript (`^5.0.0`)
-* **Rationale**: Vite is the industry standard for fast frontend development. It features instantaneous hot module replacement (HMR) and relies on ESBuild for rapid compiling. Vite natively supports Web Workers using URL constructors (`new Worker(new URL('./matcher.worker.ts', import.meta.url))`), eliminating worker-bundling configuration hurdles.
-* **Why TypeScript**: Executing conversions across three distinct color spaces (sRGB $\rightarrow$ XYZ $\rightarrow$ CIELAB) requires strict validation of data shapes. Typing prevents passing un-normalized sRGB arrays into math functions and enforces clear payload structures between the UI thread and background Web Workers.
+### Core Technologies
 
----
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| **@preact/signals** *(optional, recommended)* | `^2.9.2` (pulls `@preact/signals-core ^1.14.2`) | Cross-cutting viewport + mode state (`mode`, active contextual panel, wizard step) with fine-grained reactivity | First-party Preact, ~1.6 KB core. A viewport-native app has one expensive canvas subtree and many small in-canvas HUD controls; signals let a control update **without re-rendering the canvas host**, which plain `useState` lifted into `App.tsx` cannot do cleanly. Drop-in alongside existing hooks. |
+| **Browser-native (no dep)** | — | Coach-marks / contextual guidance, order-packet generation, share/export path, bag optimization | Popover API + CSS Anchor Positioning are Baseline 2026; `Blob`/`canvas.toBlob`/`URL.createObjectURL` are already used in `export.ts`; the bag optimizer already exists in `bagPlanner.ts`. Adding libraries here would fight the canvas-centric UI and bloat a bundle the developer deliberately keeps light. |
 
-## 3. UI Framework & Styling
+### Supporting Libraries
 
-### Preact (`^10.25.0`) & Tailwind CSS (`^4.0.0`)
-* **Rationale**: The core of GemPixel is Canvas-based. However, the app requires a robust UI dashboard to:
-  1. Input grid size (rows/cols) or physical size ($cm$/inches).
-  2. Toggle manufacturer kits (Art Dot 100, Art Dot 200, Full DMC).
-  3. Filter and check/uncheck 447 individual DMC colors in a custom sub-palette.
-  4. Render the supply list report.
-* Preact is a drop-in React replacement with a fraction of the bundle weight (~4KB minified + gzipped). It provides clean, state-driven rendering for form fields and tables, keeping UI complexity low while avoiding the performance and bundle size penalties of React.
-* Tailwind CSS compiles down to a single optimized utility stylesheet, introducing zero runtime JavaScript and minimal styling overhead.
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **fflate** | `^0.8.3` | Zip `manifest.json` + `canvas.png` + `summary.html` into ONE `.zip` packet | **Only if** UX requires a single-file deliverable. 8 KB min (ZIP archiving = +3 KB), tree-shakeable, zero-dep, fast. If a multi-file download (or a single self-contained JSON with an embedded base64 PNG) is acceptable, **skip this** — no dep at all. |
+| **driver.js** | `1.x` (~5 KB gzip) | DOM-element highlight tour, first-run only | **Escape hatch, not recommended.** Only if a scripted first-run walkthrough of *DOM controls* is demanded. It cannot guide *in-canvas* attention (the actual v3.0 need), so prefer native overlays. Listed so the roadmap can reject it deliberately. |
 
----
+### Development Tools
 
-## 4. Specialized Libraries & APIs
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| Vitest (existing) | Variant-integrity + pricing test (`DATA-01`, `PRICE-01/02`) | Reuse the existing `bagPlanner.test.ts` node-env pattern. Add a table-driven test asserting every `DRILL_VARIANTS` entry has a priced bag for each declared size and **no `$0`/unpriced tier**. No new tooling. |
+| TypeScript (existing) | Versioned packet manifest schema | Define `OrderPacketV1` as a strict interface with a `schemaVersion` literal so the v4.0 backend has a stable contract to parse. No new tooling. |
 
-### Color Science: Culori (`^4.0.2`)
-* **Rationale**: Raw Euclidean distance in sRGB space ($d = \sqrt{\Delta R^2 + \Delta G^2 + \Delta B^2}$) ignores human visual biology. GemPixel must use the **CIEDE2000** distance algorithm in the **CIELAB** color space. 
-* Rather than implementing the complex CIEDE2000 math (which contains several trigonometric corrections for hue, lightness, and chroma), GemPixel uses `culori`. It is highly modular, has zero external dependencies, and supports *tree-shaking*. By importing from `culori/fn`, we bundle only the specific color space converters and difference calculators needed:
-  ```typescript
-  import { differenceCiede2000, parse, rgb, lab } from 'culori/fn';
-  ```
-  This keeps the final compiled bundle footprint under 5KB for color science utilities.
+## Installation
 
----
+```bash
+# Optional (recommended) — viewport + mode state
+npm install @preact/signals
 
-## 5. Architectural Avoidance: What NOT to Use and Why
+# Optional (ONLY if a single-file .zip packet is required)
+npm install fflate
 
-To maintain a fast, lightweight, and single-file client-side deployment profile, the following libraries are explicitly barred from the project stack:
-
-### ❌ What NOT to Use: Full React (`react` & `react-dom`)
-* **Why**: React carries ~45KB of bundle weight and adds runtime virtual DOM reconciler overhead. Since the pixel grid is drawn entirely on Canvas, the DOM tree is very small (sidebar controls and simple tables). Preact's lightweight virtual DOM is a perfect fit.
-
-### ❌ What NOT to Use: Heavy Canvas/Vector Libraries (e.g., Fabric.js, Paper.js)
-* **Why**: Visual inspection of the canvas grid needs fast zoom and pan. Standard vector libraries (like Fabric.js) create large object graphs in memory (40,000 individual circles for a $200 \times 200$ canvas). This results in garbage collection spikes, memory bloat, and poor zoom/pan frame rates. A custom, lightweight HTML5 Canvas rendering loop drawn to standard coordinate transformations handles this with maximum performance.
-
-### ❌ What NOT to Use: Third-Party Pan & Zoom Utilities (e.g., `panzoom` npm package)
-* **Why**: Canvas zoom and pan are easily implemented in ~50 lines of TypeScript using standard pointer event listeners (`mousedown`, `mousemove`, `mouseup`, `wheel`) mapping offsets to a 2D matrix transformation. Using a generic library wrapper makes it difficult to support **Level-of-Detail (LOD)** rendering:
-  * At scale $< 4\times$, render fast solid squares.
-  * At scale $4\times - 8\times$, render circles (round drills).
-  * At scale $> 8\times$, render circles with centered DMC symbols.
-  Custom zoom/pan lets us restrict drawing to only visible elements in the canvas viewport (frustum culling) and selectively skip expensive detail drawing during rapid pan gestures.
-
-### ❌ What NOT to Use: External Image Resizing Libraries (e.g., Jimp, Pica)
-* **Why**: Downsampling user photos to target grid dimensions (e.g., $120 \times 160$ pixels) is natively handled by the browser. By drawing the source image to an offscreen canvas at the target size:
-  ```typescript
-  offscreenCtx.drawImage(imageElement, 0, 0, targetW, targetH);
-  const rawPixelData = offscreenCtx.getImageData(0, 0, targetW, targetH).data;
-  ```
-  We harness GPU-accelerated browser algorithms, yielding near-instant results with zero package weight.
-
-### ❌ What NOT to Use: PDF Generation Libraries (e.g., jsPDF, pdfmake)
-* **Why**: Generating PDF supply reports via libraries adds $200\text{KB}+$ of bundle bloat. Instead, GemPixel relies on **CSS print directives** (`@media print`) and native browser printing. By applying print-only CSS classes, calling `window.print()` hides the sidebar controls, formats the supply list as a clean multi-page document, and lets the browser save a high-quality vector PDF natively.
-
----
-
-## 6. Color Matching Performance Engine
-
-Executing CIEDE2000 calculations for every pixel in a grid is computationally demanding. For a $150 \times 200$ canvas (30,000 pixels) matched against the Art Dot 200 kit (200 colors), the engine runs up to 6 million distance comparisons. The stack incorporates two critical configurations to ensure a smooth, jank-free interface:
-
-1. **Background Web Worker Threading**: The image downsampling outputs a raw `Uint8ClampedArray` (RGBA pixel buffer). GemPixel posts this buffer to a background Web Worker as a **Transferable Object**:
-   ```typescript
-   worker.postMessage({ pixelBuffer: arrayBuffer, palette: activePalette }, [arrayBuffer]);
-   ```
-   Transferring the buffer avoids serialization overhead. The Web Worker executes the Culori conversions and returns the matched DMC coordinates without blocking the main UI thread.
-2. **RGBA Hash Caching**: Real-world photos contain extensive blocks of identical color pixels (backgrounds, shadows, sky). The Web Worker maintains an in-memory cache map:
-   ```typescript
-   const matchCache = new Map<number, string>(); // RGBA_integer_hash -> DMC_code
-   ```
-   For each pixel, the worker hashes the RGBA values. If the hash exists in the cache, the worker bypasses the XYZ $\rightarrow$ Lab conversion and CIEDE2000 comparison loops. This cache resolves up to $75\%$ of pixel checks, keeping color matching under 150ms.
-
----
-
-## 7. Recommended Vite Configuration
-
-To ensure optimal build output, tree-shaking, and Web Worker loading, the following `vite.config.ts` setup is prescribed:
-
-```typescript
-import { defineConfig } from 'vite';
-import preact from '@preact/preset-vite';
-
-export default defineConfig({
-  plugins: [preact()],
-  worker: {
-    format: 'es',
-  },
-  build: {
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        passes: 2,
-      },
-    },
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          // Separate Culori to allow parallel network loading
-          if (id.includes('node_modules/culori')) {
-            return 'color-science';
-          }
-        },
-      },
-    },
-  },
-});
+# NOT recommended — listed for completeness / deliberate rejection
+# npm install driver.js
 ```
+
+Everything else (coach-marks, packet PNG/JSON/HTML, share/email, bag math) requires **no install**.
+
+---
+
+## Answers to the Five Stack Questions
+
+### (a) State management / app-shell for the viewport wizard + mode split
+
+**Verdict: stay on Preact, add `@preact/signals` for the handful of cross-cutting values. Do NOT add a store or a state-machine library.**
+
+- Today state is plain `useState`/`useCallback` in `App.tsx` plus `usePersistentState` (see `useWizard.ts` — a clean 50-line machine). That is the right foundation.
+- The *new* pressure is that a viewport-native design has sibling widgets (in-canvas HUD, contextual panels, mode-specific chrome) that all read/write a small shared core: `mode: 'customer' | 'artist'`, the active contextual panel, and the wizard step. Lifting all of that into `App.tsx` and prop-drilling through a canvas host causes the whole viewport to re-render on every toggle.
+- `@preact/signals` fixes exactly this: a `signal`/`computed` is read where it's used and updates only those subscribers, leaving the canvas subtree untouched. It's first-party and tiny.
+- **Zero-dep fallback (acceptable):** Preact Context + `useState` for the same core state. Works, but coarser re-renders; fine if the developer wants literally no new runtime dep.
+- **Mode split is a discriminated union, not a state chart.** `type AppMode = 'customer' | 'artist'` gating rendered paths is enough; the existing `useWizard` already models step transitions.
+
+**Do NOT add:** Redux, Zustand, Jotai (external stores — unnecessary for one small shared core), or **XState** (a ~15 KB state-machine lib is overkill for a 4-step wizard + a 2-value mode toggle the repo already handles in 50 lines).
+
+### (b) In-canvas guided wizard / coach-marks WITHOUT heavy tour deps
+
+**Verdict: browser-native. Preact overlay components + the Popover API + CSS Anchor Positioning. No tour library.**
+
+- The v3.0 need is *in-canvas guidance* — cues anchored to the viewport and canvas, not tooltips bolted onto arbitrary DOM elements. Tour libraries (Shepherd ~12 KB+, React Joyride ~34 KB, intro.js) are element-highlight engines that assume a DOM-form flow and actively fight a canvas-centric layout.
+- **Native building blocks (all Baseline 2026, ~91% of traffic):**
+  - **Popover API** (`popover` attribute / `showPopover()`) — stable in all engines — for contextual popovers/coach-mark bubbles with top-layer stacking and light-dismiss for free.
+  - **CSS Anchor Positioning** (`anchor()`, `position-anchor`) — Baseline 2026 (Chrome 125+, Firefox 132+, Safari 18.2+) — to pin a coach-mark to a HUD control with no JS positioning math. *Caveat:* Safari 18.2–18.3 places correctly but doesn't auto-flip (`@position-try`); provide a simple fallback placement.
+  - **In-canvas cues** — draw directly on the existing canvas (the `export.ts`/`viewer.ts` 2D-context patterns) or overlay absolutely-positioned Preact `<div>`s over the canvas for a highlighted region + caption.
+- This is a natural extension of the Phase 9 viewport HUD already in the codebase — a `<CoachMark>` Preact component driven by a signal is a few dozen lines.
+
+**Do NOT add:** driver.js / Shepherd / React Joyride / intro.js. driver.js is the smallest (~5 KB) and is the only defensible fallback *if* a scripted DOM walkthrough is later demanded — but it does not solve in-canvas guidance, so adopting it now would add weight for the wrong problem.
+
+### (c) Generating the order packet client-side (JSON manifest + PNG + printable summary)
+
+**Verdict: 100% browser-native. Reuse `export.ts` + `projectStore.ts` patterns. `fflate` only if a single `.zip` is required.**
+
+The packet has three parts, each already achievable with what's in the repo:
+
+1. **Structured JSON manifest (the star — designed to feed the v4.0 backend).** Define a strict, versioned `OrderPacketV1` TypeScript interface (`schemaVersion`, canvas spec, optimized gem-bag list from `bagPlanner`, service fee, totals, customer note). Serialize with `JSON.stringify` → `Blob(['...'], {type:'application/json'})`. This is the stable contract the v4.0 order-management backend will parse — freeze the shape like `projectStore`'s serialized shapes are frozen.
+2. **The PNG.** Already solved: `drawCanvasOnly()` → `triggerCanvasDownload()` in `export.ts` (`canvas.toBlob('image/png')`). Reuse verbatim.
+3. **Shareable / printable summary.** Reuse the established **CSS print** approach (`@media print` + `window.print()` → native PDF) from the base stack decision — a print-only summary view (bag list, fee, totals) rather than a PDF library.
+
+**Packaging choice (roadmap decision, both zero-to-tiny weight):**
+- **Preferred (zero-dep):** emit the manifest, PNG, and summary as separate downloads, OR a *single self-contained JSON* that embeds the PNG as a base64 data URL (simplest for the backend to ingest; ~33% base64 overhead is fine for one image).
+- **Single-file `.zip` (needs `fflate ^0.8.3`):** bundle `manifest.json` + `canvas.png` (raw bytes, no base64 bloat) + `summary.html` into one archive for a tidy emailable deliverable. Adopt `fflate` *only* if the single-file UX is a hard requirement.
+
+**Do NOT add:** jsPDF / pdfmake (already rejected in the base stack — CSS print covers it), JSZip (heavier and slower than `fflate` — if you zip at all, use `fflate`), FileSaver.js (the `URL.createObjectURL` + anchor pattern in `export.ts` already does this).
+
+### (d) Gem-bag optimization algorithm
+
+**Verdict: the exact bounded search is ALREADY IMPLEMENTED in `src/engine/bagPlanner.ts` and is the correct family. Keep it. Do NOT add an ILP/LP solver, and do NOT downgrade to pure greedy.**
+
+Findings from reading `bagPlanner.ts` + `variants.ts`:
+- **Problem size is tiny.** Per color there are at most **4 bag tiers** (200 / 500 / 1000 / 2000) and they're solved **independently** per color (dye-lot consistency forbids mixing colors). This is a per-color bounded coin-covering problem, not a large combinatorial optimization.
+- **The existing `minCostBulk` is an exact bounded enumeration** — it branches over counts of the larger sizes and ceil-fills the smallest, guaranteeing the optimum in a few hundred evaluations, with a `≤ 800 → 200-count only` dye-lot rule. This is exactly the right approach: small-N **exact DP/enumeration**, not a heuristic.
+- **Pure greedy (largest-first) is NOT sufficient** and must not replace it: non-divisible tiers plus per-size pricing make greedy suboptimal (e.g. `1×1000 + 2×500` vs a cheaper/fewer `1×2000`). The current code enumerates precisely to avoid that — correct.
+- **An ILP/LP solver is unjustified.** `javascript-lp-solver` / `glpk.js` (WASM, 100 KB+, async init) would add significant weight and a build/init burden to solve a 4-variable-per-color problem that closed-form enumeration already solves optimally and synchronously. **Reject.**
+
+**v3.0 refinement (algorithm stays, no dep):**
+- The milestone objective is *"fewest bags while preserving dye-lot consistency,"* but `minCostBulk` currently minimizes **cost**. Clarify the objective (fewest packets vs cheapest) and, if "fewest bags" wins, minimize `packets` with cost as the tiebreak — a one-line change to the comparator in the existing search. (Requirements/roadmap item, not a stack change.)
+- **Pricing-accuracy bug surfaced (`PRICE-01/02`, `DATA-01`):** `defaultPacketCost()` in `bagPlanner.ts` prices sizes **200 / 1000 / 2000 / 5000**, but `DRILL_VARIANTS` uses tiers **200 / 500 / 1000 / 2000** — so the **500 tier gets `$0`** and a phantom `5000` tier is priced. This is the "correct 500-bag cost / no `$0` unpriced sizes" requirement. Fix = align the price table to the actual tiers + a **variant-integrity Vitest test** (table-driven over `DRILL_VARIANTS`). No new dependency — reuse the existing `bagPlanner.test.ts` harness.
+
+### (e) Client-side "email / export the packet" path with no server
+
+**Verdict: Web Share API (Level 2, file sharing) as the primary "send," with graceful fallback to download + prefilled `mailto:`. No email SDK, no server.**
+
+- **Web Share API** — `navigator.canShare({ files })` / `navigator.share({ files, title, text })` — can hand the PNG (and, where supported, the packet file) straight to the OS share sheet → the user's mail/messaging app. Excellent on mobile/tablet; feature-detect and progressively enhance.
+- **`mailto:` link** — opens the user's mail client with a prefilled subject/body (order summary + totals + a "packet attached" note). **Cannot attach files** (mailto has no attachment support), so it complements, not replaces, the download.
+- **Universal fallback (always works):** the existing `export.ts` download pattern — user downloads the packet, then attaches it in their own email or uploads it to the artist. This is the reliable baseline for manual/offline fulfillment.
+
+**Do NOT add:** EmailJS / Resend / SendGrid / Nodemailer or any transactional-email SDK. They require an API key embedded in the client (exposed/abusable) and are effectively a backend service — which is explicitly **deferred to v4.0**. Sending real email is a v4.0 backend concern; v3.0 only *produces and hands off* the packet.
+
+---
+
+## Alternatives Considered
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| `@preact/signals` for shared viewport/mode state | Preact Context + `useState` (zero-dep) | If the developer wants literally no new runtime dependency and accepts coarser re-renders of the canvas host. |
+| Discriminated union + existing `useWizard` | XState | Only if the wizard grows into genuinely complex, guard-heavy, parallel states — not the case at 4 steps + a mode toggle. |
+| Native Popover API + CSS Anchor Positioning | driver.js (~5 KB) | Only if a scripted first-run walkthrough of DOM controls is later demanded (still won't do in-canvas guidance). |
+| Zero-dep multi-file / self-contained JSON packet | `fflate` (`.zip` bundle) | If a single-file emailable archive is a hard UX requirement. |
+| Existing exact bounded search in `bagPlanner.ts` | `javascript-lp-solver` / `glpk.js` | Never for this problem (≤4 tiers/color, exact enumeration already optimal). Only if the problem later gains many interacting global constraints. |
+| Web Share API + `mailto` + download | EmailJS / Resend / SendGrid | Never client-side (key exposure). Belongs to the v4.0 backend. |
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Any backend / DB / auth / payment SDK (Stripe, Firebase, Supabase, etc.) | v3.0 is explicitly frontend-first and client-side; payments/fulfillment are v4.0 | Produce the exportable order packet; defer sending to v4.0 |
+| Redux / Zustand / Jotai / XState | External store / state-machine weight for one small shared core the repo already handles | `@preact/signals` (or Context) + existing `useWizard` |
+| Shepherd / React Joyride / intro.js | Heavy DOM-tour libs (12–34 KB) that assume DOM-form flows and fight a canvas UI | Native Popover API + CSS Anchor Positioning + canvas-drawn cues |
+| jsPDF / pdfmake | 200 KB+ bundle bloat (already rejected in base stack) | CSS `@media print` + `window.print()` |
+| JSZip | Heavier/slower archiver | `fflate` (only if zipping is actually needed) |
+| FileSaver.js | Redundant | Existing `URL.createObjectURL` + anchor download in `export.ts` |
+| `javascript-lp-solver` / `glpk.js` (WASM) | 100 KB+ + async init to solve a 4-variable-per-color problem | Existing exact bounded search in `bagPlanner.ts` |
+| EmailJS / Resend / SendGrid (client-side) | Exposes API keys; is effectively a backend service | Web Share API + `mailto` + download; real email = v4.0 |
+
+## Integration Points (into the existing Preact + Worker architecture)
+
+- **`@preact/signals`** — introduce a small `src/state/` (e.g. `appMode`, `activePanel`, `coachStep` signals). Components subscribe directly; the canvas host (`viewer.ts` consumer) stops re-rendering on chrome toggles. No change to the Web Worker contract.
+- **Coach-marks** — new `src/features/coach/` Preact overlay component keyed off a signal; anchors to the Phase 9 HUD via CSS Anchor Positioning; in-canvas cues reuse the 2D-context patterns in `viewer.ts`/`export.ts`.
+- **Order packet** — new `src/engine/orderPacket.ts` (pure, node-testable like `bagPlanner`/`projectStore`): builds `OrderPacketV1` from the current project + `planColorSupply()` output; reuses `drawCanvasOnly()`/`triggerCanvasDownload()` for the PNG and the CSS-print path for the summary. Optional `fflate` zip step lives here behind a flag.
+- **Bag optimization** — no new module; refine `bagPlanner.ts` (objective tiebreak) and fix the `defaultPacketCost` tier mismatch; add a variant-integrity test in `src/engine/__tests__/`.
+- **Share/export** — a thin `sharePacket()` helper (feature-detect `navigator.canShare`), falling back to the existing download + a `mailto` composer.
+- **Vendor cleanup** — remove the `prodigi` entry from `VENDOR_REGISTRY` in `checkout.ts` and narrow the `'lumaprints' | 'prodigi' | 'finerworks'` union to `'lumaprints' | 'finerworks'` (touches `calculateCanvasCost` + any UI selector). Pure data/type change, no dep.
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| `@preact/signals@^2.9.2` | `preact@^10.25` | Requires Preact ≥10.x (satisfied). Pulls `@preact/signals-core@^1.14.2`. Verify peer at install. |
+| `fflate@^0.8.3` | Vite 6 / ESM | Tree-shakeable ESM; import only `zipSync`/`zip`. No transitive deps. |
+| Popover API / CSS Anchor Positioning | Chrome 125+, Firefox 132+, Safari 18.2+ | Baseline 2026 (~91% traffic). Provide fallback placement for Safari 18.2–18.3 (no `@position-try` auto-flip). |
+| Web Share API (files) | Modern mobile + desktop Chromium/Safari | Feature-detect `navigator.canShare({files})`; always ship the download fallback. |
+
+## Bundle-Weight Impact Summary
+
+- **Baseline recommendation (signals only): ~+1.6 KB** to the runtime bundle. Everything else is native or repo-existing.
+- **If `fflate` is added: ~+3–5 KB** (ZIP path, tree-shaken). Optional.
+- **If the zero-dep path is chosen throughout: +0 KB.** Fully consistent with the developer's lightweight/native-first preference.
+
+## Sources
+
+- [@preact/signals — npm](https://www.npmjs.com/package/@preact/signals) — current `2.9.2`; core `1.14.2` (HIGH)
+- [preactjs/signals — GitHub](https://github.com/preactjs/signals) — fine-grained reactivity rationale (HIGH)
+- [Signals — Preact Guide](https://preactjs.com/guide/v10/signals/) — Preact integration, sizing (HIGH)
+- [fflate — npm](https://www.npmjs.com/package/fflate) / [101arrowz/fflate — GitHub](https://github.com/101arrowz/fflate) — `0.8.3`, 8 KB core, +3 KB ZIP (HIGH)
+- [driver.js — npm](https://www.npmjs.com/package/driver.js) / [driverjs.com](https://driverjs.com/) — 1.x, ~5 KB gzip, zero-dep (MEDIUM — cited only as rejected alt)
+- [React Joyride vs Shepherd vs Driver.js benchmark (2026)](https://usertourkit.com/blog/react-tour-library-benchmark-2026) — tour-lib bundle sizes (MEDIUM)
+- [Using CSS anchor positioning — MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Anchor_positioning/Using) / [Using the Popover API — MDN](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using) — native coach-mark APIs (HIGH)
+- [CSS Anchor Positioning in 2026 — nexgismo](https://www.nexgismo.com/blog/css-anchor-positioning-replace-javascript-tooltip-library-2026) — Baseline 2026, Chrome 125+/FF 132+/Safari 18.2+, ~91% traffic, Safari flip caveat (MEDIUM)
+- Codebase: `src/engine/bagPlanner.ts`, `variants.ts`, `checkout.ts`, `export.ts`, `projectStore.ts`, `features/wizard/useWizard.ts` — existing exact bag optimizer, pricing-tier mismatch, native export patterns (HIGH)
+
+---
+*Stack research for: client-side gem-art planner — v3.0 viewport-native, two-mode milestone*
+*Researched: 2026-07-12*
