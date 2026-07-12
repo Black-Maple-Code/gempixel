@@ -6,14 +6,14 @@ current_phase: 15
 current_phase_name: trustworthy-pricing-data-foundation
 status: executing
 stopped_at: v3.0 roadmap created (phases 15–19)
-last_updated: "2026-07-12T23:47:01.138Z"
+last_updated: "2026-07-12T23:57:46.116Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 15 (trustworthy-pricing-data-foundation) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 15
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-12 — Phase 15 execution started
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
@@ -84,6 +84,7 @@ Last activity: 2026-07-12 — Phase 15 execution started
 | Phase 11 P02 | 12min | 2 tasks | 3 files |
 | Phase 11 P03 | 30min | 3 tasks | 2 files |
 | Phase 13 P02 | 5min | 2 tasks | 1 files |
+| Phase 15 P01 | 6min | 2 tasks | 5 files |
 
 ## Risk & Health
 
@@ -115,7 +116,7 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-12T21:00:00.000Z
+Last session: 2026-07-12T23:56:28.265Z
 Stopped at: v3.0 roadmap created (phases 15–19)
 Resume file: .planning/ROADMAP.md
 
@@ -127,6 +128,7 @@ Resume file: .planning/ROADMAP.md
 - [Phase 13]: D-09: single loading overlay branches on loadingPhase — indeterminate 'Preparing image…' during off-thread decode, determinate 'Matching colors: {progress}%' on first worker progress
 - [Phase 13]: D-10: match-error banner copy generalized to stage-agnostic 'Couldn't process the image: {matchError}', staying a plain JSX text child
 - [v3.0 roadmap]: Compressed the research's 8-phase suggestion to 5 phases under standard granularity — single-requirement/thin phases (Vendor cleanup, Data integrity, Service fee) folded into their nearest coherent neighbor. Load-bearing dependency order preserved: correctness (15) → optimized supply plan (16) → fee + order packet (17) → viewport wizard (18) → mode split (19, last). The two UI reworks (18, 19) are kept as separate phases.
+- [Phase 15]: 15-01: Removed Prodigi vendor; narrowed CanvasVendor union to 'lumaprints' | 'finerworks'; calculateCanvasCost returns number|null (unknown vendor -> null, never $0); normalizeVendor migrates any legacy/tampered persisted vendor to lumaprints at load; selectedVendor persisted as an additive optional ProjectData field.
 
 ## Operator Next Steps
 

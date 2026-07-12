@@ -63,10 +63,10 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   4. Itemized line items always sum exactly to the displayed total (integer-cents money math reconciles).
   5. An automated integrity test guards the drill-variant table (unique or explicitly allow-listed IDs, no empty reachable mappings, every palette color mapped), and any unmapped color is surfaced to the user rather than silently dropped.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — Vendor cleanup: remove Prodigi, narrow the vendor union, null-guard unknown-vendor cost, migrate persisted vendor (VENDOR-02)
+- [x] 15-01-PLAN.md — Vendor cleanup: remove Prodigi, narrow the vendor union, null-guard unknown-vendor cost, migrate persisted vendor (VENDOR-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -146,7 +146,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 10. Project Load Correctness | v2.1 | — | Deferred | — |
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
-| 15. Trustworthy Pricing & Data Foundation | v3.0 | — | Not started | - |
+| 15. Trustworthy Pricing & Data Foundation | v3.0 | 1/3 | In Progress|  |
 | 16. Optimized Supply Plan & Savings | v3.0 | — | Not started | - |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |

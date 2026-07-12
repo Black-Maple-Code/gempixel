@@ -10,7 +10,7 @@ Committed scope for v3.0. Each maps to exactly one roadmap phase. Grounded in `.
 
 ### Vendor Cleanup
 
-- [ ] **VENDOR-02**: Prodigi is removed as a canvas vendor — only Lumaprints and FinerWorks are selectable — and a saved project that referenced Prodigi migrates to a valid vendor without ever showing a $0 canvas (unknown-vendor cost is guarded, not silently 0).
+- [x] **VENDOR-02**: Prodigi is removed as a canvas vendor — only Lumaprints and FinerWorks are selectable — and a saved project that referenced Prodigi migrates to a valid vendor without ever showing a $0 canvas (unknown-vendor cost is guarded, not silently 0).
 
 ### Pricing Accuracy
 
@@ -89,7 +89,7 @@ Final phase mapping (phases 15–19, continuing from the previous milestone's la
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VENDOR-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| VENDOR-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | PRICE-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
 | PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
 | PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
