@@ -8,6 +8,22 @@ GemPixel is a client-side utility web application designed for diamond painting/
 
 Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
 
+## Current Milestone: v3.0 Two-Mode Viewport Experience
+
+**Goal:** Move GemPixel into a viewport-native, guided experience with two tailored paths — self-serve **Artist** and done-for-you **Customer** — backed by trustworthy pricing and a fulfillment-ready customer order flow.
+
+**Target features:**
+- **Viewport-native interactive wizard** — the app lives in the viewport; contextual options and guidance surface in-canvas as needed (extending the Phase 9 HUD), progressively phasing out expand/collapse sidebars and the page-flipping wizard.
+- **Mode selector + two-mode UX** — Customer vs Artist, each a tailored path through the viewport wizard.
+- **Artist mode** — refined self-serve: design → order own canvas (Lumaprints / FinerWorks) + drill cart to diamonddrillsusa.com.
+- **Vendor cleanup** — remove Prodigi as a canvas option; keep Lumaprints + FinerWorks.
+- **Price accuracy** — correct 500-bag cost, no $0 unpriced sizes, and a drill-variant integrity test (pulls in deferred PRICE-01/02, DATA-01) so quotes and fees are trustworthy.
+- **Percent-based service fee** — customer quote includes a configurable % fee for quality/handling.
+- **Customer purchase flow** — "Buy" captures a structured order packet (PNG + optimized gem-bag list + canvas spec + fee + totals) for manual/offline fulfillment; large orders flagged for human review.
+- **Gem-bag purchase optimization** — fewest bags while preserving dye-lot color consistency.
+
+**Scope boundary:** Frontend-first and still client-side. Payments are manual/offline this milestone. The customer order packet is designed to feed a real order-management **backend + admin dashboard**, which — together with automated payments and direct printer/vendor API fulfillment — is **deferred to v4.0**. This milestone intentionally begins crossing the historical "client-side only / no backend" constraint (see Out of Scope).
+
 ## Requirements
 
 ### Validated
@@ -33,17 +49,22 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 
 ### Active
 
-**No milestone currently in progress.** v2.1 shipped 2026-07-12 (storage robustness + off-main-thread decode — see Validated). Start the next milestone with `/gsd-new-milestone`.
+**Milestone v3.0 Two-Mode Viewport Experience** is in progress (opened 2026-07-12). See the Current Milestone section above for goal and target features; scoped requirements land in `.planning/REQUIREMENTS.md`. **Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) is pulled into v3.0** because the customer quote/fee depends on it.
 
-**Deferred to a future milestone** (roadmapped under v2.1, never built — to be re-scoped/rewritten; requirements preserved in `milestones/v2.1-REQUIREMENTS.md`):
+**Still deferred to a future milestone** (roadmapped under v2.1, never built — requirements preserved in `milestones/v2.1-REQUIREMENTS.md`):
 - [ ] Project Load Correctness — restored projects keep their saved price and grid (LOAD-01, LOAD-02).
-- [ ] Supply Pricing Accuracy — correct 500-bag pricing, no $0 unpriced sizes, variant integrity test (PRICE-01, PRICE-02, DATA-01).
 - [ ] Security & Cleanup — validate the partner canvas URL against an http/https allowlist and wire-up-or-remove the unfinished partner-link path (SEC-01).
+
+**Deferred to v4.0** (target for the customer order packet built in v3.0):
+- [ ] Order-management backend + admin dashboard — order queue, gem-count review, push PNG to printer.
+- [ ] Automated payments (customer flow is manual/offline in v3.0).
+- [ ] Direct printer/vendor API fulfillment.
 
 ### Out of Scope
 
-- [ ] Server-side processing or user accounts — keep the utility lightweight and run entirely client-side.
+- [ ] Server-side processing or user accounts — kept the utility lightweight and client-side through v2.1. **Being revisited in v3.0/v4.0:** the Customer mode introduces done-for-you fulfillment, so a server-side order-management backend is now a planned v4.0 capability. v3.0 stays client-side (order-packet generation only).
 - [ ] AI-based color enhancement or style generation — stick to clean mathematical color matching.
+- [ ] In-app / automated payment processing — customer purchases are handled manually/offline in v3.0; automated payments deferred to v4.0.
 
 ## Context
 
@@ -77,6 +98,8 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | Post-milestone maintenance review | Ran GSD map-codebase + a full deep code review before further feature work; fixed 4 blockers, roadmapped remaining warnings as Milestone v2.1. | — REVIEW.md; blockers fixed via quick tasks 2026-07-12 |
 | Off-main-thread image decode | Evict resample + `getImageData` readback + box-sampling from the main thread via a transferred `ImageBitmap` into the existing matcher worker (topology A), reusing the B2 abort; keep output bit-identical. | ✓ Shipped Phase 13; execute-time code review caught + fixed a stale-decode-rejection bug and an EXIF parity bug the tests missed |
 | v2.1 scope cut | Ship only the two highest-value review items (Phases 11 + 13); defer Phases 10/12/14 to a later rewrite. | ⚠ Revisit — deferred requirements carried in `milestones/v2.1-REQUIREMENTS.md` |
+| v3.0 two-mode pivot | Split into Customer (done-for-you) and Artist (self-serve) modes inside a viewport-native wizard; begin crossing the client-side-only constraint. Frontend-first — order backend, payments, and printer APIs deferred to v4.0. | ◆ In progress (Milestone v3.0) |
+| v3.0 payments manual/offline | Capture customer orders as an exportable packet and fulfill manually rather than building payment processing now. | ◆ Lowers v3.0 risk; automated payments = v4.0 |
 
 ## Evolution
 
@@ -96,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 — v2.1 milestone complete (Phases 11 + 13 shipped; Phases 10/12/14 deferred); tagged v2.1*
+*Last updated: 2026-07-12 — opened Milestone v3.0 Two-Mode Viewport Experience (viewport-native wizard + Customer/Artist modes + pricing accuracy; frontend-first, backend/payments deferred to v4.0)*

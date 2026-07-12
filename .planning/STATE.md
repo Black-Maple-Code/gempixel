@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: — Post-Review Remediation
-current_phase: 1
-status: Awaiting next milestone
-stopped_at: Phase 13 context gathered
-last_updated: "2026-07-12T20:13:43.606Z"
+milestone: v3.0
+milestone_name: Two-Mode Viewport Experience
+status: planning
+last_updated: "2026-07-12T20:32:12.402Z"
 last_activity: 2026-07-12
-last_activity_desc: Milestone v2.1 completed and archived
 progress:
-  total_phases: 14
-  completed_phases: 10
-  total_plans: 25
-  completed_plans: 24
-  percent: 71
-current_phase_name: Security & Cleanup
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 
 ## Current Position
 
-Phase: Milestone v2.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-12 — Milestone v2.1 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-12 — Milestone v3.0 started
 
 ## Performance Metrics
 
