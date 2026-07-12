@@ -1,4 +1,5 @@
 import { VENDOR_REGISTRY } from '../../../engine/checkout';
+import { safeStorage } from '../../../engine/safeStorage';
 
 /**
  * Step3Canvas — despite the name, the wizard's "Cost & Order" form: canvas print
@@ -392,7 +393,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        localStorage.removeItem('gempixel_unmapped_colors_log');
+                        safeStorage.removeItem('gempixel_unmapped_colors_log');
                         setUnmappedLog([]);
                       }}
                       className="text-[9px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"

@@ -44,6 +44,25 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   afterEach(() => {
     render(null, container);
     container.remove();
+    // Restore Storage.prototype spies so blocked-storage simulation cannot leak
+    // into other cases (RESEARCH Wave 0 gap).
+    vi.restoreAllMocks();
+  });
+
+  it('mounts under blocked storage without throwing', () => {
+    // Simulate private-mode / disabled storage: every access throws (STORE-01).
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+
+    expect(() => render(<App />, container)).not.toThrow();
+
+    const heading = container.querySelector('h1');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent).toBe('GemPixel');
   });
 
   it('renders dashboard shell elements', async () => {
@@ -649,9 +668,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       clearBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Logged colors list should be cleared
+      // Logged colors list should be cleared. unmappedLog now persists through
+      // usePersistentState, so clearing to [] re-serializes as '[]' rather than
+      // removing the key; both null and '[]' parse to an empty array (format-safe).
       expect(container.textContent).toContain('No unmapped colors logged.');
-      expect(localStorage.getItem('gempixel_unmapped_colors_log')).toBeNull();
+      expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual([]);
     });
 
     it('supports inline project save, update, and copy actions on Step 5', async () => {
