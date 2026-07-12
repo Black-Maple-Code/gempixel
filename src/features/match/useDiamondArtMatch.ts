@@ -72,6 +72,18 @@ export function __setOffscreenSupportForTest(v: boolean | null) {
   offscreenSupportOverride = v;
 }
 
+// D-08 single init-time probe: detectOffscreenSupport() allocates a throwaway OffscreenCanvas,
+// so memoize the real probe once per module load rather than re-running it on every match
+// trigger. The test override (__setOffscreenSupportForTest) is checked first at the call site
+// and short-circuits this cache, so the injectable seam is preserved.
+let cachedOffscreenSupport: boolean | null = null;
+function getOffscreenSupport(): boolean {
+  if (cachedOffscreenSupport === null) {
+    cachedOffscreenSupport = detectOffscreenSupport();
+  }
+  return cachedOffscreenSupport;
+}
+
 export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
   const {
     image,
@@ -116,7 +128,7 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
     // Hard-fail unsupported browsers into the reactive error banner (D-07) — never post
     // to the worker and never flip loading on (preserves the loading-cleared-on-error /
     // spinner-never-with-banner invariant, D-09).
-    const supported = offscreenSupportOverride ?? detectOffscreenSupport();
+    const supported = offscreenSupportOverride ?? getOffscreenSupport();
     if (!supported) {
       setLoading(false);
       setError('Please update your browser — off-thread image decoding (OffscreenCanvas) is unavailable.');
