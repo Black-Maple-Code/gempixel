@@ -2,18 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: — Post-Review Remediation
-current_phase_name: defining requirements
+current_phase: 11
+current_phase_name: Storage Robustness & Error Feedback
 status: executing
 stopped_at: Phase 9 execution completed
-last_updated: "2026-07-12T07:28:24.059Z"
+last_updated: "2026-07-12T15:26:21.053Z"
 last_activity: 2026-07-12
-last_activity_desc: Milestone v2.1 started
+last_activity_desc: Phase 11 execution started
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 14
+  completed_phases: 8
+  total_plans: 22
+  completed_plans: 19
+  percent: 57
 ---
 
 # Project State
@@ -23,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-07)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 9
+**Current focus:** Phase 11 — Storage Robustness & Error Feedback
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
+Phase: 11 (Storage Robustness & Error Feedback) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-12 — Milestone v2.1 started
+Last activity: 2026-07-12 — Phase 11 execution started
 
 ## Performance Metrics
 
@@ -67,6 +68,7 @@ Last activity: 2026-07-12 — Milestone v2.1 started
 | Phase 04 P01 | 420 | 3 tasks | 7 files |
 | Phase 04 P02 | 120 | 3 tasks | 3 files |
 | Phase 04 P03 | 95 | 3 tasks | 3 files |
+| Phase 11 P01 | 6min | 2 tasks | 4 files |
 
 ## Risk & Health
 
@@ -93,6 +95,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T05:20:00.000Z
+Last session: 2026-07-12T15:25:48.259Z
 Stopped at: Phase 9 execution completed
 Resume file: None
+
+## Decisions
+
+- [Phase ?]: 11-01: Per-type storage codecs preserve legacy on-disk formats (no blanket JSON codec); safeStorage is the single guarded audit point for localStorage

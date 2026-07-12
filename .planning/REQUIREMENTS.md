@@ -82,8 +82,8 @@ blockers (B1–B4) were already fixed via quick tasks (260711-wvv, 260711-x6p, 2
 
 ### Storage Robustness & Error Feedback
 
-- [ ] **STORE-01**: The app loads and functions even when localStorage is unavailable or blocked (e.g. private browsing) — no storage read/write throws during mount. (review W3)
-- [ ] **STORE-02**: All persisted settings read/write through a single safe helper (`usePersistentState`), so a storage error in one setting cannot break the app and duplicated boilerplate is removed. (review W3, IN-01)
+- [x] **STORE-01**: The app loads and functions even when localStorage is unavailable or blocked (e.g. private browsing) — no storage read/write throws during mount. (review W3)
+- [x] **STORE-02**: All persisted settings read/write through a single safe helper (`usePersistentState`), so a storage error in one setting cannot break the app and duplicated boilerplate is removed. (review W3, IN-01)
 - [ ] **ERR-01**: When a save, download, or checkout action fails, the user sees a clear message instead of a silent no-op (extends the match-error surface to the remaining paths). (review W4, W5)
 
 ### Supply Pricing Accuracy
@@ -144,8 +144,8 @@ blockers (B1–B4) were already fixed via quick tasks (260711-wvv, 260711-x6p, 2
 | NAV-03 | Phase 9 | Complete |
 | LOAD-01 | Phase 10 | Pending |
 | LOAD-02 | Phase 10 | Pending |
-| STORE-01 | Phase 11 | Pending |
-| STORE-02 | Phase 11 | Pending |
+| STORE-01 | Phase 11 | Complete |
+| STORE-02 | Phase 11 | Complete |
 | ERR-01 | Phase 11 | Pending |
 | PRICE-01 | Phase 12 | Pending |
 | PRICE-02 | Phase 12 | Pending |
