@@ -12,6 +12,22 @@ import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
 import { Step2Palette } from './features/wizard/steps/Step2Palette';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
 import { Step4Export } from './features/wizard/steps/Step4Export';
+import { usePersistentState, codecs } from './hooks/usePersistentState';
+import type { Codec } from './hooks/usePersistentState';
+
+
+// Default custom-canvas checkout URL template. Kept at module scope so the
+// custom codec below can reference it as its parse fallback.
+const DEFAULT_CANVAS_TEMPLATE =
+  'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
+
+// canvasTemplate persists as a raw string but normalizes the legacy
+// heartfuldiamonds host to the current adiamondpainting default on read
+// (RESEARCH Pitfall 4). serialize is identity so the on-disk format is unchanged.
+const customTemplateCodec: Codec<string> = {
+  parse: (raw: string) => (raw.includes('heartfuldiamonds') ? DEFAULT_CANVAS_TEMPLATE : raw),
+  serialize: (value: string) => value,
+};
 
 
 export const STANDARD_SIZES = [
@@ -93,21 +109,13 @@ export function App() {
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
-  // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted + applied to <html>.
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try {
-      return (localStorage.getItem('gempixel_theme') as 'dark' | 'light') || 'light';
-    } catch {
-      return 'light';
-    }
-  });
+  // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted via the guarded
+  // hook; the DOM side-effect (applying data-theme to <html>) stays a separate effect.
+  const [theme, setTheme] = usePersistentState<'dark' | 'light'>(
+    'gempixel_theme', 'light', codecs.string as unknown as Codec<'dark' | 'light'>
+  );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem('gempixel_theme', theme);
-    } catch {
-      /* ignore persistence failures */
-    }
   }, [theme]);
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
@@ -126,50 +134,28 @@ export function App() {
   
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
-  const [enableSubstitution, setEnableSubstitution] = useState<boolean>(() => {
-    // Default ON — auto-substitute low-count colors unless the user opted out.
-    const saved = localStorage.getItem('gempixel_enable_substitution');
-    return saved === null ? true : saved === 'true';
-  });
-  const [substitutionThreshold, setSubstitutionThreshold] = useState<number>(() => {
-    // Default threshold 15 — colors with a count of 15 and below are substituted.
-    const saved = localStorage.getItem('gempixel_substitution_threshold');
-    return saved ? parseInt(saved, 10) : 15;
-  });
-  const [enableSmoothing, setEnableSmoothing] = useState<boolean>(() => {
-    // Default ON (Light) — clean orphan drills / blotchy edges unless opted out.
-    const saved = localStorage.getItem('gempixel_enable_smoothing');
-    return saved === null ? true : saved === 'true';
-  });
-  const [smoothingStrength, setSmoothingStrength] = useState<number>(() => {
-    // Default 1 (Light) — minimal shape change; user can push to Medium/Strong.
-    const saved = localStorage.getItem('gempixel_smoothing_strength');
-    return saved ? parseInt(saved, 10) : 1;
-  });
-  const [unmappedLog, setUnmappedLog] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') || '[]');
-    } catch {
-      return [];
-    }
-  });
+  // Default ON — auto-substitute low-count colors unless the user opted out.
+  const [enableSubstitution, setEnableSubstitution] = usePersistentState(
+    'gempixel_enable_substitution', true, codecs.bool
+  );
+  // Default threshold 15 — colors with a count of 15 and below are substituted.
+  const [substitutionThreshold, setSubstitutionThreshold] = usePersistentState(
+    'gempixel_substitution_threshold', 15, codecs.int(15)
+  );
+  // Default ON (Light) — clean orphan drills / blotchy edges unless opted out.
+  const [enableSmoothing, setEnableSmoothing] = usePersistentState(
+    'gempixel_enable_smoothing', true, codecs.bool
+  );
+  // Default 1 (Light) — minimal shape change; user can push to Medium/Strong.
+  const [smoothingStrength, setSmoothingStrength] = usePersistentState(
+    'gempixel_smoothing_strength', 1, codecs.int(1)
+  );
+  // Lazy-init read migrated onto the guarded hook; the imperative checkout writes
+  // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here.
+  const [unmappedLog, setUnmappedLog] = usePersistentState<string[]>(
+    'gempixel_unmapped_colors_log', [], codecs.json<string[]>()
+  );
 
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_enable_substitution', enableSubstitution.toString());
-  }, [enableSubstitution]);
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_substitution_threshold', substitutionThreshold.toString());
-  }, [substitutionThreshold]);
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_enable_smoothing', enableSmoothing.toString());
-  }, [enableSmoothing]);
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_smoothing_strength', smoothingStrength.toString());
-  }, [smoothingStrength]);
   const [selectedVendor, setSelectedVendor] = useState<'lumaprints' | 'prodigi' | 'finerworks'>('lumaprints');
   const [canvasBaseCost, setCanvasBaseCost] = useState(15.0);
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
@@ -187,31 +173,15 @@ export function App() {
     setPriceDb(prev => ({ ...prev, [qty]: val }));
   };
 
-  const [affiliateTag, setAffiliateTag] = useState<string>(() => {
-    return localStorage.getItem('gempixel_affiliate_tag') || '';
-  });
-  const [affiliateApp, setAffiliateApp] = useState<'ref' | 'rfsn' | 'none'>(() => {
-    return (localStorage.getItem('gempixel_affiliate_app') as any) || 'ref';
-  });
-  const [canvasTemplate, setCanvasTemplate] = useState<string>(() => {
-    const saved = localStorage.getItem('gempixel_canvas_template');
-    if (saved && saved.includes('heartfuldiamonds')) {
-      return 'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
-    }
-    return saved || 'https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting?size={size}&shape={shape}';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_affiliate_tag', affiliateTag);
-  }, [affiliateTag]);
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_affiliate_app', affiliateApp);
-  }, [affiliateApp]);
-
-  useEffect(() => {
-    localStorage.setItem('gempixel_canvas_template', canvasTemplate);
-  }, [canvasTemplate]);
+  const [affiliateTag, setAffiliateTag] = usePersistentState(
+    'gempixel_affiliate_tag', '', codecs.string
+  );
+  const [affiliateApp, setAffiliateApp] = usePersistentState<'ref' | 'rfsn' | 'none'>(
+    'gempixel_affiliate_app', 'ref', codecs.string as unknown as Codec<'ref' | 'rfsn' | 'none'>
+  );
+  const [canvasTemplate, setCanvasTemplate] = usePersistentState(
+    'gempixel_canvas_template', DEFAULT_CANVAS_TEMPLATE, customTemplateCodec
+  );
 
   useEffect(() => {
     if (!image && !activeProjectId) return;
