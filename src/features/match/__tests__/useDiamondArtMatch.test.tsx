@@ -6,7 +6,10 @@ import { DMC_PALETTE } from '../../../engine/palette';
 
 // Mirror App.test.tsx's MatcherClient mock; the mocked match invokes progress+complete
 // synchronously so the hook's state settles without a real Web Worker.
-const { instances } = vi.hoisted(() => ({ instances: [] as any[] }));
+const { instances, control } = vi.hoisted(() => ({
+  instances: [] as any[],
+  control: { mode: 'complete' as 'complete' | 'error' },
+}));
 vi.mock('../../../engine/worker-client', () => ({
   MatcherClient: class MockMatcherClient {
     match = vi.fn(
@@ -14,8 +17,14 @@ vi.mock('../../../engine/worker-client', () => ({
         _pixels: Uint8ClampedArray,
         _candidates: unknown,
         onProgress: (p: number) => void,
-        onComplete: (r: { matches: string[]; counts: Record<string, number> }) => void
+        onComplete: (r: { matches: string[]; counts: Record<string, number> }) => void,
+        onError?: (message: string) => void,
+        _cols?: number
       ) => {
+        if (control.mode === 'error') {
+          onError?.('worker exploded');
+          return;
+        }
         onProgress(100);
         onComplete({ matches: ['A', 'A', 'B'], counts: { A: 2, B: 1 } });
       }
@@ -30,6 +39,7 @@ vi.mock('../../../engine/worker-client', () => ({
 // jsdom has no canvas 2d context; stub it so getImagePixels can produce pixels.
 beforeEach(() => {
   instances.length = 0;
+  control.mode = 'complete';
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     drawImage: vi.fn(),
     getImageData: (_x: number, _y: number, w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
@@ -85,6 +95,18 @@ describe('useDiamondArtMatch', () => {
     expect(h.state.loading).toBe(false);
     expect(h.state.matchResult).not.toBeNull();
     expect(h.state.matchResult!.counts).toEqual({ A: 2, B: 1 });
+  });
+
+  it('clears loading and exposes the error string when the worker match fails', async () => {
+    // Drive the error path: the mocked client invokes onError instead of onComplete.
+    // The worker.onerror wiring itself is not exercised here (the whole client is
+    // mocked), so that seam is covered by tsc/build rather than this unit test.
+    control.mode = 'error';
+    const h = mount(() => baseInputs({ image: fakeImage }));
+    await new Promise(r => setTimeout(r, 0));
+    h.rerender();
+    expect(h.state.loading).toBe(false);
+    expect(h.state.error).toBe('worker exploded');
   });
 
   it('restore() seeds a match result and symbolMap regenerates', async () => {
