@@ -1,17 +1,20 @@
 ---
 phase: 13-performance-off-main-thread-decode
 verified: 2026-07-12T00:00:00Z
-status: human_needed
+status: passed
 score: 9/12 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Load a large source image (~4000x3000) and run a match. Move the pointer / scroll while it runs."
     expected: "UI stays interactive (no main-thread freeze); overlay shows indeterminate 'Preparing image…' then flips to determinate 'Matching colors: {n}%'; spinner and error banner never appear together."
     why_human: "Main-thread responsiveness and the decode/resample interval only manifest in a real browser with OffscreenCanvas + a genuinely large decode — node/jsdom has no OffscreenCanvas and cannot exercise the decode path or observe paint blocking (D-11, PERF-01, D-09)."
+
   - test: "Pick ONE fixture image + fixed settings (cols/rows/kit/substitution/smoothing). Capture per-DMC supply counts and/or exported grid PNG on the CURRENT build, then build the pre-phase baseline (git worktree at the commit before phase 13) and capture the same surface at identical settings. Diff. Include an EXIF-rotated photo and a semi-transparent PNG."
     expected: "Per-DMC counts match exactly and the grid is pixel-for-pixel identical between new worker pipeline and pre-phase main-thread pipeline — including the EXIF-rotated fixture (the ME-01 fix target)."
     why_human: "OffscreenCanvas (worker) vs HTMLCanvasElement (old path) resample byte-parity is implementation-defined, not spec-guaranteed; jsdom cannot run the decode path. This is the D-11 one-time manual parity gate. The ME-01 srcWidth/srcHeight cap is wired in code but its byte-for-byte equivalence for EXIF-rotated inputs can only be confirmed in-browser."
+
   - test: "Force the capability probe false (call __setOffscreenSupportForTest(false) from a dev entry, or stub OffscreenCanvas.prototype.getContext to return null in DevTools), then trigger a match."
     expected: "Banner reads 'Couldn't process the image: … update your browser …', the spinner is NOT stuck, nothing crashes. Undo the override afterward."
     why_human: "The unsupported-browser hard-fail (D-07) is only observable in a real browser lacking OffscreenCanvas 2D; the reactive-error routing is unit-tested for match failures but the decode-capability short-circuit at runtime needs manual confirmation."

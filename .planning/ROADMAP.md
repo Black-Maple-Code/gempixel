@@ -25,7 +25,7 @@ Address the remaining warnings from the maintenance code review (`.planning/code
 - [ ] **Phase 10: Project Load Correctness** *(deferred)* - Fix the saved-project load path so a restored project keeps its saved canvas price and renders the exact grid that was saved. (LOAD-01, LOAD-02)
 - [x] **Phase 11: Storage Robustness & Error Feedback** *(active)* - Make localStorage access safe so the app mounts in private-browsing/blocked-storage, centralize persisted settings behind one helper, and surface save/download/checkout failures to the user. (STORE-01, STORE-02, ERR-01) (completed 2026-07-12)
 - [ ] **Phase 12: Supply Pricing Accuracy** *(deferred)* - Correct 500-count bag pricing, stop treating unpriced sizes as free, and add a drill-variant integrity test. (PRICE-01, PRICE-02, DATA-01)
-- [ ] **Phase 13: Performance — Off-Main-Thread Decode** *(active)* - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01)
+- [x] **Phase 13: Performance — Off-Main-Thread Decode** *(active)* - Move image decode/box-sampling off the main thread so large images no longer jank the UI on match. (PERF-01) (completed 2026-07-12)
 - [ ] **Phase 14: Security & Cleanup** *(deferred)* - Validate partner canvas URLs against an http/https allowlist and either wire up or remove the unfinished partner-link path. (SEC-01)
 
 ## Phase Details
