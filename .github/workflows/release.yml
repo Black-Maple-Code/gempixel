@@ -101,7 +101,7 @@ jobs:
           {
             echo "gempixel release **${VERSION}**."
             echo ""
-            echo "**Deployment:** [\`registry.gem-pixel.com/gempixel:latest\`](https://gempixel.io) — reload runs automatically on the homelab runner."
+            echo "**Deployment:** [\`registry.gem-pixel.com/gempixel:latest\`](https://gem-pixel.com) — reload runs automatically on the homelab runner."
             echo ""
           } > "${NOTES_FILE}"
           gh release create "${VERSION}" --target "${GITHUB_SHA}" --title "${VERSION}" --notes-file "${NOTES_FILE}"
@@ -122,5 +122,5 @@ jobs:
           {
             echo "### Deployment Successful"
             echo "- **Version:** ${{ needs.release.outputs.version }}"
-            echo "- **Site:** https://gempixel.io"
+            echo "- **Site:** https://gem-pixel.com"
           } >> $GITHUB_STEP_SUMMARY

@@ -1,4 +1,4 @@
-# Deploying gempixel.io (web)
+# Deploying gem-pixel.com (web)
 
 Automated deployment via GitHub Actions. Static Vite production build → Docker → `registry.gem-pixel.com` → homelab reload.
 
