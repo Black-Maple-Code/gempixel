@@ -392,7 +392,7 @@ export function App() {
   // dimension-sync effect's double-source-of-truth fragility is addressed separately.
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
-  const { matchResult, symbolMap, loading, progress, restore, error: matchError } = useDiamondArtMatch({
+  const { matchResult, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
     image,
     cols,
     rows,
@@ -1639,13 +1639,30 @@ export function App() {
             </div>
           )}
 
-          {/* Loading overlay */}
+          {/* Loading overlay — one surface, two phases (D-09). During the async
+              off-thread decode/resample interval loadingPhase is 'preparing': an
+              INDETERMINATE bar + "Preparing image…" (no percentage). It flips to
+              'matching' on the worker's first onProgress tick: the DETERMINATE
+              width:{progress}% bar + "Matching colors: {progress}%". Gated by
+              {loading && …} so it clears on completion or error and never
+              co-displays with the matchError banner below. */}
           {loading && (
             <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-3">
-              <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full transition-all duration-100" style={{ width: `${progress}%` }} />
-              </div>
-              <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
+              {loadingPhase === 'preparing' ? (
+                <>
+                  <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-indigo-500 h-full w-full animate-pulse" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-300">Preparing image…</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-indigo-500 h-full transition-all duration-100" style={{ width: `${progress}%` }} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
+                </>
+              )}
             </div>
           )}
 
