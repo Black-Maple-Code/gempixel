@@ -83,9 +83,9 @@ jobs:
           set -euo pipefail
           docker build --platform linux/amd64 --no-cache \
             -f docker/Dockerfile \
-            -t registry.fretted.io/gempixel:latest \
+            -t registry.gem-pixel.com/gempixel:latest \
             .
-          docker push registry.fretted.io/gempixel:latest
+          docker push registry.gem-pixel.com/gempixel:latest
 
       - name: Create GitHub Release
         env:
@@ -101,7 +101,7 @@ jobs:
           {
             echo "gempixel release **${VERSION}**."
             echo ""
-            echo "**Deployment:** [\`registry.fretted.io/gempixel:latest\`](https://gempixel.io) — reload runs automatically on the homelab runner."
+            echo "**Deployment:** [\`registry.gem-pixel.com/gempixel:latest\`](https://gempixel.io) — reload runs automatically on the homelab runner."
             echo ""
           } > "${NOTES_FILE}"
           gh release create "${VERSION}" --target "${GITHUB_SHA}" --title "${VERSION}" --notes-file "${NOTES_FILE}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and push the gempixel web image to registry.fretted.io.
+# Build and push the gempixel web image to registry.gem-pixel.com.
 # Registry is open for now — no docker login required.
 set -euo pipefail
 
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
 cd "${REPO_ROOT}"
 
-IMAGE="registry.fretted.io/gempixel"
+IMAGE="registry.gem-pixel.com/gempixel"
 TAG="${1:-latest}"
 
 echo "Building ${IMAGE}:${TAG} (linux/amd64)..."

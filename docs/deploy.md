@@ -1,6 +1,6 @@
 # Deploying gempixel.io (web)
 
-Automated deployment via GitHub Actions. Static Vite production build → Docker → `registry.fretted.io` → homelab reload.
+Automated deployment via GitHub Actions. Static Vite production build → Docker → `registry.gem-pixel.com` → homelab reload.
 
 Mirrors the [fretted.io deploy pipeline](https://github.com/Black-Maple-Code/fretted/blob/main/docs/deploy.md).
 
@@ -65,7 +65,7 @@ These files live on the homelab under `~/infra` and are **not** in this repo:
 
 | Path | Purpose |
 |------|---------|
-| `~/infra/gempixel/docker-compose.yml` | App service pulling `registry.fretted.io/gempixel:latest` |
+| `~/infra/gempixel/docker-compose.yml` | App service pulling `registry.gem-pixel.com/gempixel:latest` |
 | `~/infra/reload-gempixel.sh` | `docker compose pull && docker compose up -d` for gempixel |
 
 Mirror the existing fretted stack layout when creating these.
