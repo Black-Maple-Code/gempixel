@@ -1,6 +1,36 @@
-import { describe, it, expect } from 'vitest';
-import { calculateSafetyPurchase, calculateFixedBagCost } from '../App';
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render } from 'preact';
+import { calculateSafetyPurchase, calculateFixedBagCost, App, DYE_LOT_WHY_SENTENCE } from '../App';
 import { packColor, priceColorPack } from '../engine/bagPlanner';
+
+// Render the App only needs the heavy side-effect modules stubbed out (the same
+// worker/viewer stubs App.test.tsx uses); the print-only report block is always
+// in the DOM (jsdom applies no CSS, so `hidden print:block` is still queryable).
+vi.mock('../engine/worker-client', () => ({
+  MatcherClient: class MockMatcherClient {
+    match = vi.fn();
+    terminate = vi.fn();
+  },
+}));
+
+vi.mock('../engine/viewer', () => ({
+  CanvasViewer: class MockCanvasViewer {
+    setData = vi.fn();
+    setDrillStyle = vi.fn();
+    setHighlightedColor = vi.fn();
+    setDrillType = vi.fn();
+    fitToContainer = vi.fn();
+    destroy = vi.fn();
+    setViewMode = vi.fn();
+    setSymbolMap = vi.fn();
+    setRoundBacking = vi.fn();
+    setGridGap = vi.fn();
+    zoomIn = vi.fn();
+    zoomOut = vi.fn();
+    resetZoom = vi.fn();
+  },
+}));
 
 // Standard price table (bag size -> unit price) shared by the fixed-bag cases.
 const priceDb = { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.4 };
@@ -78,3 +108,64 @@ describe('Fixed-bag cost is mapping-aware (WR-02)', () => {
 // Candidate 1 consolidation. Dye-lot-correct per-color packing is now covered by
 // `src/engine/__tests__/bagPlanner.test.ts` (packColor / planColorSupply), and the
 // estimate == cart property is asserted there against `compileShopifyCartLink`.
+
+// BAG-03/BAG-02 · D-08/D-10: the printable "GemPixel Supply Plan Report" must
+// mirror BOTH the savings headline and the one-sentence dye-lot "why" as static
+// text — self-contained regardless of the on-screen expander state.
+describe('Print report mirrors the savings headline + dye-lot "why" (D-10)', () => {
+  let container: HTMLDivElement;
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  function renderApp() {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    render(<App />, container);
+  }
+
+  // Locate the print-only report block (`hidden print:block` div that holds the
+  // supply table) so the assertions target the mirror, not the on-screen UI.
+  function getPrintReport(): HTMLElement {
+    const report = Array.from(container.querySelectorAll('div')).find(
+      (d) => d.className.includes('print:block') && d.querySelector('table') !== null,
+    );
+    expect(report).toBeTruthy();
+    return report as HTMLElement;
+  }
+
+  it('renders the static dye-lot sentence inside the print report', () => {
+    renderApp();
+    const report = getPrintReport();
+    expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+  });
+
+  it('renders the savings headline inside the print report (zero-state at empty plan)', () => {
+    renderApp();
+    const report = getPrintReport();
+    // With no image loaded the shared aggregator reports no bulk savings, so the
+    // mirrored headline is the truthful zero-state line (D-08) — still present,
+    // never hidden.
+    expect(report.textContent).toContain('No bulk savings at this size');
+  });
+
+  it('keeps the print sentence independent of the on-screen expander (closed by default)', () => {
+    renderApp();
+    // The "Why these bags?" expander is collapsed by default, so its on-screen
+    // copy is absent — yet the print mirror still carries the sentence exactly once.
+    const whyButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-controls') === 'why-these-bags-explainer',
+    );
+    expect(whyButton).toBeTruthy();
+    expect(whyButton?.getAttribute('type')).toBe('button');
+    // Accessible name is exactly "Why these bags?" (the ▶ arrow is aria-hidden).
+    expect(whyButton?.textContent?.replace('▶', '').trim()).toBe('Why these bags?');
+    expect(whyButton?.getAttribute('aria-expanded')).toBe('false');
+
+    const occurrences = (container.textContent || '').split(DYE_LOT_WHY_SENTENCE).length - 1;
+    expect(occurrences).toBe(1); // only the static print mirror, not the collapsed expander
+  });
+});
