@@ -1,310 +1,317 @@
 # Architecture Research
 
-**Domain:** Client-side (Preact) diamond-art planner — integrating a two-mode viewport wizard + fulfillment-ready order packet into a shipped v2.1 app
-**Researched:** 2026-07-12
-**Confidence:** HIGH (grounded in the actual v2.1 source: `App.tsx`, `engine/checkout.ts`, `engine/variants.ts`, `engine/bagPlanner.ts`, `engine/projectStore.ts`, `engine/export.ts`, `engine/types.ts`, `features/wizard/*`)
+**Domain:** Client-side image → diamond-art planner — v4.0 canvas-first redesign inside an existing Preact/Vite codebase (integration, not rewrite)
+**Researched:** 2026-07-13
+**Confidence:** HIGH (grounded in the actual source: `src/App.tsx`, `src/features/*`, `src/engine/*`; the design handoff README)
+
+## TL;DR (for the roadmapper)
+
+The engine and the hook layer are already clean, pure seams and do **not** need to change to support the redesign — with three small, additive exceptions (detected-color-count exposure, a color-count target reducer, and a quote selector). The redesign is overwhelmingly a **presentation/shell rework**: dissolve the three-column (left control panel · canvas · right legend) shell into a canvas-first top-bar-navigated 4-step flow, and re-slice the existing four "steps" into the design's four (Upload → Refine → Supplies → Order).
+
+**Recommended approach:** strangler. Keep `App.tsx` as the single state owner (it already is), keep the `Step*` children pure/props-only (they already are), build **new** screen components alongside the old ones, and swap the render tree behind a flag. The existing pure engine boundary (worker → substitution → smoothing → `planOrderSupply`) is preserved verbatim.
 
 ---
 
 ## Standard Architecture
 
-### System Overview (as it exists today, v2.1)
+### System Overview (target after redesign)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  ORCHESTRATOR  — src/App.tsx  (2319 lines, ~40 useState/usePersistent) │
-│  Owns: image, cols/rows, unit, drillStyle/Type, kit, excludedColors,   │
-│  vendor, priceDb, canvas cost, affiliate, sortedMatches derivation,    │
-│  handleShopifyCheckout, download handlers, ALL layout chrome.          │
-│  Renders: left sidebar (My Images + wizard step body) · top progress   │
-│  · <main> viewport + floating HUD · right legend aside · modals.       │
-├───────────────┬───────────────────────────┬──────────────────────────┤
-│  HOOKS        │  FEATURE COMPONENTS        │  PERSISTENCE             │
-│  useWizard    │  wizard/steps/Step1..4     │  usePersistentState      │
-│  useDiamond-  │  (pure presentational,     │  projectStore (CRUD +    │
-│   ArtMatch    │   props-only; Step3 =      │   quota) · safeStorage   │
-│  usePersist-  │   "Cost & Order",          │   (guarded localStorage) │
-│   entState    │   Step4 = "Save")          │                          │
-├───────────────┴───────────────────────────┴──────────────────────────┤
-│  ENGINE  — src/engine/*  (PURE: no Preact, no DOM*, no persistence)    │
-│  color · ingest · palette · candidates · smoothing · symbols          │
-│  variants (drill-bag SKU table) · bagPlanner (packColor/planColorSupply│
-│  /withSafetyMargin) · checkout (VENDOR_REGISTRY, cart link, canvas cost)│
-│  export (canvas PNG — *DOM canvas only) · matcher.worker + worker-client│
+│  DESIGN-SYSTEM LAYER  (src/styles/atelier.css + Tailwind v4 @theme)    │
+│  Atelier tokens (bg #F4F1E9, accent #0E6E5C), fonts, radii, shadow     │
+├──────────────────────────────────────────────────────────────────────┤
+│  UI PRIMITIVES  (src/ui/)                                              │
+│  ┌──────────┐ ┌───────────────┐ ┌────────┐ ┌─────────┐ ┌───────────┐  │
+│  │ StepNav  │ │SegmentedControl│ │ Slider │ │ SizeCard│ │ Pill/Btn  │  │
+│  └──────────┘ └───────────────┘ └────────┘ └─────────┘ └───────────┘  │
+├──────────────────────────────────────────────────────────────────────┤
+│  SCREENS  (src/features/journey/) — pure, props-only                   │
+│  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌─────────┐                   │
+│  │ Upload  │  │ Refine  │  │ Supplies │  │  Order  │                   │
+│  │ Screen  │  │ Screen★ │  │  Screen  │  │  Screen │                   │
+│  └─────────┘  └─────────┘  └──────────┘  └─────────┘                   │
+├──────────────────────────────────────────────────────────────────────┤
+│  SHELL + STATE OWNER  (src/App.tsx)                                    │
+│  owns all useState; useWizard (step machine); wires handlers as props  │
+├──────────────────────────────────────────────────────────────────────┤
+│  HOOKS  (composition seams — mostly UNCHANGED)                         │
+│  ┌────────────────────┐  ┌───────────┐  ┌───────────────────┐         │
+│  │ useDiamondArtMatch  │  │ useWizard │  │ usePersistentState│         │
+│  │ (worker→sub→smooth) │  │           │  │                   │         │
+│  └─────────┬──────────┘  └───────────┘  └───────────────────┘         │
+├────────────┼───────────────────────────────────────────────────────── ┤
+│  ENGINE  (pure, no Preact/DOM — UNCHANGED except additive)             │
+│  color.ts · smoothing.ts · ingest(worker) · palette · variants ·      │
+│  bagPlanner(planOrderSupply)★ · money.ts★ · viewer.ts · symbols ·     │
+│  checkout.ts · projectStore · safeStorage    (★ = single-SoT anchors)  │
 └──────────────────────────────────────────────────────────────────────┘
+       new engine additions: quote.ts (NEW) · color-count target reducer
 ```
 
-**Key observation:** `App.tsx` is a *god component*. State lives there; `Step1..4` are thin, fully-controlled presentational children receiving ~25 props each. The engine is already cleanly pure and UI-agnostic — `bagPlanner.packColor` is the single packing primitive shared by both the legend estimate (`planColorSupply`, called in `App.tsx` `sortedMatches` line 914) and the cart (`checkout.compileShopifyCartLink` line 54). This shared-primitive pattern is the model for how the order packet should feed both modes.
+### Component Responsibilities (target)
 
-### Component Responsibilities (today)
-
-| Component | Owns | Relevance to v3.0 |
-|-----------|------|-------------------|
-| `App.tsx` | All app state + all chrome | The surface every UX rework touches; must be de-risked, not big-banged |
-| `useWizard` | `step: 1..4`, `canEnter`, `next/back/goTo/reset` | The seam to extend for viewport-native steps + mode gating |
-| `useDiamondArtMatch` | Worker lifecycle, `matchResult`, `symbolMap`, `restore` | Untouched by v3.0; pure match pipeline |
-| `engine/bagPlanner` | `packColor`, `planColorSupply`, `withSafetyMargin`, `priceColorPack` | The gem-bag optimizer; already pure — extend here, not in UI |
-| `engine/checkout` | `VENDOR_REGISTRY`, `calculateCanvasCost`, `compileShopifyCartLink` | Vendor removal + canvas-spec source |
-| `engine/variants` | `DRILL_VARIANTS` SKU lookup (5107 lines) | Price/data integrity test target |
-| `engine/projectStore` | `ProjectData` shape + localStorage CRUD | Model for the packet's serializable, versioned contract |
+| Component | Responsibility | New / Modified / Unchanged |
+|-----------|----------------|----------------------------|
+| `engine/*` (color, smoothing, palette, variants, bagPlanner, money, viewer, symbols, worker) | Pure logic; the matching pipeline + supply/cost single source | **UNCHANGED** (worker contract intact) |
+| `engine/quote.ts` | cols→inches + curated canvas cost table + shipping + tax estimate, integer-cents; the one order-total source | **NEW** |
+| color-count target reducer (add to `engine/color.ts`) | Merge rarest colors into nearest neighbor until N distinct remain | **NEW** (sits beside `substituteLowCountColors`) |
+| `useDiamondArtMatch` | image→grid pipeline; **also expose `detectedColorCount`** and accept a color-count target | **MODIFIED (additive)** |
+| `useWizard` | 4-step machine (`step`, `canEnter`, `next/back/goTo`) | **UNCHANGED** (already models exactly the 4 steps) |
+| `App.tsx` | State owner + handler factory; render-tree swap to canvas-first shell | **MODIFIED** (shell only; state stays) |
+| `features/journey/UploadScreen` | Centered dropzone + recents | **NEW** (re-slice of Step1's ingest half) |
+| `features/journey/RefineScreen` ★ | Canvas hero + always-open rail: size cards, edge-cleanup seg, color-count slider | **NEW** (fuses Step1 size + smoothing + substitution) |
+| `features/journey/SuppliesScreen` | Supply/legend table + order-summary panel | **NEW** (re-slice of right `<aside>` + Step3 cost) |
+| `features/journey/OrderScreen` | Confirm: locked spec + finish + address + price breakdown | **NEW** (re-slice of Step3 order + Step4) |
+| `ui/*` primitives | StepNav, SegmentedControl, Slider, SizeCard, Pill, Button | **NEW** |
+| `styles/atelier` tokens | Light-only Atelier tokens + fonts | **NEW** (partly present already) |
+| existing `Step1Ingest…Step4Export`, left/right `<aside>` chrome, theme toggle | — | **RETIRED** at the end of strangle |
 
 ---
 
-## Per-Feature Integration Analysis
-
-Legend: **[NEW]** = new file/module · **[MOD]** = modify existing · **[MOVE]** = relocate logic out of `App.tsx`.
-
-### Feature 3 — Remove Prodigi (smallest; do first as a warm-up)
-
-**Integration points (verified):** the `prodigi` literal appears in exactly 4 files:
-- `engine/checkout.ts` — `VENDOR_REGISTRY` key + entry (lines 119–143) and the `vendorKey` union on `calculateCanvasCost` (line 166).
-- `App.tsx` — `useState<'lumaprints' | 'prodigi' | 'finerworks'>` (line 168) + `selectedVendor` usage.
-- `features/wizard/steps/Step3Canvas.tsx` — the `selectedVendor` prop union (lines 25–26).
-- `engine/__tests__/checkout.test.ts` — assertions.
-
-**NEW vs MODIFIED:** all **[MOD]**. Delete the `prodigi` registry entry; narrow the union to `'lumaprints' | 'finerworks'` in checkout.ts, App.tsx, Step3Canvas.tsx (let `tsc --noEmit` surface every stray reference). Update the checkout test.
-**Data-flow change:** none structural. **Guard:** `selectedVendor` can be restored as `'prodigi'` from a saved `ProjectData` — add a normalizing fallback on load (unknown vendor → `'lumaprints'`), mirroring the existing legacy-host remap in `customTemplateCodec` (App.tsx lines 32–36).
-
-### Feature 4 — Price accuracy (500-bag cost, no $0 unpriced, variant integrity test)
-
-**Integration points (verified):**
-- `engine/bagPlanner.ts` — `priceColorPack` uses `priceDb[size] || 0` (line 153) and `minCostBulk`'s `priceOf = priceDb[size] ?? 0` (line 89). A **missing/zero price silently yields $0** — the "$0 unpriced" bug: any color packed into a size absent from `priceDb` (or priced 0) vanishes from the estimate rather than flagging.
-- `App.tsx` — the `priceDb` seed `{200,500,1000,2000}` (lines 174–179) and the `drillType` effect that resets it per type (lines 549–560). The "500-bag cost" fix lives in these seeds + `defaultPacketCost` (bagPlanner lines 199–226 — which notably has **no 500 branch**; it handles 200/1000/2000/5000).
-- `engine/variants.ts` — the SKU table; DATA-01 wants an integrity test.
-
-**NEW vs MODIFIED:**
-- **[MOD]** `bagPlanner`: replace the silent `|| 0` / `?? 0` fallbacks with an explicit "unpriced" signal so the UI/packet can flag it instead of under-counting. Recommend a pure return of `{ cost, hasUnpricedSize, unpricedSizes[] }` — stays pure.
-- **[MOD]** correct the 500-tier seed values in the `App.tsx` presets and align `defaultPacketCost` (add/verify a 500 branch).
-- **[NEW]** `engine/__tests__/variants.integrity.test.ts` (DATA-01): assert every `DRILL_VARIANTS[code][shape]` value is a positive-integer SKU; check for duplicate SKUs across colors (spot-check found codes **731/732 and 781/782 share identical SKUs** — either intended aliases or a data bug the test must adjudicate); and that every bag size any color can be packed into has a `priceDb` entry.
-
-**Data-flow change:** `priceDb` becomes the single validated price source consumed by `bagPlanner` → (legend estimate ∪ cart ∪ **new order packet**). The new "unpriced" flag is threaded engine → packet.
-
-### Feature 7 — Gem-bag optimization (feeds both cart and packet)
-
-**Integration point (verified):** already centralized and pure in `engine/bagPlanner.ts`. `packColor` enforces the dye-lot ≤800 rule + availability + `minCostBulk`; `planColorSupply` yields the priced per-color row. Both `checkout.compileShopifyCartLink` and `App.tsx` `sortedMatches` call it → they **cannot diverge**. This is the architectural template for v3.0.
-**NEW vs MODIFIED:** **[NEW]** a pure aggregator `planOrderSupply(counts, shape, priceDb): OptimizedBagList` in/next to `bagPlanner.ts` mapping `matchResult.counts` → the full optimized bag list + totals + unpriced flag. Both the Artist cart and the Customer packet consume this **one** function.
-**Data-flow change:** `App.tsx` currently inlines the aggregation (`sortedMatches`, `totalPackets`, `safetyDrillCost`, lines 902–970). **[MOVE]** that reduction into the pure aggregator so packet + legend + cart share byte-identical numbers.
-
-### Feature 5 — Percent-based service fee
-
-**Integration point (verified):** no existing fee anywhere (grep for `serviceFee` = 0 hits). Current total is `totalCostSafety = canvasBaseCost + canvasShippingEstimate + safetyDrillCost` (App.tsx line 972).
-**NEW vs MODIFIED:**
-- **[NEW]** a pure `computeQuote(parts, feePercent): Quote` in a new `engine/pricing.ts` (or extend `checkout.ts`) returning `{ subtotal, feePercent, feeAmount, total }`. Keep the fee a *configurable input*, never a hard-coded constant.
-- **[MOD]** `App.tsx` replaces the inline `totalCostSafety` sum with `computeQuote(...)`.
-**Data-flow change:** the fee belongs **in the quote computation, after subtotal, before total** — and only for **Customer** mode (Artist self-serves drills at cost via the affiliate cart, so no service fee). Mode therefore gates whether `feePercent > 0`. The `Quote` flows into the packet unchanged.
-
-### Feature 6 — Customer order packet (the forward-compatible contract — see dedicated section)
-
-**Integration points:**
-- **[NEW]** `engine/orderPacket.ts` — pure `assembleOrderPacket(input): OrderPacket`. Composes: design PNG (via `export.drawCanvasOnly` / `drawCombinedCanvasSheet`), optimized bag list (Feature-7 aggregator), canvas spec (`checkout.calculateCanvasCost` + dimensions + `sizingAdviceData`), `Quote` (Feature 5), and a `largeOrderReview` flag.
-- **[MOD]** `export.ts` — reuse `drawCanvasOnly`; add a `canvasToDataUrl`/`canvasToBlob` accessor so the packet can embed/attach the PNG **without** triggering a browser download (today only `triggerCanvasDownload` exists, lines 260–288).
-- **[NEW]** a serializer producing the exportable manifest (JSON + attached PNG); reuse `projectStore`'s guarded-write + `generateUUID` patterns for the packet id.
-- **[MOD]** `App.tsx` Customer "Buy" handler calls the assembler instead of `handleShopifyCheckout`.
-**Data-flow change:** new terminal flow `matchResult + dimensions + priceDb + feePercent → assembleOrderPacket → serialize → download/export`. Shaped so the *same* JSON can later `POST` to the v4.0 backend with zero change.
-
-### Feature 1 — Viewport-native interactive wizard (the load-bearing rework)
-
-**Integration points:** `features/wizard/useWizard.ts` (state machine), plus `App.tsx` chrome — left sidebar step body (lines 1151–1277), top progress bar (1381–1435), floating HUD (1467–1545), right legend aside (1708–1994), mobile tab bar (2103–2157).
-**NEW vs MODIFIED:**
-- **[MOD]** extend `useWizard` from a raw step counter into a step *descriptor* model — each step exposes `{ id, title, canEnter, contextualActions }` so the HUD can render "what can I do now" without `App` hard-coding per-step JSX. Preserve `canEnter` logic exactly (tests assert on it).
-- **[NEW]** `features/viewport/ViewportHud.tsx` — promote the inline floating HUD (currently anonymous JSX in `App`, gated on `image`) into a component rendering the *current step's* guidance + contextual actions in-canvas.
-- **[MOVE]** step bodies (`Step1..4`) migrate from "sidebar page" slots to "surfaced-in-viewport panel" slots. Because they're already pure props-only components, this is a **host swap, not a rewrite** — the strangler seam.
-**Data-flow change:** guidance/actions move from sidebar-position to HUD-position, driven by `useWizard`. State ownership unchanged (still `App`), so risk is contained to layout, not logic.
-
-### Feature 2 — Customer vs Artist mode split (rides ON TOP of Feature 1)
-
-**Integration points:** `useWizard` (which steps/actions exist per mode), `App.tsx` (gates vendor UI, affiliate cart vs Buy-packet CTA, service fee), `Step3Canvas` (affiliate + vendor = Artist-only; packet CTA = Customer).
-**NEW vs MODIFIED:**
-- **[NEW]** `features/mode/useAppMode.ts` — a persisted top-level `mode: 'customer' | 'artist'` via `usePersistentState` (mirrors the `theme` pattern at App.tsx lines 123–125). The single new top-level state atom.
-- **[MOD]** `useWizard` accepts `mode` and derives the step list from it (Artist: design→palette→cost→order+cart; Customer: collapse to design→review→buy-packet). `canEnter` already parameterizes on data; add mode.
-- **[MOD]** `App.tsx` gates: Artist → affiliate cart (`handleShopifyCheckout`) + own-canvas ordering (`VENDOR_REGISTRY` doors) + `feePercent = 0`; Customer → `assembleOrderPacket` + `feePercent > 0`, vendor/affiliate UI hidden.
-- **[NEW]** a mode selector at entry (above/before the viewport).
-**Data-flow change:** `mode` becomes a top-level branch feeding `useWizard` (step set), the pricing quote (fee on/off), and the terminal action (cart vs packet). Because mode only *selects among* wiring Feature 1 already made HUD-driven and Features 5/6 already made pure, it needs no second `App.tsx` rewrite — see sequencing.
-
----
-
-## The Critical Sequencing (avoid double-rework of App.tsx)
-
-**Recommended build order — dependency-respecting:**
-
-```
-1. Feature 3  Remove Prodigi                    (isolated; tsc-guided; warms up vendor types)
-2. Feature 4  Price accuracy + integrity test   (pure engine; unblocks a trustworthy quote)
-3. Feature 7  Bag-optimization aggregator       (pure; MOVE the App reduction into engine)
-4. Feature 5  Service fee → engine/pricing.ts   (pure; consumes 3+4)
-5. Feature 6  Order-packet assembler + serializer  (pure; consumes 3+4+5+export)
-   ── engine now exposes pure, mode-agnostic building blocks ──
-6. Feature 1  Viewport-native wizard rework     (useWizard descriptors; strangler-migrate
-              Step1..4 hosts; add ViewportHud)
-7. Feature 2  Mode split ON TOP of 6            (useAppMode; parameterize useWizard by mode;
-              gate cart-vs-packet + fee using the pure blocks from 4/5/6)
-```
-
-**Why this order (the two constraints in the brief):**
-
-**(a) Mode split rides on the new viewport wizard, not the old one.** Do all engine work (2–5) and the packet (6) **first**, while `App.tsx` is still the familiar 4-step wizard — these changes hide behind pure functions and don't touch layout. Then rework the *presentation* (Feature 1) **once**. Only after the HUD-driven step-descriptor model exists do you introduce `mode` (7→2), which merely *chooses among* step-sets and terminal actions the earlier steps already made pure. If mode were built before Feature 1, you'd wire mode branching into the old sidebar wizard and then rip it out during the viewport rework — the exact double-rework to avoid. Gating (cart vs packet, fee vs no-fee) is cheap to add because Features 4/5/6 already isolated it into pure functions; the mode branch is a one-line selector at each seam, not a re-plumb.
-
-**(b) Strangler, not big-bang, for the sidebars.** `App.tsx`'s three wizard-driven surfaces — left sidebar step body, top progress bar, right legend aside — are already fed by pure props-only `Step1..4` components and derived data (`sortedMatches`, `leftLegendColors`). Migrate incrementally:
-1. Introduce `ViewportHud` *alongside* the existing sidebars (both visible), driven by the same `useWizard` step. Ship it.
-2. Move one step's contextual actions at a time from sidebar into the HUD; hide that sidebar region behind a flag as each moves. The `leftPanelCollapsed`/`rightPanelCollapsed` state already exists (App.tsx 113–114) — reuse it as the retire-the-sidebar toggle.
-3. When all step bodies render in-viewport, delete the sidebar `<aside>` shells last. The right legend aside can persist longest (reference chrome, not wizard flow).
-Each step is independently shippable and testable — `App.test.tsx` / `integration.test.tsx` assert on step reachability (`canEnter`, disabled Next), which the descriptor model must preserve.
-
-**Engine-purity guard throughout:** Features 2–7 add logic to `engine/*` (pure: no Preact, no DOM except `export.ts`'s canvas, no persistence — as `bagPlanner.ts`'s own header contract states). `App`/hooks/features remain the only place touching state, DOM, and storage. This keeps the packet assembler and optimizer node/vitest-testable exactly like `bagPlanner.test.ts`.
-
----
-
-## Order-Packet Data Model (forward-compatible v4.0 contract)
-
-The highest-leverage artifact: it must serialize client-side in v3.0 and be `POST`ed **unchanged** to a v4.0 backend + admin dashboard. Design it as a **versioned, self-describing, pure-data manifest** — no functions, no DOM handles, no class instances. Model it on the frozen-shape discipline already used for `ProjectData` (`projectStore.ts` lines 23–43).
-
-```typescript
-// engine/orderPacket.ts  (PURE — no Preact/DOM/persistence in the type or the assembler)
-export interface OrderPacket {
-  schemaVersion: 1;                 // bump on breaking change; backend switches on it
-  packetId: string;                 // crypto UUID (reuse generateUUID)
-  createdAt: string;                // ISO 8601
-  mode: 'customer';                 // packets are a Customer-mode artifact
-  status: 'draft' | 'submitted';    // client sets 'draft'; backend owns lifecycle later
-
-  design: {
-    imageName: string;
-    // Embed as data URL for an offline packet; a v4.0 backend swaps this for an
-    // uploaded asset ref WITHOUT changing the surrounding shape:
-    pngDataUrl?: string;            // v3.0 offline
-    pngAssetRef?: string;           // v4.0 backend-assigned (mutually exclusive)
-    thumbnailDataUrl?: string;
-  };
-
-  canvas: {                         // from checkout.calculateCanvasCost + dimensions
-    cols: number; rows: number;
-    unit: 'grid' | 'cm' | 'inch';
-    widthIn: number; heightIn: number;
-    drillStyle: 'square' | 'round';
-    drillType: 'standard' | 'ab' | 'glow' | 'crystal';
-    baseCost: number;
-  };
-
-  bags: {                           // from the Feature-7 pure aggregator
-    shape: 'square' | 'round';
-    items: Array<{
-      dmcCode: string;
-      exactCount: number;
-      safetyCount: number;          // +10% margin
-      bySize: Record<number, number>;   // e.g. { 200: 2, 2000: 1 }  (Record, never Map)
-      lineCost: number;
-    }>;
-    totalDrills: number;
-    totalBags: number;
-    hasUnpricedSize: boolean;       // Feature-4 flag — surfaces data gaps to the admin
-    unpricedSizes: number[];
-  };
-
-  quote: {                          // from engine/pricing.computeQuote (Feature 5)
-    currency: 'USD';
-    drillsSubtotal: number;
-    canvasSubtotal: number;
-    shipping: number;
-    subtotal: number;
-    serviceFeePercent: number;
-    serviceFeeAmount: number;
-    total: number;
-  };
-
-  review: {
-    largeOrder: boolean;            // e.g. total > threshold OR totalDrills > N
-    flags: string[];               // 'unpriced-sizes', 'oversized-canvas', …
-  };
-
-  customer?: {                      // optional now; backend fills/validates in v4.0
-    name?: string; email?: string; notes?: string;
-  };
-}
-```
-
-**Contract rules that make it forward-compatible:**
-1. **`schemaVersion` first-class** — the v4.0 backend branches on it; never reuse a field's meaning across versions.
-2. **Pure data only** — JSON round-trippable; no `HTMLImageElement`, no `Map` (note the app's `colorMap` is a `Map` — the packet must use `Record`), no functions. This is exactly why the assembler lives in the pure engine layer.
-3. **Additive evolution** — v4.0 adds fields (`pngAssetRef`, `status` transitions, `customer` validation) without removing v3.0 ones; `design` carries both an offline `pngDataUrl` and a future `pngAssetRef` slot so the upload swap is non-breaking.
-4. **Server-authoritative fields present but client-defaulted** — `status: 'draft'`, empty `customer` — so the POST body shape already matches what the backend expects; the backend just takes ownership.
-5. **Numbers precomputed and frozen at assembly** — the packet is a *snapshot* (like a saved `ProjectData` grid), so a later price-table edit can't retroactively change a submitted order; the admin dashboard trusts the packet's own numbers.
-
-**Assembler placement:** `engine/orderPacket.ts::assembleOrderPacket(input)` — pure, unit-tested like `bagPlanner`. `App.tsx` gathers the inputs (it owns state) and calls it; serialization/download reuses `export.triggerCanvasDownload` + a JSON blob writer patterned on `projectStore`'s guarded writes.
-
----
-
-## Recommended Project Structure (additions)
+## Recommended Project Structure
 
 ```
 src/
-├── engine/
-│   ├── bagPlanner.ts        # [MOD] add planOrderSupply aggregator + unpriced flag
-│   ├── pricing.ts           # [NEW] computeQuote (subtotal → fee → total)
-│   ├── orderPacket.ts       # [NEW] OrderPacket type + assembleOrderPacket (pure)
-│   ├── checkout.ts          # [MOD] drop prodigi; narrow vendor union
-│   ├── variants.ts          # [MOD] (data only) + integrity test
-│   └── __tests__/
-│       ├── variants.integrity.test.ts   # [NEW] DATA-01
-│       ├── pricing.test.ts              # [NEW]
-│       └── orderPacket.test.ts          # [NEW]
+├── styles/
+│   └── atelier.css          # NEW: @theme tokens, @font-face, global light theme
+├── ui/                      # NEW: shared, pure, dumb primitives
+│   ├── StepNav.tsx          #   the ONLY navigator (desktop bar + mobile progress)
+│   ├── SegmentedControl.tsx #   edge-cleanup Off/Light/Med/Strong (+ any seg)
+│   ├── Slider.tsx           #   color-count slider
+│   ├── SizeCard.tsx         #   size option w/ live drill count + BEST tag
+│   ├── Pill.tsx  Button.tsx SpecRow.tsx
 ├── features/
-│   ├── mode/
-│   │   └── useAppMode.ts    # [NEW] persisted 'customer' | 'artist'
-│   ├── viewport/
-│   │   └── ViewportHud.tsx  # [NEW] in-canvas step guidance + contextual actions
-│   └── wizard/
-│       └── useWizard.ts     # [MOD] step descriptors + mode parameterization
-└── App.tsx                  # [MOD] strangler-migrate chrome; gate mode; call assembler
+│   ├── journey/             # NEW: the 4 canvas-first screens (pure, props-only)
+│   │   ├── UploadScreen.tsx
+│   │   ├── RefineScreen.tsx     ★ canvas + always-open refine rail
+│   │   ├── SuppliesScreen.tsx
+│   │   ├── OrderScreen.tsx
+│   │   └── AppShell.tsx         # top bar + StepNav + <Save>; renders active screen
+│   ├── wizard/              # useWizard stays; old steps retired at end
+│   └── match/               # useDiamondArtMatch (additive change only)
+├── engine/                  # unchanged + quote.ts (NEW) + color-count reducer
+│   └── quote.ts             # NEW single-source order quote (integer cents)
+├── hooks/
+│   ├── usePersistentState.ts
+│   └── useOrderQuote.ts     # NEW thin selector: (orderPlan, cols, rows) → quote
+└── App.tsx                  # state owner; render tree swaps to <AppShell/>
 ```
 
-**Structure rationale:**
-- **`engine/`:** keep every new *computation* here — pure, node-testable, mode-agnostic. The codebase already rewards this (`bagPlanner` shared by cart+legend is the proof).
-- **`features/` + hooks:** every new *presentation / state* atom (mode, HUD) lives here, matching the existing `features/wizard` split.
-- **`App.tsx`:** shrinks as logic is extracted, which is precisely what makes the Feature-1 layout rework survivable.
+### Structure Rationale
+
+- **`ui/` vs inline:** the segmented control appears in Refine (edge cleanup) and again on mobile; the slider, step-nav, size card, and pills all recur. Extracting them once kills the Tailwind-soup duplication that made the old `Step*` files hard to read, and gives one place to apply Atelier tokens. **Recommend shared primitives, not inline.**
+- **`features/journey/` (new) beside `features/wizard/` (old):** strangler isolation — the two trees never fight; the old one is deleted only after the new one passes UAT. Screens stay pure/props-only, exactly like today's `Step*`.
+- **`engine/quote.ts` (new module, not inline in App):** mirrors the `planOrderSupply` precedent — a pure aggregator is the *only* place numbers are computed, so Supplies and Order literally read the same object.
 
 ---
 
-## Anti-Patterns to Avoid
+## Architectural Patterns
 
-### Anti-Pattern 1: Branching mode inside the old sidebar wizard first
-**What people do:** add `if (mode === 'customer')` throughout the current 4-step sidebar render, then later move it all to the viewport.
-**Why it's wrong:** guarantees the double-rework the brief warns against — every mode branch written against sidebar layout is thrown away when the HUD lands.
-**Do instead:** land the pure engine blocks + packet, then the HUD rework, then mode as a thin selector over both.
+### Pattern 1: Strangler shell swap, state owner unchanged
 
-### Anti-Pattern 2: Assembling the packet in `App.tsx`
-**What people do:** build the `OrderPacket` inline in the Buy handler using local state, `Map` color maps, and `HTMLImageElement`.
-**Why it's wrong:** non-serializable handles leak in; the shape drifts from what a backend can accept; it's untestable in node.
-**Do instead:** pure `assembleOrderPacket` in `engine/`; `App` only supplies plain inputs.
+**What:** `App.tsx` keeps owning every `useState`/`useMemo`/handler (it already does — ~2450 lines of state + derivations). Only the JSX return changes: replace the `<aside>left · <main>canvas · <aside>right` three-column tree with `<AppShell>` that renders one journey screen per `wizard.step`. New screens receive the same props the old `Step*` received.
 
-### Anti-Pattern 3: Silent `|| 0` pricing
-**What people do:** keep `priceDb[size] || 0` so a missing tier just costs $0 (current bagPlanner behavior).
-**Why it's wrong:** produces the "$0 unpriced" bug and a packet the admin can't trust.
-**Do instead:** return an explicit `hasUnpricedSize` flag; surface it in legend + packet `review.flags`.
+**When:** subsequent-milestone redesigns where the state model is sound but the layout is being reimagined.
 
-### Anti-Pattern 4: Big-bang delete of the sidebars
-**What people do:** rip out both `<aside>` shells and rebuild the viewport in one PR.
-**Why it's wrong:** breaks the many `App.test`/`integration.test` reachability assertions at once; no shippable intermediate.
-**Do instead:** strangler — HUD alongside sidebars, migrate one step's actions at a time behind the existing `*PanelCollapsed` toggles, delete shells last.
+**Trade-offs:** App.tsx stays large during transition (acceptable; optionally extract a `useProjectController()` hook later to shrink it — not required for the redesign). Zero engine risk.
+
+```tsx
+// AppShell renders exactly one screen; StepNav is the sole navigator.
+<AppShell step={wizard.step} nav={wizard}>
+  {wizard.step === 1 && <UploadScreen {...uploadProps} />}
+  {wizard.step === 2 && <RefineScreen {...refineProps} />}   {/* canvas + rail */}
+  {wizard.step === 3 && <SuppliesScreen {...suppliesProps} />}
+  {wizard.step === 4 && <OrderScreen {...orderProps} />}
+</AppShell>
+```
+
+### Pattern 2: Pure transforms inside the match hook (already the law here)
+
+**What:** edge-cleanup (`smoothing.smoothMatches`) and color reduction (`color.substituteLowCountColors`) are **already** pure engine functions run in a `useMemo` *after* the worker returns, in `useDiamondArtMatch`. The worker contract (raw match) is never touched. The redesign's "edge cleanup" and "color count" controls are just new UI over inputs that already flow into this exact seam.
+
+**When:** any Refine transform that must re-render the chart. Add it as a pure `engine/` function invoked in the same post-worker `useMemo`; never move it into the worker, never make it stateful.
+
+**Trade-offs:** transforms re-run on every relevant input change (cheap; grids are ≤ ~10k cells and this already ships). Keeps determinism + testability.
+
+```ts
+// useDiamondArtMatch.ts (existing pipeline — DO NOT restructure):
+let { matches, counts } = rawMatchResult;             // worker output
+if (enableSubstitution) ({matches,counts} = substituteLowCountColors(...)); // color reduce
+if (enableSmoothing)   ({matches,counts} = smoothMatches(matches,cols,rows,strength)); // edges
+```
+
+**Mapping the design controls onto existing inputs:**
+- **Edge cleanup 4-seg** `Off/Light/Med/Strong` → `enableSmoothing=false` / `smoothingStrength = 1|2|3`. Already fully supported — pure UI wiring, no engine change.
+- **Color-count slider** → see Pattern 3 (needs one additive engine function).
+
+### Pattern 3: Color-count slider = new target reducer (the one real engine addition for Refine)
+
+**What:** today's `substituteLowCountColors(matches, counts, candidates, threshold)` merges every color with `count ≤ threshold` into its nearest-Lab high-count neighbor. The design's slider is a **target count N** (floor 8 → detected max), not a threshold. Add a sibling pure function that iteratively merges the currently-rarest color into its nearest used neighbor until exactly `N` distinct colors remain, reusing the same `getColorDistance(lab,lab)` machinery.
+
+**Detected color count (drives the slider max):** = number of distinct codes in the **raw** worker output, *before* substitution/smoothing: `Object.keys(rawMatchResult.counts).length`. Expose it from `useDiamondArtMatch` as `detectedColorCount`. The caption "24 of 26 matched" = `target 24` of `detected 26`.
+
+```ts
+// engine/color.ts (NEW, additive — leave substituteLowCountColors intact):
+export function reduceToColorCount(
+  gridCodes: string[], counts: Record<string,number>,
+  activeCandidates: DmcColor[], targetCount: number
+): { codes: string[]; counts: Record<string,number> } { /* merge rarest→nearest until N */ }
+```
+
+**When:** wire the slider value as `targetColorCount` through the hook; when `target >= detected`, it's a no-op (all colors kept). Default the handle near the top (merge only the rarest one-offs), matching the design.
+
+**Trade-offs:** keeps the existing threshold substitution available (or retire it once the slider ships); the reducer is O(merges × colors), trivial for tens of colors.
+
+### Pattern 4: Single-source quote selector (numbers can't diverge)
+
+**What:** create `engine/quote.ts` + `useOrderQuote(orderPlan, cols, rows, opts)` — the *only* place the order total is assembled: drill cost (`orderPlan.optimizedCostCents`) + canvas print (cols→inches curated cost table) + shipping + tax estimate, all in **integer cents via `money.ts`**. Both `SuppliesScreen` (Est. total) and `OrderScreen` (Total today) read the same returned object. This is the `planOrderSupply` pattern extended to the whole order.
+
+**When:** always — the design explicitly requires Supplies "Est. total" and Order "Total today" to be identical.
+
+```ts
+// engine/quote.ts (NEW):
+export interface OrderQuote {
+  canvasCents: number; shippingCents: number; taxCents: number;
+  drillsCents: number; totalCents: number; sizeIn: { w: number; h: number };
+}
+export function buildQuote(orderPlan: OrderSupplyPlan, cols: number, rows: number, ...): OrderQuote
+```
+
+**Trade-offs:** cols→inches uses the established 10-dots/inch rule (`cols/10`), already used in `sizingAdviceData` and `calculateCanvasCost(unit='grid')`. For v4.0 the product is a single locked "Rolled Canvas" price (curated table), replacing the vendor dropdown for the customer flow — but `calculateCanvasCost` can be reused as the table backend. Tax is an *estimate* line (design says "calculated next"), not a real tax engine.
+
+### Pattern 5: One responsive tree via container queries (mobile)
+
+**What:** Storyboard B is literally Storyboard A's four screens in one portrait column — "everything inline, never in a drawer." Because the redesign *already* dissolves side menus into the inline flow, desktop and mobile differ only in layout (side rail vs stacked). Build **one component tree** per screen; collapse the rail to a stacked column at a breakpoint using Tailwind v4 container queries (`@container`).
+
+**When:** here. **Recommend one tree, not separate mobile components** — separate trees double the maintenance and invite the exact "inline vs drawer" divergence the design forbids (and the dev profile flags regressions/divergence as a top frustration).
+
+**Trade-offs:** a few `@container` breakpoints per screen; the canvas viewer already fits-to-container so it adapts for free.
 
 ---
 
-## Integration Points Summary
+## Data Flow
 
-| Boundary | Communication | v3.0 change |
-|----------|---------------|-------------|
-| `App.tsx` ↔ engine | Direct pure-function calls | Add `pricing`, `orderPacket`, `planOrderSupply`; MOVE the `sortedMatches` reduction into engine |
-| `App.tsx` ↔ `useWizard` | Hook returning step API | Extend to descriptors; parameterize by `mode` |
-| `App.tsx` ↔ `useAppMode` | New persisted hook | Top-level mode branch |
-| `bagPlanner` → cart ∪ legend ∪ packet | Shared `packColor` primitive | Add aggregator so all three stay identical (existing pattern) |
-| Order packet → v4.0 backend | Serialized JSON (`POST`, deferred) | Versioned, pure-data, additive-evolution contract |
-| Saved `ProjectData` → `selectedVendor` | localStorage restore | Normalize legacy `'prodigi'` → `'lumaprints'` on load |
+### Design shapes → existing state (the mapping the roadmapper needs)
+
+```
+DESIGN "project draft"              EXISTING state (App.tsx)                         action
+──────────────────────────────────────────────────────────────────────────────────────────
+image                             → image: HTMLImageElement                         unchanged
+size (cards + custom)             → selectedPreset / cols / rows / unit             re-skin as SizeCards
+  size → grid dims → inches       → cols/rows ; inches = cols/10 (sizingAdviceData) reuse
+cleanup level (Off/Light/Med/Str) → enableSmoothing + smoothingStrength (0..3)      re-skin as SegmentedControl
+color-count value                 → NEW targetColorCount  (was substitutionThreshold) new input → reducer
+detected palette / detected count → NEW detectedColorCount = |raw worker counts|    expose from hook
+──────────────────────────────────────────────────────────────────────────────────────────
+DESIGN "computed chart/legend/supply"
+computed chart                    → matchResult (post substitution+smoothing)       unchanged
+legend rows {symbol,hex,dmc,name, → sortedMatches (built from planOrderSupply.rows   unchanged
+   drills, safety, bags}              + symbolMap + DMC_PALETTE join)
+supply plan / totals              → orderPlan = planOrderSupply(counts,shape,priceDb) unchanged (SoT)
+──────────────────────────────────────────────────────────────────────────────────────────
+DESIGN "resolved order"
+spec (product LOCKED, size, finish)→ product='rolled_canvas' const; size from grid;  NEW finish state
+                                     finish: NEW local state (default 'trimmed')
+address                           → NEW local state (client-side only this milestone) NEW
+price breakdown                   → useOrderQuote(orderPlan,cols,rows) (integer cents) NEW selector
+```
+
+### Refine live-update flow (the key screen)
+
+```
+size card / custom  ─┐
+edge-cleanup seg    ─┤
+color-count slider  ─┴─→ App state ─→ useDiamondArtMatch
+                                        worker(match)              [only re-runs on image/dims/palette]
+                                        → reduceToColorCount()     [pure, on target change]
+                                        → smoothMatches()          [pure, on cleanup change]
+                                        → matchResult, detectedColorCount, symbolMap
+                                        → viewer.setData(...)      [canvas re-renders]
+                                        → planOrderSupply(counts)  [drives Supplies + quote]
+```
+
+Note: changing size (cols/rows) *does* re-run the worker; changing cleanup or color-count only re-runs the pure post-worker `useMemo`. This is already how the hook is keyed (`[image,cols,rows,candidatesKey]`), so drill-count-per-size updates and cleanup/color live-preview are both already cheap.
+
+---
+
+## Integration Points
+
+### Internal boundaries (respect these — they already exist and work)
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| App ↔ Screens | props only (state + handlers down) | keep `Step*`/screens pure; no engine imports for state, only types |
+| App ↔ `useDiamondArtMatch` | inputs object → `{matchResult, symbolMap, detectedColorCount★, loading, restore}` | add `detectedColorCount` + `targetColorCount` input; do not touch worker seam |
+| Hook ↔ worker | `MatcherClient` inline `new Worker(new URL('./matcher.worker.ts', import.meta.url))` | **DO NOT** decouple the URL — that regression shipped the worker as raw `.ts` (see CLAUDE/memory). Keep inline. |
+| Any screen ↔ money | via `orderPlan` + `useOrderQuote` only | never re-add floats; `money.ts` integer cents is the invariant |
+| Supplies ↔ Order totals | both read one `OrderQuote` | single source — the design's hard requirement |
+
+### External services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Print lab (Lumaprints) API + payments | — | **OUT OF SCOPE (v5.0).** Order step is a client-side confirm/handoff only. |
+| Server-side chart render, asset storage, shipment tracking, sourcing (Storyboard C) | — | **OUT OF SCOPE (v5.0).** |
+| Canvas cost | curated cost table (`engine/quote.ts` / `calculateCanvasCost`) | no live vendor rate API this milestone |
+| Fonts | Newsreader / Pixelify Sans / Archivo / JetBrains Mono | Google Fonts link or self-host in `styles/atelier.css` |
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Rewriting the pipeline / moving transforms into the worker
+**What people do:** "refactor" edge-cleanup or color reduction into `matcher.worker.ts` for speed.
+**Why it's wrong:** breaks the pure, synchronously-testable post-worker `useMemo` seam; forces the worker to re-run on every slider tick (it currently only re-runs on image/dims/palette). Reintroduces the exact worker-bundling fragility called out in memory.
+**Do this instead:** add pure `engine/` functions to the existing post-worker `useMemo` (Patterns 2–3).
+
+### Anti-Pattern 2: A second place that computes money
+**What people do:** OrderScreen re-sums canvas + drills locally to show "Total today."
+**Why it's wrong:** guaranteed divergence from Supplies "Est. total" (the v3.0 pricing bugs were exactly this class).
+**Do this instead:** one `useOrderQuote`/`planOrderSupply` object, integer cents, read by both (Pattern 4).
+
+### Anti-Pattern 3: Separate mobile component tree / any drawer
+**What people do:** build `MobileRefine.tsx` with a bottom-sheet for the rail.
+**Why it's wrong:** the design's guiding principle is "never open a side menu"; two trees drift.
+**Do this instead:** one tree, container queries collapse the rail to a stacked inline column (Pattern 5).
+
+### Anti-Pattern 4: Editing `Step1..4` in place
+**What people do:** mutate the existing steps toward the new look.
+**Why it's wrong:** the re-slice is non-1:1 (Refine fuses size+cleanup+color; Supplies fuses the right aside+cost), and in-place edits make rollback impossible and mix dark-`slate-*` with Atelier.
+**Do this instead:** new `features/journey/` screens; delete old steps only after UAT (strangler).
+
+---
+
+## Suggested Build Order (dependency-ordered)
+
+1. **Atelier design-system tokens + fonts (foundation).** `styles/atelier.css` with Tailwind v4 `@theme` tokens (bg `#F4F1E9`, surface `#FCFAF4/#FFF`, ink `#1B1A17`, accent `#0E6E5C`, borders, radii, shadow) + the four fonts. **Retire dark mode**: drop the `theme` persistent state + `data-theme` effect + the theme toggle; delete `slate-*` usage as screens are built. *(Note: partial Atelier aliases — `bg-panel`, `text-ink`, `text-accent`, `btn-chunk`, `gem-logo`, `--gem-*` — already exist and default `theme='light'`; consolidate, don't reinvent.)*
+2. **Shared UI primitives (`src/ui/`).** StepNav, SegmentedControl, Slider, SizeCard, Pill, Button, SpecRow. Depends on (1). Unblocks every screen.
+3. **New canvas-first shell (`AppShell`) + StepNav-only navigation.** Strangler swap: render `<AppShell>` instead of the three-column tree, behind a flag. App.tsx stays the state owner; `useWizard` already provides `step/canEnter/next/back/goTo`. Retire the left/right `<aside>` chrome and the dual step-navs. Depends on (2).
+4. **Engine additions (parallelizable with 2–3).**
+   - `useDiamondArtMatch`: expose `detectedColorCount` (raw distinct); accept `targetColorCount`.
+   - `engine/color.ts`: add `reduceToColorCount` (target-based merge).
+   - `engine/quote.ts` + `hooks/useOrderQuote.ts`: single-source integer-cents order total (cols→inches + curated canvas table + shipping + tax estimate).
+5. **Screens, in flow order (depend on 2 + 4):**
+   - **UploadScreen** — centered dropzone + recents (re-slice Step1 ingest half). Move size OUT of Upload into Refine.
+   - **RefineScreen ★** — canvas hero + always-open rail: SizeCards (live drill counts), edge-cleanup SegmentedControl, color-count Slider (`min 8 … max detectedColorCount`). The rail is a panel, **not a drawer** — its inputs are lifted App state (already are). Depends on the (4) color-count reducer + detected count.
+   - **SuppliesScreen** — supply/legend table from `orderPlan.rows` (+ `symbolMap` + DMC join) + 320px order-summary reading `useOrderQuote`.
+   - **OrderScreen** — locked spec (product=Rolled Canvas const, size from grid, finish default Trimmed), finish selection (new state), address card (new local state), price card from the **same** `useOrderQuote`.
+6. **Mobile responsive pass.** Container-query breakpoints per screen collapse rails to stacked columns; verify zero drawers. Depends on (5).
+7. **Retire & clean up.** Delete `Step1Ingest…Step4Export`, the old asides, the theme toggle, and the resources modal if unused. **Open decisions to route** (not obvious from the 4 design screens): where do **kit selection** (`selectedBaseKit` 100/200/all) and **color exclusions** (`excludedColors`, Step2Palette) go? — the customer flow has no palette step; recommend sane defaults (kit `all`) and either drop the exclude UI or tuck it under a Refine "advanced" disclosure. Same question for **drillStyle** (square/round, still needed for bag variant mapping) and **drillType** — default `square`/`standard`, optionally surface minimally in Refine or Order.
+
+---
+
+## Scaling Considerations
+
+Not a user-scale problem — 100% client-side, one user, one image at a time. The only "scale" axis is **grid size** (cols×rows), already handled: off-main-thread worker decode/match, box-sampling, and pure O(n) transforms. The redesign adds no new hot paths; the color-count reducer and quote selector are O(colors) (tens), not O(cells). No architectural change needed for size.
 
 ## Sources
 
-- Direct read of v2.1 source: `src/App.tsx`, `src/engine/{checkout,variants,bagPlanner,projectStore,export,types}.ts`, `src/features/wizard/{useWizard.ts,steps/Step3Canvas.tsx,steps/Step4Export.tsx}` (HIGH confidence — integration points cited by file/function/line).
-- `.planning/PROJECT.md` — v3.0 milestone goal, scope boundary, deferred v4.0 backend + admin dashboard.
-- Strangler Fig migration pattern (Fowler) — incremental replacement of the sidebar wizard.
+- `src/App.tsx`, `src/features/wizard/{useWizard,steps/*}`, `src/features/match/useDiamondArtMatch.ts` — actual state/handler/prop surfaces (HIGH)
+- `src/engine/{bagPlanner,color,smoothing,checkout,money}.ts` — pure pipeline + single-source aggregators (HIGH)
+- Design handoff `README.md` — per-screen State/Data shapes + canvas-first principle (HIGH)
+- `.planning/PROJECT.md` + memory — milestone scope boundary (frontend-only, backend→v5.0), worker-bundling regression note (HIGH)
 
 ---
-*Architecture research for: client-side Preact diamond-art planner — v3.0 two-mode viewport integration*
-*Researched: 2026-07-12*
+*Architecture research for: GemPixel v4.0 canvas-first redesign (integration inside existing Preact/Vite codebase)*
+*Researched: 2026-07-13*

@@ -1,192 +1,208 @@
-# Feature Research — v3.0 Two-Mode Viewport Experience
+# Feature Research — v4.0 Canvas-First Redesign
 
-**Domain:** Client-side creative-commerce tool (image → gem-art planner) pivoting to a two-mode (self-serve Artist / done-for-you Customer) viewport-native experience with quote-based, manual/offline fulfillment.
-**Researched:** 2026-07-12
-**Confidence:** MEDIUM-HIGH — UX patterns grounded in how best-in-class creative tools (Figma, Canva) and custom / print-on-demand order flows behave; dependency notes grounded in a direct read of `checkout.ts`, `variants.ts`, `bagPlanner.ts`, PROJECT.md, and the v2.1 requirements archive. Manual/offline fulfillment for a made-to-order craft product is a lightly-standardized space, so some Customer-flow specifics are reasoned from adjacent industries (RFQ/quote requests, custom-commission Etsy shops) rather than a single canonical competitor.
+**Domain:** Client-side photo → diamond-art (gem-art) product configurator + canvas-first quote/handoff flow
+**Researched:** 2026-07-13
+**Confidence:** HIGH for engine-feasibility claims (read against shipped `src/engine/`), MEDIUM for market-expectation claims (domain-standard configurator UX + the design handoff, which is itself the feature contract). No external web research was run — the high-fidelity design handoff is the descriptive spec and the existing engine is ground truth.
 
-> Supersedes the earlier v1-era FEATURES.md (local-image / color-engine table stakes are now shipped features and out of scope to re-research). This edition covers only the five v3.0 target feature areas.
+> Supersedes the v3.0-era FEATURES.md (two-mode/viewport scope was force-closed; that milestone's Artist-mode and coach-mark specifics are out of scope here). This edition covers only the five v4.0 target feature areas.
 
-## How the target features typically work (expected behavior)
+## Framing
 
-### 1. Viewport-native interactive wizard
-Best-in-class creative tools (Figma, Canva, Photopea, Photoroom) do **not** drive users through page-flipping wizard screens. They keep the artboard/canvas central and surface controls **contextually**:
-- **Contextual toolbars / property panels** anchored to the current object or task, not a permanently-expanded sidebar (Figma's selection toolbar, Canva's floating context bar).
-- **Progressive disclosure**: only step-relevant controls are shown; advanced options sit behind a disclosure toggle.
-- **First-run coach marks / spotlight tours**: a lightweight, dismissible overlay pointing at one control at a time ("this is where you set canvas size"), with "seen" state persisted so it never re-nags. Escape / click-away always dismisses.
-- **A single prominent primary action** ("Next: choose colors", "Get my quote") always visible and contextual, rather than symmetric Back/Next chrome. GemPixel already moved this way in Phase 9 (NAV-01/02/03 HUD).
+This milestone is a **UI/UX redesign of an already-working tool**, not a greenfield build. Color science, matching worker, supply optimizer, pricing, vendor cost table, symbols, exports, and persistence all ship today. The majority of the "new" customer-facing features are **re-presentations of engine capabilities that already exist** — the work is UI recomposition (canvas-first, no-side-menu, 4-step, mobile) plus a small number of genuinely new computations (target-N color reduction, a customer quote breakdown, an order packet/handoff).
 
-Expected behavior: users stay focused on the image the whole time, act on in-canvas affordances, and are guided by *what appears next to what they're doing* rather than by navigating discrete screens.
-
-### 2. Customer vs Artist mode split
-One product, two intents. Comparable patterns: Squarespace/Wix "what do you want to do" intent pickers, marketplace "buy vs sell" entry, Canva's "personal vs team" onboarding fork.
-- A **mode selector at entry** with plain-language descriptions ("I'm making my own canvas" vs "I want one made for me").
-- The choice is **persisted** (localStorage) and **reversible** at any time via an always-available switch — never a hard, irreversible gate.
-- Each mode **hides irrelevant surfaces** rather than forking into two apps: Artist sees drill-cart + self-order vendor links; Customer sees the quote + Buy / order-packet flow and hides the affiliate-cart plumbing.
-
-Expected behavior: a returning user lands back in their last mode; a shared link can pre-select a mode; switching modes preserves the current design.
-
-### 3. Customer purchase flow with manual/offline fulfillment (order packet)
-For made-to-order / custom-commission products with no instant automated checkout, the established pattern is a **quote / order request**, not cart-and-pay. The customer reviews an itemized summary and submits a **structured order packet** that a human fulfills offline. A well-formed packet contains:
-- **Design artifact**: the grid/symbol preview PNG (what they're buying).
-- **Canvas spec**: size, shape (square/round), selected vendor, orientation.
-- **Optimized gem-bag list**: per-color bag breakdown, total bag count, dye-lot notes, safety margin.
-- **Price breakdown**: canvas cost + drills cost + **% service/handling fee** + shipping + grand total.
-- **Order metadata**: human-readable order/reference ID, timestamp, app version, customer contact info.
-- **Review-before-submit** screen and a **saved/downloadable confirmation** (the customer keeps a receipt).
-
-**Large/complex orders are flagged for human review** against simple thresholds (total drills, color count, canvas area, dollar total) with clear messaging that the order is a *request* and someone will follow up — not an instant charge.
-
-Expected behavior: customer confirms an itemized summary, understands this is a request (not a paid checkout), submits, and receives a confirmation they can save.
-
-### 4. Percent-based service/handling fee
-Marketplaces and done-for-you services (Etsy handling fees, delivery-app "service fees") show handling as its **own itemized line** with both the **percentage and the dollar amount**, computed on a defined base (goods subtotal). Disclosure is pre-submit, with a tooltip explaining what it covers (sourcing, quality check, packing). It is never silently baked into item prices.
-
-### 5. Gem-bag purchase optimization surfaced to the user
-Users need to *trust* "fewest bags while keeping dye-lot consistency." What they need to see: the **per-color bag breakdown** ("2×200, 1×2000"), the **total bag count and cost**, and a plain-language explanation of **why** (a color under the dye-lot ceiling stays on a single 200-count bag so the color is consistent with no visible seams; bulk colors are cost-minimized). GemPixel's `bagPlanner.ts` already computes exactly this; v3.0's job is to *surface and explain* it trustworthily — which depends on the pricing being correct (PRICE-01/02).
+Two headline "new" Refine controls are **already implemented in the engine** and only need rewiring:
+- **Edge cleanup** = `engine/smoothing.ts::smoothMatches` — iterative 8-neighbour majority filter (strength 1/2/3 → passes 1/2/3, min-agree 6/5/4). Already wired via `useDiamondArtMatch` + persisted `gempixel_smoothing_strength`.
+- **Drill-merge (color-count)** = `engine/color.ts::substituteLowCountColors` — merges low-frequency codes into their nearest already-used shade by **CIEDE2000 Lab distance**. Already wired via `enableSubstitution` + `substitutionThreshold`.
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Contextual in-viewport controls (extend Phase 9 HUD) surfacing step-relevant options near the canvas | Modern creative tools keep the canvas central; sidebar-heavy flows feel dated | MEDIUM | Extends existing HUD (NAV-02). Migrate wizard-step controls into contextual panels; keep one prominent primary CTA |
-| Single always-visible primary action ("Next…", "Get quote") | Users need a clear "what next" without hunting | LOW | Already partly done (NAV-01). Make it mode- and step-aware |
-| Mode selector at entry (Artist vs Customer) with plain-language copy | Two audiences must self-identify before the flow tailors itself | LOW-MEDIUM | Persist via existing `usePersistentState` (STORE-02). Must be reversible |
-| Always-available mode switch that preserves the current design | Users mis-pick or want to explore the other path | LOW | Do NOT reset the project on switch |
-| Mode-conditional surfaces (hide irrelevant controls per mode) | Each audience should see only its tools | MEDIUM | Single flow, conditional rendering — not two apps |
-| Review-before-submit order summary (Customer) with itemized totals | Nobody submits an order without seeing what/why/how much | MEDIUM | Assemble from existing pricing pipeline + design preview |
-| Itemized price breakdown: canvas + drills + fee + shipping + total | Transparent pricing is the #1 customer expectation in custom/POD | LOW-MEDIUM | Depends on PRICE-01/02/DATA-01 fixes to be trustworthy |
-| Service/handling fee shown as its own line (% and $) pre-submit | Hidden fees destroy trust; itemization is the norm | LOW | Configurable %; tooltip explaining coverage |
-| Saved/downloadable order confirmation with a reference ID | Customer needs a receipt for an offline-fulfilled order | LOW-MEDIUM | PNG/PDF via existing print/export path + JSON packet |
-| Per-color gem-bag breakdown + total bags + total cost, visible | Trust that they aren't overbuying and colors will match | LOW | `bagPlanner.planColorSupply` already returns `bagsText`; surface it |
-| Plain-language dye-lot explanation (tooltip) | "Fewest bags" is meaningless without the *why* | LOW | One tooltip; rule already lives in `bagPlanner` (≤800 → single 200s) |
-| Correct, non-$0 bag pricing including the 500-count tier | A quote with a wrong/free bag price is not submittable | MEDIUM | **`bagPlanner.defaultPacketCost` currently has NO 500 tier** — the PRICE-01 bug; fix before quotes are trustworthy |
-| Dismissible-and-persisted first-run guidance | Users expect help once, not every visit | LOW-MEDIUM | Persist "seen" flag; escape / click-away dismiss |
-| Vendor cleanup — Lumaprints + FinerWorks only (remove Prodigi) | Offering a vendor you won't fulfill through is confusing | LOW | Edit `VENDOR_REGISTRY` + `calculateCanvasCost` vendorKey union in `checkout.ts` |
+A photo-to-product configurator is broken without these. Missing = the redesign feels incomplete.
+
+| Feature | Why Expected | Complexity | Engine dependency / notes |
+|---------|--------------|------------|---------------------------|
+| Horizontal 4-step nav as the only navigator (Upload→Refine→Supplies→Order) | It's the entire IA of the redesign | MEDIUM | New shell; replaces the sidebar/HUD wizard. State: `currentStep` + per-step completion. |
+| Forward via primary CTA; back via any completed step; upcoming steps dimmed/disabled | Standard wizard affordance | LOW | Pure UI state machine. Completed=check, current=number, upcoming=`opacity:.45`. |
+| Step validation gating (no Refine without image; no Supplies without a computed match) | Prevents empty/half-baked downstream states | LOW | Gate on `image != null`, `matchResult != null`. |
+| Upload: drag-drop + browse + recent projects | Entry point; recent chips reuse existing multi-project store | LOW | `ingest.ts` + `projectStore.ts` (built). Object URLs, never uploads. |
+| Live chart preview re-rendering on every control change | The whole point of "Refine is live" | LOW–MED | `useDiamondArtMatch` + `viewer.ts` already recompute via useMemo. Size change re-runs worker; cleanup/color-count are cheap post-match transforms. |
+| Size selection with explicit dimensions + resulting grid | Users must know what they're buying | LOW | Grid dims → drills=`cols*rows`; grid→inches via 10 dots/inch (already in `calculateCanvasCost`). |
+| Supply/legend table: symbol · swatch · DMC · drills(+10%) · bags | Core deliverable; already shipped | LOW | `planOrderSupply` + `symbols.ts` (built). Re-layout into the Atelier table. |
+| Itemized price breakdown before the order action (canvas + shipping + tax + total) | Nobody commits without seeing the number and its parts | MEDIUM | `calculateCanvasCost` + `planOrderSupply` + `money.ts` (built). New: one customer-facing breakdown + a tax **estimate**. |
+| An honest, actionable order artifact (no backend) | If you can't charge, you must still hand the user something real | MEDIUM | Download an order packet + deep-link to the lab upload page (`VENDOR_REGISTRY.uploadUrl` exists). See boundary section. |
+| Mobile single-column journey (same 4 steps inline, never a drawer) | Most customer traffic is mobile; handoff mandates it | MEDIUM | Responsive recompose; 4-segment progress bar + back chevron per screen. |
+| Save / resume a project | Already shipped; users expect persistence | LOW | `projectStore.ts` (built). |
 
 ### Differentiators (Competitive Advantage)
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Coach-mark spotlight tour that adapts to the chosen mode | Onboards each audience to only the controls it needs | MEDIUM | Build lightweight (see anti-features re: tour libs); tie to mode + HUD |
-| Self-contained order-packet file (JSON + human-readable PNG/PDF) that round-trips into the future v4.0 admin backend | Manual fulfillment now, zero rework when the backend lands | MEDIUM | Design the schema deliberately now; this is the bridge to v4.0 |
-| Automatic large/complex-order flagging with clear "we'll confirm" messaging | Sets expectations, prevents under-quoting, signals human care | LOW-MEDIUM | Simple thresholds (drills/colors/area/$). No backend needed |
-| "Why these bags" explainer showing dye-lot rule + savings vs naive packing | Turns an opaque optimizer into a trust-builder | LOW-MEDIUM | Compare `bagPlanner` output to a naive pack; both are pure functions |
-| Deep-link / URL param to launch directly into a mode | Artist shares a "design your own" link; a shop shares "order one" | LOW | Read a query param on mount; still client-side |
-| Mode-tailored, in-context guidance copy (Artist = self-serve tips; Customer = reassurance) | Same engine, two voices — feels purpose-built for each user | LOW | Copy + conditional rendering |
-| Configurable service-fee % with a value-explaining tooltip | Frames the fee as quality/handling, not a surcharge | LOW | Store the % in settings via `usePersistentState` |
+Aligned with the Core Value (accurate, non-AI, high-fidelity planning). Where the redesign competes.
 
-### Anti-Features (Commonly Requested, Often Problematic)
+| Feature | Value Proposition | Complexity | Engine dependency / notes |
+|---------|-------------------|------------|---------------------------|
+| **Color-count slider, max = real DETECTED count; lowering merges orphan drills into a near-identical used shade** | Kills single-drill "orphan" colors (a real cost + sourcing + stitching pain) with **no visible change** — a concrete, honest simplification | MEDIUM | Reuses `substituteLowCountColors`'s CIEDE2000 nearest-used remap; needs a **target-N adaptation** (deep-dive below). Detected max = `Object.keys(rawMatch.counts).length`. |
+| Live per-size drill counts on the size cards | Instant supply/cost feedback while choosing size; turns an abstract dimension into "4,240 drills" | LOW | `cols*rows` per candidate size; no worker re-run to preview counts. |
+| Edge cleanup 4-segment (Off/Light/Med/Strong) | Cleaner, more stitchable chart than raw per-pixel matching; dissolves specks, straightens edges | LOW | `smoothMatches` (built). Off→disabled, Light/Med/Strong→strength 1/2/3. Relabel + wire. |
+| "Why these bags?" savings explainer + savings headline | Shows the optimizer's value (fewest-bags vs naive) in plain language; builds trust | LOW | `planOrderSupply` already returns `savingsCents`/`savingsPct` + dye-lot rationale (built, Phase 16). |
+| Auto-filled, LOCKED lab spec ("nothing to re-enter") | Collapses the lab's multi-step order form into one confirm screen | MEDIUM | Product fixed to Rolled Canvas; size from grid; finish default Trimmed. UI + packet assembly. |
+| Canvas-first, no-side-menu, everything-inline layout | The guiding UX principle; distinguishes from sidebar-heavy planners | MEDIUM | Layout work; retires expand/collapse sidebars + page-flip wizard. |
+| Detected-vs-matched transparency ("24 of 26 matched") | Honest about palette coverage; surfaces unmapped colors instead of silently dropping | LOW | Match counts + active candidates; unmapped surfacing already a DATA-01 behavior (built). |
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Real in-app checkout / payment processing (Stripe, PayPal SDK) | "Buy" implies instant pay | Requires PCI-scope, server, secrets — breaks client-side/private ethos; explicitly deferred to v4.0 | Generate an order packet + manual/offline fulfillment; payment handled out-of-band this milestone |
-| Order-management backend / admin dashboard / order queue now | Someone has to receive the order | It's a whole backend — this milestone is frontend-first | Emit a v4.0-ready packet (download / `mailto:` / clipboard); build the backend in v4.0 |
-| User accounts / login / roles to gate the two modes | "Customer vs Artist sounds like user roles" | Auth = server + PII storage = breaks lightweight/private constraint | Mode is a persisted client preference, freely switchable — no identity required |
-| Forking into two separate apps/codebases for the two modes | "The flows are different" | Doubles maintenance; the v2.1 profile flags *regression* as a top frustration | One flow, mode-conditional surfaces and config |
-| Heavy guided-tour dependency (Shepherd.js, Intro.js, driver.js) | Fast way to add coach marks | Adds bundle weight; the stack explicitly avoids non-essential deps (GEMINI.md "what NOT to use") | ~1 lightweight positioned overlay component in Preact + a persisted "seen" flag |
-| Modal, canvas-blocking linear wizard (page-flip screens) | Familiar step-by-step pattern | Contradicts the viewport-native goal; hides the very image being designed | Non-modal contextual panels anchored in/around the viewport |
-| Server-side PII storage of customer contact details | "We need the customer's info to fulfill" | Storing PII server-side crosses privacy + compliance lines this milestone avoids | Contact info travels *inside* the exported packet the customer submits; nothing persisted server-side in v3.0 |
-| Real-time vendor inventory / stock checks against Diamond Drills / printers | "Show if bags are in stock" | Requires live vendor APIs = backend + fragility | Static variant table (`variants.ts`) + integrity test (DATA-01); flag *unmapped* colors, don't check stock |
-| Sales-tax / VAT calculation on the quote | "A real quote has tax" | Jurisdictional tax = rules engine or a taxed-checkout backend | Show subtotal + %-fee + shipping; taxes handled at manual fulfillment / v4.0 |
-| Exposing raw Shopify variant IDs or letting users hand-edit each bag | "Power users want control" | Leaks implementation detail; hand-tuning breaks the dye-lot / cost guarantees | Show human-readable `2×200, 1×2000`; keep packing automatic with a "why" explainer |
-| Emailing the order from the browser (SMTP / email API) | "Just email me the order" | Needs a mail backend / exposed API key | `mailto:` prefilled link or a downloadable packet the user sends — no server |
-| Gamified / progress-nagging onboarding (streaks, % complete badges) | "Boost engagement" | Nags a utility user; conflicts with the clean, design-conscious UX profile | Quiet, dismiss-once coach marks; a simple contextual "what next" |
+### Anti-Features (Implied by the Mock, but Problematic Here)
+
+The handoff's illustrative mock leans on backend behavior. Recreating those literally, client-side, would be dishonest or broken.
+
+| Feature | Where it appears | Why problematic | Alternative |
+|---------|------------------|-----------------|-------------|
+| "Place order · $57.00" implying a completed charge | A4/B4 mock reads as checkout | **No payment, no lab submission** this milestone; taking money it can't take is misleading | Honest CTA: "Download your order" / "Get your canvas order packet" / "Send to lab". Say what actually happens next. |
+| Real-time sales tax / VAT computed client-side | Price card "Tax" | Correct tax needs jurisdiction+nexus+rates = backend; a wrong number is a legal/trust risk | A clearly-labeled **estimate** (curated flat rate or "estimated — finalized by the lab"). Retire "calculated next" (no next step exists). |
+| Live Lumaprints/FinerWorks rate API from the browser | Handoff "Pricing/sizing" item | CORS, client-side keys, rate limits, beta instability — and PROJECT defers vendor APIs to v5.0 | The shipped **curated cost table** (`VENDOR_REGISTRY` + `calculateCanvasCost`) with a "prices estimated" disclosure. |
+| Server-rendered "what shipped = what bought" proof | A4 canvas proof; handoff item #2 | Authoritative render is server-side (v5.0); a client screenshot is not print-grade | Show the client chart as a **preview/proof-of-layout** (labeled). Real render is v5.0. Reuse `export.ts` PNG for the packet. |
+| Unbounded "Custom size" free-entry | Refine footer "Custom size" | Can yield absurd drill counts, out-of-tier canvas (falls to `sqInchRate` extrapolation), or degenerate grids | Keep custom size but **clamp** to a sane range; show live drills+price; block sizes the cost table can't price. |
+| Embedding the design PNG in localStorage on the packet | "Everything in the project" convenience | PNGs blow the localStorage quota fast (app already guards storage failures) | Deliver the PNG as a **file download** (v3.0 ORDER-05 decided this); JSON packet references it, never inlines bytes. |
+| Exposing the editable price table / affiliate params / drill-cart link on the customer flow | They exist in the tool today | Artist-mode economics leaking into a customer quote (v3.0 MODE-02 concern) erodes trust, reveals margins | Customer flow shows only the finished quote. No separate Artist mode is in v4.0 scope, so simply don't render those surfaces. |
+| Backend confirmation email / order-ID lookup / status tracking | Mock ops console + tracking | Entire fulfillment backend is v5.0 | Client-side confirmation only: a locally-generated reference + the downloadable packet. No server round-trip. |
+| Re-run the worker on every slider tick | "Refine is live" | Re-matching per color-count tick thrashes the worker on large grids | Color-count + edge-cleanup are **post-match transforms** on the cached grid (as today) — instant. Only size change re-runs the worker (debounce it). |
+
+## Deep-Dive: The Color-Count Slider / Drill-Merge (quality-gate item)
+
+**What the customer wants:** a slider whose maximum is the *actual detected/matched* color count (often 24+ on real photos), where lowering it removes rare "orphan" colors (single/few drills of an exotic shade) by reassigning those cells to the **nearest already-used** color — with no perceptible change to the picture. Fewer distinct colors = fewer bags, fewer symbols, easier stitching.
+
+**What exists:** `substituteLowCountColors(gridCodes, counts, activeCandidates, threshold)`:
+- Splits colors into low-count (`count <= threshold`) and high-count (`count > threshold`).
+- For each low-count code, finds the nearest high-count code by `getColorDistance` (**CIEDE2000 in CIELAB**, the same metric the matcher uses — so the merge target is genuinely the closest usable shade).
+- Remaps the grid and recomputes counts. Pure, no worker, cheap.
+
+**The gap:** the shipped control is **threshold-based** ("merge anything ≤ N drills"), but the design wants a **target-count** control ("reduce to N total colors, max = detected count"). Different axes:
+- Threshold answers "how rare is rare?"
+- Target-N answers "how many colors do I end up with?"
+
+**Recommended adaptation (MEDIUM, mostly reuse):** add `reduceToColorCount(gridCodes, counts, activeCandidates, targetN)` that:
+1. Ranks colors by frequency descending; the top `targetN` become the "kept/used" set (mirrors "high-count"), the rest the "merge" set (mirrors "low-count").
+2. Reuses the exact CIEDE2000 nearest-kept remap loop from `substituteLowCountColors` — factor the inner remap into a shared helper so both entry points share one code path and one test surface.
+3. Recomputes counts from the remapped grid.
+
+The slider runs `min(floor=8, detectedMax)` → `detectedMax`; at `detectedMax` it's a no-op (identity), and lowering merges the least-frequent colors first into their nearest kept shade. Because merges target the CIEDE2000-nearest kept color, the visible change is minimal exactly when merged colors are rare and near a used shade — the orphan-drill case.
+
+**Approaches considered (and why this one):**
+- *Frequency-rank + nearest-used (recommended):* deterministic, directly maps "detected → target," reuses shipped distance math. Best fit for a slider.
+- *Pure threshold (shipped):* simpler but max/slider semantics don't match "detected color count," and equal-frequency ties make the resulting count non-monotonic in the slider — worse UX.
+- *Perceptual clustering (k-means / median-cut in Lab to N clusters):* more globally "optimal" but (a) can move colors that were fine, (b) heavier compute, (c) can pick a merge target not already in the palette. Rejected: the value prop is "merge into a shade **you already use**," which nearest-kept guarantees and clustering does not.
+- *ΔE guard (only merge if ΔE < X):* good enhancement — cap merges so the slider can't force a visibly-wrong merge; surface "can't reduce further without visible change." Optional polish on top of frequency-rank.
+
+**Detected color count source:** `Object.keys(rawMatchResult.counts).length` *before* substitution/smoothing — the honest "26 matched" number that drives the slider max and the "N of M matched" caption.
+
+**Pipeline placement:** `useDiamondArtMatch` currently applies substitution *then* smoothing, recomputing counts each step. The color-count reduction slots in at the substitution stage (it *is* the substitution, generalized); smoothing runs after. Both are post-match, so the slider stays instant.
+
+## Client-Side-Feasible NOW vs Implies-Backend (v5.0) — explicit boundary
+
+| Capability | v4.0 client-side | Requires v5.0 backend |
+|------------|------------------|-----------------------|
+| Grid→inches, drill counts, size cards | ✅ `cols*rows`, 10 dots/inch (built) | — |
+| Edge cleanup | ✅ `smoothMatches` (built) | — |
+| Color-count reduction / drill-merge | ✅ `substituteLowCountColors` + target-N adaptation | — |
+| Supply plan (bags, +10%, savings) | ✅ `planOrderSupply` (built) | — |
+| Canvas base cost + shipping | ✅ curated `VENDOR_REGISTRY` + `calculateCanvasCost` (built) | Live vendor rate APIs |
+| Quote total (integer cents, reconciled) | ✅ `money.ts` (built) | — |
+| Tax | ⚠️ **estimate only** (curated/flat, clearly labeled) | Real jurisdiction-based tax |
+| Order artifact | ✅ downloadable packet (JSON, integer cents, no PII) + PNG file | — |
+| Lab handoff | ✅ deep-link to `uploadUrl` (pre-filled where the lab supports query params) | API submission as merchant-of-record |
+| "Place order" / charge | ❌ not this milestone — reframe honestly | Payments + Lumaprints API |
+| Print-grade "what shipped = what bought" render | ⚠️ client preview only (labeled) | Server-side PNG/PDF render |
+| Confirmation ID / status / tracking | ⚠️ local reference only | Orders DB, shipment webhooks |
+
+**Order step honest table-stakes behavior (no backend):** collapse the confirm screen to (1) a locked, auto-filled spec the user can review, (2) a full itemized quote with tax clearly marked *estimate*, and (3) one primary action that **downloads the order packet and/or deep-links to the lab's upload page**, with an email/share fallback. Copy must say what actually happens ("We'll prepare your order file and take you to our print lab" — not "Place order · $57.00" implying a charge). The v3.0 ORDER-04/05 packet decisions (versioned, JSON-round-trippable, integer-cents quote snapshot, no PII, PNG as a file) are directly reusable and forward-compatible with the v5.0 backend that will ingest the same schema.
 
 ## Feature Dependencies
 
 ```
-Mode selector (Artist/Customer)
-    └──requires──> usePersistentState (STORE-02, shipped) for persistence
-    └──gates──────> mode-conditional viewport surfaces
+[Match pipeline: useDiamondArtMatch + matcher.worker] (BUILT)
+    ├──enables──> [Live chart preview]
+    ├──enables──> [Edge cleanup]  ── uses ──> smoothMatches (BUILT)
+    ├──enables──> [Color-count slider] ── uses ──> substituteLowCountColors + target-N adapt
+    │                   └──requires──> [Detected color count = distinct raw match codes]
+    └──enables──> [Supply table] ── uses ──> planOrderSupply (BUILT) + symbols (BUILT)
 
-Viewport-native wizard
-    └──requires──> Phase 9 HUD (NAV-01/02/03, shipped)
-    └──requires──> App.tsx wizard state machine (ARTIST-02, shipped) — refactored, not replaced
-    └──enhanced-by> coach-mark tour (adapts to selected mode)
+[Size selection] ──drives──> [grid dims] ──> [drill counts] + [calculateCanvasCost] (BUILT)
 
-Customer order packet ("Buy")
-    └──requires──> design preview export (export.ts / EXPORT-01, shipped) → PNG
-    └──requires──> bagPlanner.planColorSupply (shipped) → optimized gem-bag list
-    └──requires──> checkout.ts calculateCanvasCost + VENDOR_REGISTRY (shipped) → canvas spec + cost
-    └──requires──> project store (ARTIST-01, shipped) → reference / persistence
-    └──requires──> % service fee → trustworthy TOTAL
-    └──requires──> large-order flagging (thresholds)
+[Supply plan] + [Canvas cost] + [Tax estimate]
+    └──assemble via money.ts (BUILT)──> [Customer quote breakdown]
+                                             └──requires──> [Order packet]
+                                                                └──requires──> [PNG export (export.ts, BUILT)]
+                                                                └──enables──> [Lab deep-link handoff]
 
-% service fee  &  Gem-bag optimization surfacing
-    └──both require──> PRICE-01, PRICE-02, DATA-01 (pulled into v3.0) — accurate pricing
-                         └── PRICE-01 blocker lives in bagPlanner.defaultPacketCost (missing 500 tier)
-
-Vendor cleanup (remove Prodigi)
-    └──touches──> checkout.ts VENDOR_REGISTRY + calculateCanvasCost vendorKey union
-    └──conflicts-with──> any UI still offering a Prodigi dropdown option (EXPORT/VENDOR-01)
+[4-step shell + validation gating] ──wraps──> ALL customer screens
+[Mobile single-column] ──recomposes──> the same components
 ```
 
 ### Dependency Notes
-- **Order packet requires accurate pricing (PRICE-01/02, DATA-01):** the packet's grand total = canvas + drills(+margin) + %fee + shipping. If a bag size is mispriced or treated as $0, the quote (and therefore the fee and total) is wrong. This is why PROJECT.md pulls the deferred pricing requirements into v3.0. The concrete blocker is visible in `bagPlanner.ts::defaultPacketCost` — it prices 200/1000/2000/5000 tiers but **omits the 500-count tier**, so a 500 bag falls through to a wrong/undefined price.
-- **Everything in Customer mode composes existing pure modules:** `bagPlanner`, `checkout.ts` (cost + vendor registry), `export.ts` (PNG), and the project store already exist and are pure/client-side. v3.0 is largely *composition + presentation*, not new engine work — which keeps it aligned with the client-side constraint.
-- **Mode split wraps, not replaces, the wizard:** the Phase 9 HUD and Phase 6 wizard state machine are the substrate; mode is a conditional layer over them. Avoid rebuilding the wizard from scratch.
-- **Vendor cleanup is a small but cross-cutting edit:** removing Prodigi changes the `'lumaprints' | 'prodigi' | 'finerworks'` union in `checkout.ts` (registry + `calculateCanvasCost` signature) and any UI dropdown; do it early so the Customer canvas-spec only ever offers fulfillable vendors.
-- **Watch `calculateCanvasCost` interpolation for the quote:** its linear interpolation between pricing points can yield unrounded, odd-looking quote figures — acceptable for an estimate, but for a customer-facing quote consider rounding to a tidy value so the total reads as trustworthy.
-- **Coach-mark tour conflicts with a tour-library dependency:** the value is a *lightweight* in-viewport tour; pulling in Intro.js/Shepherd would violate the stack's explicit "avoid non-essential deps" stance.
+- **Color-count slider requires the detected color count**, read from the *raw* match (pre-substitution) so the max reflects reality; wire it before the substitution stage in `useDiamondArtMatch`.
+- **Quote breakdown requires the supply plan AND canvas cost**, both reconciled through `money.ts` so line items sum to the total (PRICE-03 invariant already enforced) — do not introduce a parallel float path.
+- **Order packet requires the quote AND a PNG file** — deliver the PNG via `export.ts` as a download, not inline in storage (avoids the quota anti-feature).
+- **Everything requires the 4-step shell + gating** — build the shell + step state machine first; it's the load-bearing structure the rest hangs on.
+- **Edge cleanup and color-count operate on the cached match** (post-match transforms) — they must NOT retrigger the worker; only size/dimension/palette changes do.
 
 ## MVP Definition
 
-### Launch With (v3.0 core)
-- [ ] Mode selector (Artist/Customer) + persisted, reversible switch — the pivot's defining feature
-- [ ] Vendor cleanup (remove Prodigi; Lumaprints + FinerWorks only) — small, unblocks a clean canvas spec
-- [ ] Pricing accuracy: PRICE-01 (500-bag), PRICE-02 (no $0 size), DATA-01 (variant integrity test) — everything downstream trusts this
-- [ ] Customer "Buy" → structured order packet (design PNG + gem-bag list + canvas spec + %fee + itemized totals) with review-before-submit and a saved confirmation
-- [ ] % service fee as an itemized, disclosed line
-- [ ] Surface the existing gem-bag optimization (per-color bags, total, cost) + one dye-lot "why" tooltip
-- [ ] Migrate the most-used wizard controls into contextual in-viewport surfaces (extend HUD)
+### Launch With (v4.0 core)
+- [ ] 4-step canvas-first shell + step nav (forward CTA, back-to-completed, validation gating) — the IA everything hangs on
+- [ ] Upload step (drag-drop/browse + recent) — entry point, mostly existing engine
+- [ ] Refine step: size cards w/ live drill counts, edge-cleanup 4-segment, color-count slider (detected max + drill-merge) — the key screen
+- [ ] Supplies step: inline legend/supply table + order-summary panel wired to `planOrderSupply`
+- [ ] Order step: locked auto-filled spec + honest itemized quote (tax as estimate) + client-side handoff (packet download + lab deep-link)
+- [ ] Mobile single-column journey for all 4 steps
+- [ ] Atelier light theme tokens/type (retire dark mode)
 
-### Add After Validation (v3.x)
-- [ ] Adaptive coach-mark first-run tour per mode — add once the two flows are stable
-- [ ] Large/complex-order auto-flagging with "we'll confirm" messaging — trigger: real orders start arriving
-- [ ] Deep-link/URL param to launch a specific mode — trigger: users want to share mode-specific links
-- [ ] "Why these bags" savings-vs-naive explainer — trigger: users question the bag counts
+### Add After Validation (v4.x)
+- [ ] ΔE guard on color-count merges ("can't reduce further without visible change") — trigger: users report a visibly-wrong merge
+- [ ] Custom-size input with clamps + live drills/price — trigger: presets prove too limiting
+- [ ] Richer proof preview (finish visualization) — trigger: users confused about Trimmed vs wrap
 
-### Future Consideration (v4.0+)
-- [ ] Order-management backend + admin dashboard (the packet's downstream consumer) — defer: it's a whole backend
-- [ ] Automated payments — defer: PCI/server scope; manual/offline is intentional for v3.0
-- [ ] Direct printer/vendor API fulfillment & live inventory — defer: external APIs + backend
+### Future Consideration (v5.0 — backend)
+- [ ] Real payment + Lumaprints API submission (merchant of record)
+- [ ] Server-side print render (PNG/PDF), asset storage
+- [ ] Real tax, order status, dual shipment tracking, ops console + sourcing
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Mode selector + reversible switch | HIGH | LOW-MEDIUM | P1 |
-| Pricing accuracy (PRICE-01/02, DATA-01) | HIGH | MEDIUM | P1 |
-| Vendor cleanup (remove Prodigi) | MEDIUM | LOW | P1 |
-| Customer order packet + review-before-submit + confirmation | HIGH | MEDIUM | P1 |
-| Itemized % service fee | HIGH | LOW | P1 |
-| Surface gem-bag optimization + dye-lot tooltip | HIGH | LOW | P1 |
-| Migrate wizard controls into contextual HUD surfaces | MEDIUM-HIGH | MEDIUM | P1/P2 |
-| Large/complex-order flagging | MEDIUM | LOW-MEDIUM | P2 |
-| Adaptive coach-mark tour | MEDIUM | MEDIUM | P2 |
-| Mode deep-linking | LOW-MEDIUM | LOW | P3 |
-| "Why these bags" savings explainer | MEDIUM | LOW-MEDIUM | P3 |
+| Feature | User Value | Impl. Cost | Priority |
+|---------|-----------|------------|----------|
+| 4-step shell + gating | HIGH | MEDIUM | P1 |
+| Refine: size cards + live drills | HIGH | LOW | P1 |
+| Refine: edge cleanup (rewire built engine) | MEDIUM | LOW | P1 |
+| Refine: color-count slider + drill-merge (target-N adapt) | HIGH | MEDIUM | P1 |
+| Supplies table + summary (built engine) | HIGH | LOW | P1 |
+| Order: honest quote + packet + lab handoff | HIGH | MEDIUM | P1 |
+| Mobile single-column | HIGH | MEDIUM | P1 |
+| Atelier light theme | MEDIUM | MEDIUM | P1 |
+| Savings explainer surfacing (built) | MEDIUM | LOW | P2 |
+| ΔE merge guard | MEDIUM | LOW | P2 |
+| Custom size with clamps | MEDIUM | MEDIUM | P2 |
 
 **Priority key:** P1 = must have for the milestone · P2 = should have, add when possible · P3 = nice to have.
 
+## Notable Spec Corrections (flag for requirements)
+
+- **Size-card inch labels in the handoff are illustrative and inconsistent with the real density.** The mock shows `Small 18×12 in / 60×40 grid`, but at the project's canonical 10 dots/inch, a 60×40 grid = **6×4 in**, not 18×12. The **drill counts are correct** (60×40 = 2,400 ✓). Requirements must compute inch labels from the real cols→inches mapping (`calculateCanvasCost` already does `width/10`), not copy mock numbers. This is the "accurate quoting" requirement's first concrete task.
+- **"Tax calculated next" copy implies a next step that doesn't exist** with no backend — replace with an estimate label.
+- **"24 of 26 matched" must be driven by real detected counts**, frequently 24+ on complex photos — the slider max must not be hardcoded or capped low.
+
 ## Competitor / Reference Feature Analysis
 
-| Feature | Creative tools (Figma / Canva) | Custom-order / POD & marketplaces | GemPixel's v3.0 approach |
-|---------|--------------------------------|-----------------------------------|--------------------------|
-| Progressive guidance | Contextual toolbars + dismiss-once coach marks; canvas stays central | N/A | Extend Phase 9 HUD into contextual surfaces; lightweight, mode-aware coach marks (no tour lib) |
-| Audience/intent split | Onboarding forks (personal/team), persisted | Buyer vs seller dashboards (account-gated) | Persisted, reversible **client** mode preference — no accounts |
-| Purchase/fulfillment | N/A | Cart+pay OR custom "request a quote" for made-to-order | Quote/order **packet** for manual/offline fulfillment; payment out-of-band |
-| Fee disclosure | N/A | Itemized service/handling line (% + $), pre-checkout | Itemized, configurable %-fee line with a coverage tooltip |
-| Supply/bag optimization | N/A | Usually hidden backend logic | Surface the existing dye-lot-aware `bagPlanner` output + a plain-language "why" |
+| Feature | Photo→product configurators (Shutterfly/CanvasPop/POD builders) | GemPixel v4.0 approach |
+|---------|-----------------------------------------------------------------|------------------------|
+| Guided flow | Linear stepper with a live preview; back to completed steps | Same 4-step stepper as the *only* nav, canvas-first, inline surfaces |
+| Live configuration | Size/material update price + preview instantly | Size updates drills+price+preview; cleanup/color-count are instant post-match |
+| Simplification controls | Rare in DIY chart tools; usually just "number of colors" | Detected-max color slider that merges into a **used** shade (honest, no visible change) |
+| Quote transparency | Itemized subtotal + shipping + tax at checkout | Itemized canvas + drills + shipping + **tax estimate**, disclosed pre-action |
+| Checkout | Real cart + pay | Honest client-side packet download + lab deep-link (no charge this milestone) |
 
 ## Sources
 
-- Figma vs Canva UX comparisons (contextual UI, canvas-centric interaction, onboarding/learning curve) — [Style Factory](https://www.stylefactoryproductions.com/blog/canva-vs-figma), [LogRocket](https://blog.logrocket.com/ux-design/figma-vs-canva/), [Designity](https://www.designity.com/blog/figma-vs-canva)
-- Print-on-demand / manual fulfillment order handling & customer expectations (transparent pricing, order-detail packets, manual order routing, communication) — [Order Desk POD fulfillment KB](https://help.orderdesk.com/order-desk-101/print-on-demand-fulfillment/), [Shopify: Print on Demand](https://www.shopify.com/blog/print-on-demand), [Printful](https://www.printful.com/print-on-demand)
-- GemPixel codebase (direct read): `src/engine/bagPlanner.ts` (dye-lot rule, cost minimization, `defaultPacketCost` missing 500 tier), `src/engine/checkout.ts` (`VENDOR_REGISTRY` incl. Prodigi, `calculateCanvasCost` interpolation), `src/engine/variants.ts` (drill variant lookup), `.planning/PROJECT.md`, `.planning/milestones/v2.1-REQUIREMENTS.md`
+- Design handoff (feature/behavior contract, MEDIUM — illustrative mock data, corrected above): `C:\Users\rickf\OneDrive\Desktop\GemPixel\GEM PIXEL design review\design_handoff_ui_redesign\README.md`.
+- Existing engine (ground truth, HIGH): `src/engine/smoothing.ts` (edge cleanup), `src/engine/color.ts::substituteLowCountColors` + `getColorDistance` (drill-merge / CIEDE2000), `src/engine/bagPlanner.ts::planOrderSupply` (supplies + savings), `src/engine/checkout.ts::calculateCanvasCost` + `VENDOR_REGISTRY` (quoting), `src/engine/money.ts` (integer-cents reconciliation), `src/features/match/useDiamondArtMatch.ts` (pipeline order).
+- Prior scope decisions (HIGH): `.planning/PROJECT.md`, `.planning/milestones/v3.0-REQUIREMENTS.md` (ORDER-04/05 packet contract, MODE-02 economics-leak concern, anti-features list).
 
 ---
-*Feature research for: two-mode viewport creative-commerce tool (GemPixel v3.0)*
-*Researched: 2026-07-12*
+*Feature research for: client-side gem-art configurator redesign (GemPixel v4.0)*
+*Researched: 2026-07-13*
