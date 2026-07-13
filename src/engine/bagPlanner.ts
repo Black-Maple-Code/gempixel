@@ -1,4 +1,22 @@
 import { DRILL_VARIANTS, VariantMapping } from './variants';
+import { toCents, fromCents, sumCents } from './money';
+
+/**
+ * Single canonical bag-size list. `defaultPacketCost` and the per-type price
+ * tables below are keyed off these sizes so a tier can never be half-added
+ * again (PRICE-01). 5000 is the explicit bulk fallback handled separately.
+ */
+export const BAG_SIZES = [200, 500, 1000, 2000] as const;
+
+/**
+ * A per-bag price is "unpriced" when the caller's priceDb has no finite value
+ * for that size. An unpriced size is treated as Infinity by the cost search
+ * (never a free $0 winner) and flags the color via hasUnpricedSize (PRICE-02).
+ */
+function isUnpriced(priceDb: Record<number, number>, size: number): boolean {
+  const p = priceDb[size];
+  return p == null || !Number.isFinite(p);
+}
 
 /**
  * Supply Bag Optimizer — the single per-color packing primitive shared by the
@@ -28,6 +46,11 @@ export interface ColorPack {
   bySize: Record<number, number>; // e.g. { 200: 2, 1000: 1 } — only sizes that exist for this color
   totalDrills: number; // sum(size * qty)
   packets: number; // sum of quantities
+  // PRICE-02: true when the color can ONLY be covered by an unpriced bag size,
+  // so no priced plan exists. Such a color is surfaced (never emitted as a
+  // self-selected $0 line); its bySize is left empty rather than priced at $0.
+  hasUnpricedSize: boolean;
+  unpricedSizes: number[]; // the offending unpriced sizes (ascending), [] when priced
 }
 
 const DYE_LOT_CEILING = 800;
@@ -43,7 +66,13 @@ export function packColor(
   requiredCount: number,
   priceDb: Record<number, number>
 ): ColorPack {
-  const empty: ColorPack = { bySize: {}, totalDrills: 0, packets: 0 };
+  const empty: ColorPack = {
+    bySize: {},
+    totalDrills: 0,
+    packets: 0,
+    hasUnpricedSize: false,
+    unpricedSizes: [],
+  };
   const mapping = DRILL_VARIANTS[dmcCode]?.[shape];
   if (!mapping || Object.keys(mapping).length === 0 || requiredCount <= 0) {
     return empty;
@@ -54,8 +83,18 @@ export function packColor(
     .filter(size => mapping[size as keyof VariantMapping] !== undefined);
 
   const pack200 = (count: number): ColorPack => {
+    // The 200 size itself may be unpriced — flag it and emit no $0 line.
+    if (isUnpriced(priceDb, 200)) {
+      return { bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: true, unpricedSizes: [200] };
+    }
     const qty = Math.ceil(count / 200);
-    return { bySize: { 200: qty }, totalDrills: qty * 200, packets: qty };
+    return {
+      bySize: { 200: qty },
+      totalDrills: qty * 200,
+      packets: qty,
+      hasUnpricedSize: false,
+      unpricedSizes: [],
+    };
   };
 
   // Dye-lot rule: <= 800 drills stay on a single 200-count size (color consistency).
@@ -83,10 +122,24 @@ function minCostBulk(
   bulkSizes: number[],
   priceDb: Record<number, number>
 ): ColorPack {
-  const sizesDesc = [...bulkSizes].sort((a, b) => b - a);
+  const unpricedSizes = bulkSizes.filter(s => isUnpriced(priceDb, s)).sort((a, b) => a - b);
+  // Exclude unpriced sizes from the candidate set so a priced plan is always
+  // preferred when one exists — a missing price becomes Infinity (see priceOf),
+  // never a free $0 winner in the search (PRICE-02, threat T-15-03).
+  const pricedSizes = bulkSizes.filter(s => !isUnpriced(priceDb, s));
+
+  if (pricedSizes.length === 0) {
+    // The color's only bulk sizes are unpriced — no priced plan can cover it.
+    // Flag it and emit NO bags, so it never reaches a quote as a $0 line.
+    return { bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: true, unpricedSizes };
+  }
+
+  const sizesDesc = [...pricedSizes].sort((a, b) => b - a);
   const smallest = sizesDesc[sizesDesc.length - 1];
   const larger = sizesDesc.slice(0, -1); // sizes above the smallest, largest first
-  const priceOf = (size: number) => priceDb[size] ?? 0;
+  // Missing price => Infinity (was `?? 0`): pricedSizes are all finite here, so
+  // Infinity can never win, but the guard keeps the intent explicit and safe.
+  const priceOf = (size: number) => priceDb[size] ?? Infinity;
 
   let bestCounts: number[] = [];
   let bestCost = Infinity;
@@ -124,7 +177,9 @@ function minCostBulk(
       packets += qty;
     }
   });
-  return { bySize, totalDrills, packets };
+  // A priced plan was found (bounded search preserved, not greedy): the best
+  // plan contains only priced sizes, so the color is not flagged.
+  return { bySize, totalDrills, packets, hasUnpricedSize: false, unpricedSizes: [] };
 }
 
 /**
@@ -146,13 +201,24 @@ export function withSafetyMargin(dmcCode: string, shape: Shape, requiredCount: n
   return Math.ceil(safety / smallest) * smallest;
 }
 
-/** Price a packed color using the per-bag price table (size -> unit price). */
+/**
+ * Price a packed color using the per-bag price table (size -> unit price),
+ * computing in integer cents via money.ts so line items reconcile exactly to
+ * the displayed total (PRICE-03). An unpriced size is NOT silently added as $0
+ * (the old `priceDb[size] || 0` bug): packs that could only be covered by an
+ * unpriced size carry an empty bySize (see minCostBulk/pack200), so a real
+ * billable bag is never priced at $0 here.
+ */
 export function priceColorPack(pack: ColorPack, priceDb: Record<number, number>): number {
-  let cost = 0;
+  const lineCents: number[] = [];
   for (const [size, qty] of Object.entries(pack.bySize)) {
-    cost += qty * (priceDb[Number(size)] || 0);
+    const unit = priceDb[Number(size)];
+    // Skip an unpriced size rather than treating it as free — such packs are
+    // already flagged (hasUnpricedSize) and surfaced, never billed at $0.
+    if (unit == null || !Number.isFinite(unit)) continue;
+    lineCents.push(toCents(unit) * qty);
   }
-  return Math.round(cost * 100) / 100;
+  return fromCents(sumCents(lineCents));
 }
 
 /** One legend row: exact + safety packs, both priced, plus display text. */
@@ -162,6 +228,10 @@ export interface ColorSupplyRow {
   costExact: number;
   costSafety: number;
   bagsText: string;
+  // PRICE-02: OR of the exact + safety packs — true when this color can only be
+  // covered by an unpriced size, so it must be surfaced, never shown at $0.
+  hasUnpricedSize: boolean;
+  unpricedSizes: number[];
 }
 
 /**
@@ -189,38 +259,43 @@ export function planColorSupply(
     costExact: priceColorPack(exact, priceDb),
     costSafety: priceColorPack(safety, priceDb),
     bagsText,
+    hasUnpricedSize: exact.hasUnpricedSize || safety.hasUnpricedSize,
+    unpricedSizes: Array.from(
+      new Set([...exact.unpricedSizes, ...safety.unpricedSizes])
+    ).sort((a, b) => a - b),
   };
 }
 
+export type DrillType = 'standard' | 'ab' | 'glow' | 'crystal';
+
 /**
- * Default per-packet price by drill type and bag size. Moved verbatim from
- * `App.tsx::getDefaultPacketCost` — the seed values for the editable price table.
+ * Canonical per-type / per-size price table, keyed by the single BAG_SIZES list
+ * so no tier can be half-added again (PRICE-01). The 500 tier is set strictly
+ * between each type's 200 and 1000 tier — the fix for a 500 bag previously
+ * falling through to the 5000 bulk tier.
  */
-export function defaultPacketCost(
-  type: 'standard' | 'ab' | 'glow' | 'crystal',
-  bagSize: number
-): number {
-  if (bagSize === 200) {
-    if (type === 'standard') return 0.25;
-    if (type === 'ab') return 0.35;
-    if (type === 'glow') return 0.45;
-    return 0.5; // crystal
-  }
-  if (bagSize === 1000) {
-    if (type === 'standard') return 0.8;
-    if (type === 'ab') return 1.1;
-    if (type === 'glow') return 1.4;
-    return 1.6;
-  }
-  if (bagSize === 2000) {
-    if (type === 'standard') return 1.4;
-    if (type === 'ab') return 1.9;
-    if (type === 'glow') return 2.4;
-    return 2.7;
-  }
-  // 5000 drills bulk bag
-  if (type === 'standard') return 3.0;
-  if (type === 'ab') return 4.0;
-  if (type === 'glow') return 5.0;
-  return 6.0;
+const PACKET_PRICES: Record<DrillType, Record<(typeof BAG_SIZES)[number], number>> = {
+  standard: { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.4 },
+  ab: { 200: 0.35, 500: 0.7, 1000: 1.1, 2000: 1.9 },
+  glow: { 200: 0.45, 500: 0.9, 1000: 1.4, 2000: 2.4 },
+  crystal: { 200: 0.5, 500: 1.0, 1000: 1.6, 2000: 2.7 },
+};
+
+/** Per-type 5000-count bulk fallback (any size not in BAG_SIZES). */
+const BULK_5000_PRICE: Record<DrillType, number> = {
+  standard: 3.0,
+  ab: 4.0,
+  glow: 5.0,
+  crystal: 6.0,
+};
+
+/**
+ * Default per-packet price by drill type and bag size. Resolves from the single
+ * canonical PACKET_PRICES table (keyed by BAG_SIZES); any size outside that list
+ * (e.g. 5000) uses the explicit bulk fallback. Seed values for the editable
+ * price table — moved from `App.tsx::getDefaultPacketCost`.
+ */
+export function defaultPacketCost(type: DrillType, bagSize: number): number {
+  const tierPrice = PACKET_PRICES[type][bagSize as (typeof BAG_SIZES)[number]];
+  return tierPrice !== undefined ? tierPrice : BULK_5000_PRICE[type];
 }

@@ -51,7 +51,49 @@ describe('bagPlanner.packColor', () => {
 
   it('returns an empty pack for an unknown DMC code and does not throw', () => {
     const pack = packColor('99999', 'square', 500, PRICE_DB);
-    expect(pack).toEqual({ bySize: {}, totalDrills: 0, packets: 0 });
+    expect(pack).toEqual({
+      bySize: {},
+      totalDrills: 0,
+      packets: 0,
+      hasUnpricedSize: false,
+      unpricedSizes: [],
+    });
+  });
+});
+
+describe('bagPlanner.packColor — PRICE-02 (missing price is never $0-self-selected)', () => {
+  // 2000 is deliberately absent from this table so it is unpriced (=> Infinity),
+  // never a free winner in the cost search.
+  const PRICE_DB_NO_2000: Record<number, number> = { 200: 2, 500: 4, 1000: 7 };
+
+  it('never self-selects the unpriced 2000 size; covers with priced sizes only', () => {
+    const pack = packColor('150', 'square', 2100, PRICE_DB_NO_2000);
+    // With 2000 unpriced, the cheapest priced coverage of >=2100 is 2×1000 + 1×500.
+    expect(pack.bySize).toEqual({ 1000: 2, 500: 1 });
+    expect(pack.bySize[2000]).toBeUndefined(); // never present purely because unpriced
+    expect(pack.totalDrills).toBe(2500);
+    // A priced plan exists, so the color is NOT flagged unpriced and cost is finite.
+    expect(pack.hasUnpricedSize).toBe(false);
+    expect(Number.isFinite(priceColorPack(pack, PRICE_DB_NO_2000))).toBe(true);
+    expect(priceColorPack(pack, PRICE_DB_NO_2000)).toBe(7 * 2 + 4); // 18
+  });
+
+  it('flags a color coverable ONLY by an unpriced size and never reports it at $0', () => {
+    // "150" round has only the 200 size; with 200 unpriced there is no priced
+    // plan, so the color is flagged and emits no self-selected $0 line.
+    const PRICE_DB_NO_200: Record<number, number> = { 500: 4, 1000: 7, 2000: 12 };
+    const pack = packColor('150', 'round', 300, PRICE_DB_NO_200);
+    expect(pack.hasUnpricedSize).toBe(true);
+    expect(pack.unpricedSizes).toContain(200);
+    // Not a $0 billable line: no bags are emitted for the unpriced-only color.
+    expect(pack.bySize).toEqual({});
+    expect(priceColorPack(pack, PRICE_DB_NO_200)).toBe(0);
+  });
+
+  it('empty pack (unknown/zero-count color) is NOT flagged as unpriced', () => {
+    const pack = packColor('150', 'square', 0, PRICE_DB);
+    expect(pack.hasUnpricedSize).toBe(false);
+    expect(pack.unpricedSizes).toEqual([]);
   });
 });
 
@@ -74,7 +116,12 @@ describe('bagPlanner.priceColorPack', () => {
   });
 
   it('prices an empty pack as 0', () => {
-    expect(priceColorPack({ bySize: {}, totalDrills: 0, packets: 0 }, PRICE_DB)).toBe(0);
+    expect(
+      priceColorPack(
+        { bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: false, unpricedSizes: [] },
+        PRICE_DB
+      )
+    ).toBe(0);
   });
 });
 
@@ -136,5 +183,21 @@ describe('bagPlanner.defaultPacketCost', () => {
     expect(defaultPacketCost('ab', 1000)).toBe(1.1);
     expect(defaultPacketCost('glow', 2000)).toBe(2.4);
     expect(defaultPacketCost('standard', 5000)).toBe(3.0);
+  });
+
+  it('PRICE-01: the 500 tier is strictly between the 200 and 1000 tiers for every type', () => {
+    const types = ['standard', 'ab', 'glow', 'crystal'] as const;
+    for (const t of types) {
+      expect(defaultPacketCost(t, 500)).toBeGreaterThan(defaultPacketCost(t, 200));
+      expect(defaultPacketCost(t, 500)).toBeLessThan(defaultPacketCost(t, 1000));
+    }
+  });
+
+  it('PRICE-01: a 500 bag is never priced at the 5000 bulk tier', () => {
+    const types = ['standard', 'ab', 'glow', 'crystal'] as const;
+    for (const t of types) {
+      expect(defaultPacketCost(t, 500)).not.toBe(defaultPacketCost(t, 5000));
+      expect(defaultPacketCost(t, 500)).toBeLessThan(defaultPacketCost(t, 5000));
+    }
   });
 });
