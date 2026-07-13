@@ -6,14 +6,14 @@ current_phase: 16
 current_phase_name: optimized-supply-plan-savings
 status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-07-13T03:07:11.367Z"
+last_updated: "2026-07-13T03:20:47.732Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 16 (optimized-supply-plan-savings) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 16 execution started
 
@@ -89,6 +89,7 @@ Last activity: 2026-07-13 — Phase 16 execution started
 | Phase 15 P02 | 10min | 3 tasks | 5 files |
 | Phase 15 P03 | 8min | 3 tasks | 3 files |
 | Phase 16 P01 | 6min | 2 tasks | 3 files |
+| Phase 16 P02 | 6min | 2 tasks | 2 files |
 
 ## Risk & Health
 
@@ -121,7 +122,7 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-13T03:07:02.304Z
+Last session: 2026-07-13T03:20:21.371Z
 Stopped at: Phase 16 context gathered
 Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 
@@ -137,6 +138,7 @@ Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 - [Phase 15]: 15-02: engine/money.ts canonical integer-cents helper (EPSILON-safe round-half-up, throws on non-finite); bagPlanner treats a missing price as Infinity (never $0-self-select), adds a 500 tier from a single canonical size table, flags hasUnpricedSize for colors coverable only by an unpriced size; App.tsx sums line items in cents to reconcile the displayed total and surfaces unpriced colors via the existing actionError banner.
 - [Phase 15]: 15-03: DATA-01 drill-variant integrity test (unique-or-allow-listed IDs, no empty reachable mappings beyond allow-list, full palette coverage) ratchets against data drift; hasVariantMapping surfaces shape-unmapped grid colors via the existing banner. Data-owner checkpoint adjudicated the known holes to safe reversible defaults: dup-ID pairs 731/732, 781/782, 776/3326 kept as intended aliases; empty mappings 471/square, 798/round, BLANC/round, ECRU/round kept surfaced-as-unmapped (DRILL_VARIANTS unchanged).
 - [Phase ?]: [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
+- [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline (<=800 reuses pack200/matches optimizer D-05; >800 buys smallest single covering PRICED bulk bag, D-07 ceil-fills largest on no-cover; never combines sizes/uses drillBagSize/uniform-200). planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized) is a real backstop under the locked overshoot cap (adversarial test proves 0 when optimized>naive); pure, no palette/sort. OrderSupplyPlan shape frozen in 16-02-SUMMARY.
 
 ## Operator Next Steps
 
