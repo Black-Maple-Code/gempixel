@@ -263,6 +263,112 @@ function minCostBulk(
 }
 
 /**
+ * BAG-03 naive per-color baseline (D-05/06/07) — the dye-lot-aware "one bag per
+ * color" plan that the savings figure is measured against, reconciled
+ * apples-to-apples with the optimizer (`packColor`). Distinct from
+ * `calculateSafetyPurchase` in App.tsx (D-12): this is the pure engine baseline.
+ *
+ * Rules (mirrors `packColor`'s guards + dye-lot + priced-size filtering exactly):
+ * - Unknown code / empty mapping / requiredCount <= 0 -> empty pack.
+ * - Dye-lot (D-05): a color needing <= 800 drills returns the SAME `pack200`
+ *   result the optimizer returns, so small colors match the optimizer and show
+ *   $0 savings (the 200 size itself may be unpriced -> flagged, no $0 line).
+ * - Bulk (> 800): restrict to the color's PRICED bulk sizes (> 200) so the
+ *   baseline never self-selects an unpriced size at $0 (mirrors `minCostBulk`);
+ *   if none are priced, return the flagged empty pack exactly as `minCostBulk`
+ *   does. Among priced bulk sizes buy ONE of the SMALLEST size whose single bag
+ *   alone covers requiredCount (naive one-bag-per-color, NO size combining). If
+ *   no single priced bulk size covers requiredCount, apply the D-07 no-cover
+ *   fallback: ceil-fill the LARGEST available priced bulk size.
+ *
+ * Does NOT combine sizes, and does NOT compare against `drillBagSize` or a
+ * uniform 200/color (D-07 rejected alternatives).
+ */
+export function naiveColorPack(
+  dmcCode: string,
+  shape: Shape,
+  requiredCount: number,
+  priceDb: Record<number, number>
+): ColorPack {
+  const empty: ColorPack = {
+    bySize: {},
+    totalDrills: 0,
+    packets: 0,
+    hasUnpricedSize: false,
+    unpricedSizes: [],
+  };
+  const mapping = DRILL_VARIANTS[dmcCode]?.[shape];
+  if (!mapping || Object.keys(mapping).length === 0 || requiredCount <= 0) {
+    return empty;
+  }
+
+  const availableSizes = Object.keys(mapping)
+    .map(Number)
+    .filter(size => mapping[size as keyof VariantMapping] !== undefined);
+
+  const pack200 = (count: number): ColorPack => {
+    // The 200 size itself may be unpriced — flag it and emit no $0 line.
+    if (isUnpriced(priceDb, 200)) {
+      return { bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: true, unpricedSizes: [200] };
+    }
+    const qty = Math.ceil(count / 200);
+    return {
+      bySize: { 200: qty },
+      totalDrills: qty * 200,
+      packets: qty,
+      hasUnpricedSize: false,
+      unpricedSizes: [],
+    };
+  };
+
+  // Dye-lot rule (D-05): <= 800 drills stay on a single 200-count size, identical
+  // to the optimizer, so small colors match it and show a truthful $0 savings.
+  if (requiredCount <= DYE_LOT_CEILING && availableSizes.includes(200)) {
+    return pack200(requiredCount);
+  }
+
+  const bulkSizes = availableSizes.filter(s => s > 200);
+  if (bulkSizes.length === 0) {
+    return availableSizes.includes(200) ? pack200(requiredCount) : empty;
+  }
+
+  // Restrict to PRICED bulk sizes so the baseline never self-selects an unpriced
+  // size at $0 (mirrors minCostBulk / PRICE-02). If none are priced, no priced
+  // plan exists — flag it and emit NO bags, exactly as minCostBulk does.
+  const unpricedSizes = bulkSizes.filter(s => isUnpriced(priceDb, s)).sort((a, b) => a - b);
+  const pricedSizes = bulkSizes.filter(s => !isUnpriced(priceDb, s));
+  if (pricedSizes.length === 0) {
+    return { bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: true, unpricedSizes };
+  }
+
+  // Naive one-bag-per-color: the SMALLEST single priced bulk bag whose lone
+  // capacity covers the requirement (NO size combining).
+  const ascending = [...pricedSizes].sort((a, b) => a - b);
+  const covering = ascending.find(size => size >= requiredCount);
+  if (covering !== undefined) {
+    return {
+      bySize: { [covering]: 1 },
+      totalDrills: covering,
+      packets: 1,
+      hasUnpricedSize: false,
+      unpricedSizes: [],
+    };
+  }
+
+  // D-07 no-cover fallback: no single priced bulk bag covers the requirement, so
+  // ceil-fill the LARGEST available priced bulk size (never combine sizes).
+  const largest = ascending[ascending.length - 1];
+  const qty = Math.ceil(requiredCount / largest);
+  return {
+    bySize: { [largest]: qty },
+    totalDrills: largest * qty,
+    packets: qty,
+    hasUnpricedSize: false,
+    unpricedSizes: [],
+  };
+}
+
+/**
  * Apply a +10% safety margin to the required count, then round up to the
  * smallest bag size actually available for the color. Per-color rounding is why
  * this needs the color args (a bare count cannot know the smallest size).
