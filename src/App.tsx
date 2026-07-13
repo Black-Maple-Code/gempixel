@@ -221,6 +221,15 @@ export function App() {
     setPriceDb(prev => ({ ...prev, [qty]: val }));
   };
 
+  // WR-01: when loadProject restores a project whose drillType differs from the
+  // active one, it also restores that project's saved per-bag prices. The
+  // drillType-keyed preset effect below would otherwise fire right after commit
+  // and overwrite those restored prices with the type defaults — silently
+  // discarding the persisted pricesPerBagSize. loadProject sets this ref so the
+  // NEXT preset-effect run (the load-driven drillType change) is suppressed,
+  // while interactive drill-type switches still apply their presets.
+  const skipDrillPresetRef = useRef(false);
+
   const [affiliateTag, setAffiliateTag] = usePersistentState(
     'gempixel_affiliate_tag', '', codecs.string
   );
@@ -284,7 +293,15 @@ export function App() {
     setRows(project.dimensions.rows);
     setDrillStyle(project.drillStyle);
     setSelectedBaseKit(project.selectedBaseKit || 'all');
-    setDrillType(project.drillType || 'standard');
+    // WR-01: only arm the preset-skip when the load actually CHANGES drillType,
+    // because the preset effect only fires on a real change. Arming it
+    // unconditionally would leave the ref stuck true after a same-type load and
+    // wrongly suppress the user's next interactive drill-type switch.
+    const loadedDrillType = project.drillType || 'standard';
+    if (loadedDrillType !== drillType) {
+      skipDrillPresetRef.current = true;
+    }
+    setDrillType(loadedDrillType);
     setExcludedColors(new Set(project.excludedDmcCodes || []));
     setHighlightedColor(null);
     setCanvasBaseCost(project.kitBaseCost ?? 15.0);
@@ -594,6 +611,13 @@ export function App() {
 
   // Synchronize drillPacketCost defaults and priceDb presets when drillType changes
   useEffect(() => {
+    // WR-01: a load-driven drillType change must NOT overwrite the project's
+    // just-restored per-bag prices / packet cost with the type defaults. Consume
+    // the one-shot skip flag and preserve the restored values.
+    if (skipDrillPresetRef.current) {
+      skipDrillPresetRef.current = false;
+      return;
+    }
     setDrillPacketCost(defaultPacketCost(drillType, drillBagSize));
     if (drillType === 'standard') {
       setPriceDb({ 200: 0.60, 500: 1.10, 1000: 1.80, 2000: 3.20 });

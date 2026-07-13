@@ -275,6 +275,46 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
   // sanitizeMoney guard, toCents(Infinity) threw in the render body and white-
   // screened the app. The load + step-3 render must now complete without throwing
   // and produce a finite, money-formatted total.
+  // WR-01: loading a project whose drillType differs from the active default
+  // ('standard') must preserve its saved per-bag prices. The drillType-keyed
+  // preset effect fires on the standard->ab change and, without the skip guard,
+  // clobbers the restored custom prices with the 'ab' type defaults.
+  it('preserves saved per-bag prices when the loaded drillType differs (WR-01)', async () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'WR-01 Custom Prices', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    // Distinctive prices that match neither the 'standard' default nor the 'ab'
+    // preset ({200:0.70,500:1.30,1000:2.20,2000:3.90}).
+    const customPrices = { 200: 0.99, 500: 1.99, 1000: 2.99, 2000: 3.99 };
+    const data = {
+      id: projectId,
+      name: 'WR-01 Custom Prices',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'ab', // differs from the initial 'standard' -> preset effect fires
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: customPrices,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+
+    await loadProjectToStep(3);
+
+    // Read the per-bag price grid inputs (200/500/1000/2000, in order).
+    const priceSection = Array.from(container.querySelectorAll('span'))
+      .find((s) => s.textContent === 'Prices per Bag Size ($)')
+      ?.closest('div');
+    expect(priceSection).toBeTruthy();
+    const priceInputs = Array.from(priceSection!.querySelectorAll('input')) as HTMLInputElement[];
+    // The restored custom prices survive — NOT overwritten by the 'ab' preset.
+    expect(priceInputs.map((i) => i.value)).toEqual(['0.99', '1.99', '2.99', '3.99']);
+  });
+
   it('does not white-screen when a loaded project has a non-finite kitBaseCost (CR-01)', async () => {
     const nowStr = new Date().toISOString();
     const summary = { id: projectId, name: 'CR-01 Tampered', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
