@@ -146,7 +146,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 10. Project Load Correctness | v2.1 | — | Deferred | — |
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
-| 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete   | 2026-07-13 |
+| 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete    | 2026-07-13 |
 | 16. Optimized Supply Plan & Savings | v3.0 | — | Not started | - |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |
