@@ -15,8 +15,8 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 ### Canvas-First Shell & Navigation
 
-- [ ] **SHELL-01**: A horizontal 4-step bar (Upload → Refine → Supplies → Order) is the *only* navigator — no sidebars, hamburger, or page-flip wizard; the user advances via the primary CTA and returns via completed steps.
-- [ ] **SHELL-02**: The flow is validation-gated (no Refine without an uploaded image; no Supplies without a computed match) and every step's controls are surfaced inline in the flow, never in a drawer.
+- [x] **SHELL-01**: A horizontal 4-step bar (Upload → Refine → Supplies → Order) is the *only* navigator — no sidebars, hamburger, or page-flip wizard; the user advances via the primary CTA and returns via completed steps.
+- [x] **SHELL-02**: The flow is validation-gated (no Refine without an uploaded image; no Supplies without a computed match) and every step's controls are surfaced inline in the flow, never in a drawer.
 
 ### Upload
 
@@ -96,8 +96,8 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 |-------------|-------|--------|
 | DESIGN-01 | Phase 20 | Complete |
 | DESIGN-02 | Phase 20 | Complete |
-| SHELL-01 | Phase 20 | Pending |
-| SHELL-02 | Phase 20 | Pending |
+| SHELL-01 | Phase 20 | Complete |
+| SHELL-02 | Phase 20 | Complete |
 | QUOTE-01 | Phase 22 | Pending |
 | QUOTE-02 | Phase 22 | Pending |
 | QUOTE-03 | Phase 22 | Pending |
