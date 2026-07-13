@@ -61,6 +61,19 @@ describe('bagPlanner.packColor', () => {
   });
 });
 
+describe('bagPlanner.packColor — BAG-01 fewest-bags within the overshoot cap (RED)', () => {
+  it('rejects a cost-cheaper single-2000 plan whose overshoot exceeds one smallest bulk bag', () => {
+    // 1050 drills, 2000 deliberately CHEAP so cost-min alone would buy 1×2000
+    // ($1.00) over 1×1000+1×500 ($1.35). The LOCKED overshoot cap rejects the
+    // single 2000 bag (wastes 950 drills > the 500 smallest bulk bag), so the
+    // fewest-bags-within-cap objective falls to the 2-bag plan.
+    const CHEAP_2000: Record<number, number> = { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.0 };
+    const pack = packColor('150', 'square', 1050, CHEAP_2000);
+    expect(pack.bySize).toEqual({ 1000: 1, 500: 1 });
+    expect(pack.bySize[2000]).toBeUndefined(); // wasteful 1×2000 is NOT selected
+  });
+});
+
 describe('bagPlanner.packColor — PRICE-02 (missing price is never $0-self-selected)', () => {
   // 2000 is deliberately absent from this table so it is unpriced (=> Infinity),
   // never a free winner in the cost search.
