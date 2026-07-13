@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 Phase: 17 — Service Fee & Customer Order Packet
 Plan: Not started
 Status: Plan 16-04 complete; awaiting phase-level completion
-Last activity: 2026-07-13 — Phase 16 complete, transitioned to Phase 17
+Last activity: 2026-07-13 — Completed quick task 260712-wep: fixed prod Web Worker regression (matcher.worker shipped as raw .ts)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -109,6 +109,7 @@ Last activity: 2026-07-13 — Phase 16 complete, transitioned to Phase 17
 | 260712-05k | Fix blocker B3 (silent quota eviction → data loss) + W9 (CSPRNG UUIDs); save() returns status + UI warning | 2026-07-12 | 65f3b1a..e75a7f5 | [260712-05k-fix-blocker-b3-warning-w9-projectstore-s](./quick/260712-05k-fix-blocker-b3-warning-w9-projectstore-s/) |
 | 260712-0io | Fix blocker B4 (symbol pool wraps at 82 → duplicate legend symbols); unique multi-char overflow symbols | 2026-07-12 | cdac74e | [260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s](./quick/260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s/) |
 | 260712-qa1 | Fix WR-02 estimate-vs-cart pricing divergence: fixed-bag branch now mapping-aware ($0 line for unmapped-shape colors, matching the cart) | 2026-07-13 | 9feed49..c1c3ff8 | [260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver](./quick/260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver/) |
+| 260712-wep | Fix prod Web Worker regression: Vite shipped matcher.worker as raw .ts (image matching silently failed in prod); inline `new Worker(new URL())` in MatcherClient so Vite bundles it to hashed .js | 2026-07-13 | d7fe6fb | [260712-wep-fix-prod-web-worker-regression-vite-ship](./quick/260712-wep-fix-prod-web-worker-regression-vite-ship/) |
 
 ## Continuity & Handoff
 
