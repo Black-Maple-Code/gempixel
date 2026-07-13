@@ -1,36 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&family=Pixelify+Sans:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&display=swap');
 @import "tailwindcss";
 
 /* =========================================================================
    THEME TOKEN LAYER
-   Two skins driven by one switch: [data-theme] on <html>.
-   Dark = "Pixel Lab", Light = "Atelier". See design handoff.
+   Single Atelier light skin. Dark mode retired in v4.0 (DESIGN-01) — the
+   dual-skin switch is gone; these values live unconditionally on :root.
    ========================================================================= */
-:root,
-[data-theme="dark"] {
-  --bg:        #0A0A0F;
-  --panel:     #12121A;
-  --panel-2:   #0d0d13;
-  --border:    #262631;
-  --border-2:  #1B1B26;
-  --ink:       #ECECF2;
-  --ink-strong:#FFFFFF;
-  --muted:     #8A8A99;
-  --faint:     #6c6c7a;
-  --accent:    #8B7BD8;   /* primary action (soft violet — calmer than the old magenta) */
-  --accent-2:  #37E2C4;   /* secondary / positive */
-  --warn:      #F5B54A;   /* medium / caution — bright amber reads on the dark bg */
-  --on-accent: #0B0B10;
-  --font-display: 'Pixelify Sans', sans-serif;
-  --btn-shadow:  4px 4px 0 #4f4488;
-  --btn2-shadow: 3px 3px 0 #0e7d68;
-  --grid-dot:    #15151f;   /* viewport bg dot */
-  --canvas-gap:  #0d0d13;   /* gap between drills */
-  --drill-round-backing: #2D3748;
-}
-
-[data-theme="light"] {
+:root {
   --bg:        #F4F1E9;
   --panel:     #FCFAF4;
   --panel-2:   #FFFFFF;
@@ -39,17 +14,23 @@
   --ink:       #1B1A17;
   --ink-strong:#1B1A17;
   --muted:     #6B6459;
-  --faint:     #9a927d;
+  --faint:     #9A927D;
   --accent:    #0E6E5C;
   --accent-2:  #0E6E5C;
   --warn:      #A85A11;   /* medium / caution — dark amber reads on the cream bg */
   --on-accent: #F4F1E9;
-  --font-display: 'Newsreader', serif;
+  --font-display: 'Newsreader Variable', 'Newsreader Variable fallback', ui-serif, Georgia, serif;
   --btn-shadow:  none;
   --btn2-shadow: none;
   --grid-dot:    transparent;
   --canvas-gap:  #E4DECF;
   --drill-round-backing: #C9BFA6;
+
+  /* Atelier radius + shadow tokens (consumed by Plan 03 chrome) */
+  --radius-card:    12px;
+  --radius-control: 8px;
+  --radius-pill:    20px;
+  --shadow-card:    0 40px 80px -30px rgba(0,0,0,0.5);
 }
 
 /* gem-dot logo + gem palette (theme-independent content colors) */
@@ -86,6 +67,12 @@
   --color-gem-violet:var(--gem-violet);
   --color-gem-amber: var(--gem-amber);
   --font-display:    var(--font-display);
+
+  /* self-hosted font stacks — each names its Fontaine metric fallback family
+     (Fontaine does NOT auto-append fallbacks declared inside CSS variables) */
+  --font-serif:      'Newsreader Variable', 'Newsreader Variable fallback', ui-serif, Georgia, serif;
+  --font-sans:       'Archivo Variable', 'Archivo Variable fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:       'JetBrains Mono', 'JetBrains Mono fallback', ui-monospace, monospace;
 
   /* neutral scale remap (role-by-shade, matching current usage:
      950 = app bg, 900 = panel, 800/850 = borders/hover, 400/500 = muted,
@@ -133,11 +120,11 @@
     @apply antialiased select-none min-h-screen;
     background-color: var(--bg);
     color: var(--ink);
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-sans);
     transition: background-color .2s ease, color .2s ease;
   }
   code, pre, .font-mono {
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: 'JetBrains Mono', 'JetBrains Mono fallback', monospace !important;
   }
 }
 
