@@ -5104,3 +5104,17 @@ export const DRILL_VARIANTS: VariantLookup = {
     "round": {}
   }
 };
+
+/**
+ * True only when the given DMC code has at least one purchasable variant SKU
+ * for the given drill shape. A color+shape with no mapping (an allow-listed
+ * hole, see variants.integrity.test.ts) returns false so the caller can surface
+ * it rather than silently dropping the color from the supply plan (DATA-01).
+ */
+export function hasVariantMapping(
+  dmcCode: string,
+  shape: 'square' | 'round'
+): boolean {
+  const mapping = DRILL_VARIANTS[dmcCode]?.[shape];
+  return !!mapping && Object.keys(mapping).length > 0;
+}

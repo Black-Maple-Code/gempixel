@@ -4,6 +4,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
+import { hasVariantMapping } from './engine/variants';
 import { toCents, fromCents, sumCents } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
@@ -996,14 +997,33 @@ export function App() {
     .map(row => row.code);
   const unpricedColorsKey = unpricedColorCodes.join(',');
 
+  // DATA-01: a grid color with NO drill variant mapped for the currently selected
+  // shape (an allow-listed data hole, e.g. 471 while drillStyle='square') would
+  // otherwise vanish from the supply plan. Surface it via the SAME banner so it is
+  // never silently dropped (threat T-15-08). Derived here; applied in the effect
+  // below so we never setState during render.
+  const unmappedShapeCodes = Object.keys(matchResult?.counts || {})
+    .filter(code => !hasVariantMapping(code, drillStyle));
+  const unmappedShapeKey = unmappedShapeCodes.join(',');
+
   useEffect(() => {
+    const messages: string[] = [];
     if (unpricedColorsKey) {
       const codes = unpricedColorsKey.split(',').join(', ');
-      setActionError(
+      messages.push(
         `Some colors have an unpriced bag size and were left out of the total: ${codes} — price them to include an accurate cost.`
       );
     }
-  }, [unpricedColorsKey]);
+    if (unmappedShapeKey) {
+      const codes = unmappedShapeKey.split(',').join(', ');
+      messages.push(
+        `These colors have no ${drillStyle} drills mapped and were left out of the supply plan: ${codes} — pick the other drill shape or exclude them.`
+      );
+    }
+    if (messages.length > 0) {
+      setActionError(messages.join(' '));
+    }
+  }, [unpricedColorsKey, unmappedShapeKey, drillStyle]);
 
   const [checkoutWarning, setCheckoutWarning] = useState<{
     url: string;
