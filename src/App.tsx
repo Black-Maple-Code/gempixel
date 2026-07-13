@@ -4,6 +4,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
+import { toCents, fromCents, sumCents } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -933,7 +934,8 @@ export function App() {
           costExact: row.costExact,
           costSafety: row.costSafety,
           bagsText: row.bagsText,
-          optimizedBags: row.safety.bySize
+          optimizedBags: row.safety.bySize,
+          hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
         };
       } else {
         const metrics = calculateSafetyPurchase(count, drillBagSize);
@@ -948,7 +950,8 @@ export function App() {
           costExact,
           costSafety,
           bagsText: `${metrics.packets} bag(s)`,
-          optimizedBags: null
+          optimizedBags: null,
+          hasUnpricedSize: false // fixed single-size pricing path is always priced
         };
       }
     })
@@ -976,9 +979,31 @@ export function App() {
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
   const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
 
-  const safetyDrillCost = sortedMatches.reduce((acc, row) => acc + row.costSafety, 0);
+  // PRICE-03: sum every displayed line item in integer cents (via money.ts) so
+  // the itemized drill costs + canvas base + shipping reconcile EXACTLY to the
+  // displayed total — no IEEE-754 float drift between the lines and the total.
+  const safetyDrillCostCents = sumCents(sortedMatches.map(row => toCents(row.costSafety)));
+  const totalCostSafetyCents =
+    toCents(canvasBaseCost) + toCents(canvasShippingEstimate) + safetyDrillCostCents;
+  const safetyDrillCost = fromCents(safetyDrillCostCents);
+  const totalCostSafety = fromCents(totalCostSafetyCents);
 
-  const totalCostSafety = canvasBaseCost + canvasShippingEstimate + safetyDrillCost;
+  // PRICE-02: a color coverable only by an unpriced bag size is surfaced through
+  // the existing actionError banner (never rendered as a free $0 line). Derived
+  // here; applied in an effect below so we never setState during render.
+  const unpricedColorCodes = sortedMatches
+    .filter(row => row.hasUnpricedSize)
+    .map(row => row.code);
+  const unpricedColorsKey = unpricedColorCodes.join(',');
+
+  useEffect(() => {
+    if (unpricedColorsKey) {
+      const codes = unpricedColorsKey.split(',').join(', ');
+      setActionError(
+        `Some colors have an unpriced bag size and were left out of the total: ${codes} — price them to include an accurate cost.`
+      );
+    }
+  }, [unpricedColorsKey]);
 
   const [checkoutWarning, setCheckoutWarning] = useState<{
     url: string;
