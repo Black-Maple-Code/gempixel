@@ -88,7 +88,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   3. A plain-language explanation tells the user why bags are grouped the way they are (the dye-lot "why").
   4. The user can see how much the optimized plan saves versus a naive one-size-per-color purchase.
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1**
 
@@ -100,7 +100,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 16-03-wire-aggregator-retire-toggle-PLAN.md — wire planOrderSupply into App.tsx + retire the optimizeBagsCost toggle (BAG-02)
+- [x] 16-03-wire-aggregator-retire-toggle-PLAN.md — wire planOrderSupply into App.tsx + retire the optimizeBagsCost toggle (BAG-02)
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -164,7 +164,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
 | 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete    | 2026-07-13 |
-| 16. Optimized Supply Plan & Savings | v3.0 | 2/4 | In Progress|  |
+| 16. Optimized Supply Plan & Savings | v3.0 | 3/4 | In Progress|  |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Not started | - |
