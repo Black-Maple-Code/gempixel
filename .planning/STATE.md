@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 Phase: 17 — Service Fee & Customer Order Packet
 Plan: Not started
 Status: Plan 16-04 complete; awaiting phase-level completion
-Last activity: 2026-07-13 — Completed quick task 260712-wep: fixed prod Web Worker regression (matcher.worker shipped as raw .ts)
+Last activity: 2026-07-13 — Completed quick task 260713-01y: redesigned grid+symbols allocation (distinct glyphs first, clean letters last, no digits/combos)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -110,6 +110,7 @@ Last activity: 2026-07-13 — Completed quick task 260712-wep: fixed prod Web Wo
 | 260712-0io | Fix blocker B4 (symbol pool wraps at 82 → duplicate legend symbols); unique multi-char overflow symbols | 2026-07-12 | cdac74e | [260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s](./quick/260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s/) |
 | 260712-qa1 | Fix WR-02 estimate-vs-cart pricing divergence: fixed-bag branch now mapping-aware ($0 line for unmapped-shape colors, matching the cart) | 2026-07-13 | 9feed49..c1c3ff8 | [260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver](./quick/260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver/) |
 | 260712-wep | Fix prod Web Worker regression: Vite shipped matcher.worker as raw .ts (image matching silently failed in prod); inline `new Worker(new URL())` in MatcherClient so Vite bundles it to hashed .js | 2026-07-13 | d7fe6fb | [260712-wep-fix-prod-web-worker-regression-vite-ship](./quick/260712-wep-fix-prod-web-worker-regression-vite-ship/) |
+| 260713-01y | Redesign grid+symbols allocation: symbols-first (105 distinct shape-glyphs lead), digits removed entirely, unambiguous capitals (excl. B G I O Q S Z) as last resort; killed the confusing letter/number iconography + glyph+digit combos. Pruned 17 confusable glyphs (rotations/interior twins) so every mark is easily distinguishable. | 2026-07-13 | 2978605..db586e3 | [260713-01y-redesign-grid-symbols-allocation-distinc](./quick/260713-01y-redesign-grid-symbols-allocation-distinc/) |
 
 ## Continuity & Handoff
 
