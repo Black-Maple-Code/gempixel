@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   packColor,
+  naiveColorPack,
   withSafetyMargin,
   priceColorPack,
   planColorSupply,
@@ -159,6 +160,72 @@ describe('bagPlanner.packColor — PRICE-02 (missing price is never $0-self-sele
     const pack = packColor('150', 'square', 0, PRICE_DB);
     expect(pack.hasUnpricedSize).toBe(false);
     expect(pack.unpricedSizes).toEqual([]);
+  });
+});
+
+describe('bagPlanner.naiveColorPack — BAG-03 dye-lot-aware naive baseline (D-05/06/07)', () => {
+  it('D-05: a <= 800 color returns the SAME 200-count pack the optimizer does ($0 savings)', () => {
+    const pack = naiveColorPack('150', 'square', 300, PRICE_DB);
+    expect(pack.bySize).toEqual({ 200: 2 });
+    expect(pack.totalDrills).toBe(400);
+    expect(pack.packets).toBe(2);
+    // Identical to the optimizer for the same count -> savings is truthfully $0.
+    expect(pack.bySize).toEqual(packColor('150', 'square', 300, PRICE_DB).bySize);
+  });
+
+  it('picks the SMALLEST single bulk bag that alone covers the count (1050 -> {2000:1})', () => {
+    // 500 and 1000 each cover < 1050; the smallest single covering bag is 2000.
+    const pack = naiveColorPack('150', 'square', 1050, PRICE_DB);
+    expect(pack.bySize).toEqual({ 2000: 1 });
+    expect(pack.packets).toBe(1);
+  });
+
+  it('picks the smallest single covering bag (900 -> {1000:1})', () => {
+    const pack = naiveColorPack('150', 'square', 900, PRICE_DB);
+    expect(pack.bySize).toEqual({ 1000: 1 });
+  });
+
+  it('D-07 no-cover fallback: ceil-fills the LARGEST bag when none covers alone (3000 -> {2000:2})', () => {
+    const pack = naiveColorPack('150', 'square', 3000, PRICE_DB);
+    expect(pack.bySize).toEqual({ 2000: 2 });
+    expect(pack.totalDrills).toBe(4000);
+    expect(pack.packets).toBe(2);
+  });
+
+  it('availability keeps a 200-only color on 200-count bags (150 round, 3000 -> {200:15})', () => {
+    const pack = naiveColorPack('150', 'round', 3000, PRICE_DB);
+    expect(pack.bySize).toEqual({ 200: 15 });
+    expect(pack.totalDrills).toBe(3000);
+  });
+
+  it('returns an empty, unflagged pack for an unknown code / zero count (mirrors packColor)', () => {
+    expect(naiveColorPack('99999', 'square', 500, PRICE_DB)).toEqual({
+      bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: false, unpricedSizes: [],
+    });
+    expect(naiveColorPack('150', 'square', 0, PRICE_DB)).toEqual({
+      bySize: {}, totalDrills: 0, packets: 0, hasUnpricedSize: false, unpricedSizes: [],
+    });
+  });
+
+  it('flags a color coverable only by an unpriced size (never a $0 baseline line)', () => {
+    // 150 round has only the 200 size; with 200 unpriced there is no priced plan.
+    const NO_200: Record<number, number> = { 500: 4, 1000: 7, 2000: 12 };
+    const pack = naiveColorPack('150', 'round', 300, NO_200);
+    expect(pack.hasUnpricedSize).toBe(true);
+    expect(pack.unpricedSizes).toContain(200);
+    expect(pack.bySize).toEqual({});
+    expect(priceColorPack(pack, NO_200)).toBe(0);
+  });
+
+  it('never self-selects an unpriced bulk size at $0 (bulk restricted to priced sizes)', () => {
+    // 2000 unpriced: the naive baseline must NOT pick the (unpriced) 2000 bag for
+    // 1050. With only {500,1000} priced and neither covering 1050 in one bag, the
+    // D-07 fallback ceil-fills the LARGEST priced bulk size (1000): {1000:2}.
+    const NO_2000: Record<number, number> = { 200: 2, 500: 4, 1000: 7 };
+    const pack = naiveColorPack('150', 'square', 1050, NO_2000);
+    expect(pack.bySize[2000]).toBeUndefined();
+    expect(pack.bySize).toEqual({ 1000: 2 });
+    expect(pack.hasUnpricedSize).toBe(false);
   });
 });
 
