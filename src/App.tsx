@@ -1006,6 +1006,10 @@ export function App() {
     .filter(code => !hasVariantMapping(code, drillStyle));
   const unmappedShapeKey = unmappedShapeCodes.join(',');
 
+  // Only THIS derived warning is managed on the shared actionError banner; track the
+  // last value we set so the effect can clear its own stale warning (WR-01) without
+  // clobbering an unrelated storage/download/checkout error that is currently showing.
+  const derivedActionWarningRef = useRef<string | null>(null);
   useEffect(() => {
     const messages: string[] = [];
     if (unpricedColorsKey) {
@@ -1016,13 +1020,17 @@ export function App() {
     }
     if (unmappedShapeKey) {
       const codes = unmappedShapeKey.split(',').join(', ');
+      // WR-02: state the fact (no drills available for this shape) without claiming the
+      // color was excluded from the total — in fixed-bag mode it is still billed.
       messages.push(
-        `These colors have no ${drillStyle} drills mapped and were left out of the supply plan: ${codes} — pick the other drill shape or exclude them.`
+        `These colors have no ${drillStyle} drills available: ${codes} — switch drill shape or exclude them.`
       );
     }
-    if (messages.length > 0) {
-      setActionError(messages.join(' '));
-    }
+    const next = messages.length > 0 ? messages.join(' ') : null;
+    const prevDerived = derivedActionWarningRef.current;
+    derivedActionWarningRef.current = next;
+    // Reactively clear/replace our own warning; leave any unrelated error untouched.
+    setActionError(current => (current === prevDerived || current === null ? next : current));
   }, [unpricedColorsKey, unmappedShapeKey, drillStyle]);
 
   const [checkoutWarning, setCheckoutWarning] = useState<{
