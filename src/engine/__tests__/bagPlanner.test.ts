@@ -423,17 +423,23 @@ describe('bagPlanner.planOrderSupply — BAG-02/D-13 shared order aggregator', (
     expect(plan.savingsPct).toBe(0);
   });
 
-  it('stays pure: no sorting (rows keep input order) and no palette name/hex lookup', () => {
-    // Input order 151 then 150 must be preserved (the aggregator never sorts).
-    const plan = planOrderSupply({ '151': 1050, '150': 300 }, 'square', PRICE_DB);
-    expect(plan.rows.map(r => r.code)).toEqual(['151', '150']);
+  it('stays pure: applies no sort of its own and does no palette name/hex lookup', () => {
+    // The aggregator never re-sorts (sorting by quantity/name/hue stays in the UI):
+    // rows follow the input's own key order verbatim. NOTE: JS iterates integer-like
+    // string keys (DMC codes) in ascending numeric order, so '150' precedes '151'
+    // here regardless of insertion order — the point is the aggregator adds no sort,
+    // and in particular does NOT reorder by count (which would put 300 before 1050).
+    const counts = { '151': 1050, '150': 300 };
+    const plan = planOrderSupply(counts, 'square', PRICE_DB);
+    expect(plan.rows.map(r => r.code)).toEqual(Object.keys(counts));
+    expect(plan.rows.map(r => r.code)).toEqual(['150', '151']); // NOT count-sorted (would be 151,150)
     // No DMC_PALETTE lookup: rows carry engine fields only, never name/hex.
     for (const row of plan.rows) {
       expect(row).not.toHaveProperty('name');
       expect(row).not.toHaveProperty('hex');
     }
     // Deterministic: identical inputs yield a deeply-equal plan.
-    const again = planOrderSupply({ '151': 1050, '150': 300 }, 'square', PRICE_DB);
+    const again = planOrderSupply(counts, 'square', PRICE_DB);
     expect(again).toEqual(plan);
   });
 });

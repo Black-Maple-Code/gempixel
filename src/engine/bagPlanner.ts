@@ -452,6 +452,100 @@ export function planColorSupply(
   };
 }
 
+/**
+ * Aggregated supply plan for a whole order (BAG-02, D-13) — the single shared
+ * substrate the legend estimate, the Shopify cart, and the future Phase 17 order
+ * packet all consume, so the numbers can never diverge across those surfaces.
+ */
+export interface OrderSupplyPlan {
+  /** One optimized row per input color, keyed by DMC code (input order, unsorted). */
+  rows: Array<{ code: string } & ColorSupplyRow>;
+  totalPackets: number; // sum of the per-color SAFETY packets
+  totalDrills: number; // sum of the per-color SAFETY drills purchased
+  optimizedCostCents: number; // sum(per-color optimized safety cost) in integer cents
+  naiveCostCents: number; // sum(per-color naive safety baseline cost) in integer cents
+  savingsCents: number; // max(0, naiveCostCents - optimizedCostCents) — never negative
+  savingsPct: number; // round(savingsCents / naiveCostCents * 100); 0 when naive is 0
+  hasUnpricedSize: boolean; // OR across colors — any color coverable only by an unpriced size
+  unpricedColorCodes: string[]; // the flagged codes (input order)
+}
+
+/**
+ * Aggregate a whole order into one plan (D-13). For each color: pack + price the
+ * optimized exact + safety plan via `planColorSupply`, then price the naive
+ * baseline on the SAME +10% safety count basis (`withSafetyMargin` ->
+ * `naiveColorPack` -> `priceColorPack`) so the savings reconciles with the
+ * displayed safety-based Est. total. All totals accumulate through money.ts
+ * integer cents (`toCents` + `sumCents`), never raw float addition (PRICE-03).
+ *
+ * `savingsCents` is CLAMPED to >= 0. Under the LOCKED overshoot cap this is a
+ * REAL correctness backstop, not merely a NaN/precision guard: when the cap
+ * forces the optimizer off a cheap single large bag onto a pricier
+ * lower-overshoot multi-bag plan, the optimized cost can exceed the naive
+ * single-bag cost, so the raw difference goes negative and the clamp keeps
+ * savings at $0 (never overstate the payoff). An unpriced-only color contributes
+ * $0 to BOTH totals (apples-to-apples, D-06) and is surfaced via
+ * `unpricedColorCodes`.
+ *
+ * Pure: NO DMC_PALETTE name/hex lookup and NO sorting — those stay in the UI.
+ * Shared by the legend estimate, the Shopify cart, and the Phase 17 order packet.
+ */
+export function planOrderSupply(
+  counts: Record<string, number>,
+  shape: Shape,
+  priceDb: Record<number, number>
+): OrderSupplyPlan {
+  const rows: Array<{ code: string } & ColorSupplyRow> = [];
+  const unpricedColorCodes: string[] = [];
+  const optimizedLineCents: number[] = [];
+  const naiveLineCents: number[] = [];
+  let totalPackets = 0;
+  let totalDrills = 0;
+  let hasUnpricedSize = false;
+
+  for (const [code, count] of Object.entries(counts)) {
+    // Optimized per-color plan (exact + safety, both packed + priced via packColor).
+    const row = planColorSupply(code, shape, count, priceDb);
+    rows.push({ code, ...row });
+
+    totalPackets += row.safety.packets;
+    totalDrills += row.safety.totalDrills;
+    // Integer cents only (PRICE-03): never accumulate the float dollar amounts.
+    optimizedLineCents.push(toCents(row.costSafety));
+
+    // Naive baseline on the SAME safety count basis so savings is apples-to-apples
+    // with the displayed safety-based Est. total (D-06).
+    const safetyCount = withSafetyMargin(code, shape, count);
+    const naivePack = naiveColorPack(code, shape, safetyCount, priceDb);
+    const naiveCost = priceColorPack(naivePack, priceDb);
+    naiveLineCents.push(toCents(naiveCost));
+
+    if (row.hasUnpricedSize) {
+      hasUnpricedSize = true;
+      unpricedColorCodes.push(code);
+    }
+  }
+
+  const optimizedCostCents = sumCents(optimizedLineCents);
+  const naiveCostCents = sumCents(naiveLineCents);
+  // Clamp >= 0: a REAL backstop under the LOCKED overshoot cap (see docstring),
+  // not merely a precision guard — the optimizer can be forced above the naive bag.
+  const savingsCents = Math.max(0, naiveCostCents - optimizedCostCents);
+  const savingsPct = naiveCostCents === 0 ? 0 : Math.round((savingsCents / naiveCostCents) * 100);
+
+  return {
+    rows,
+    totalPackets,
+    totalDrills,
+    optimizedCostCents,
+    naiveCostCents,
+    savingsCents,
+    savingsPct,
+    hasUnpricedSize,
+    unpricedColorCodes,
+  };
+}
+
 export type DrillType = 'standard' | 'ab' | 'glow' | 'crystal';
 
 /**
