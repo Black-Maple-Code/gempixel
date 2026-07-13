@@ -14,9 +14,9 @@ Committed scope for v3.0. Each maps to exactly one roadmap phase. Grounded in `.
 
 ### Pricing Accuracy
 
-- [ ] **PRICE-01**: The per-packet cost shown for a 500-count drill bag is correct and priced at its own tier, not a larger or nonexistent tier. *(carried from v2.1; live bug: `defaultPacketCost` has no 500 branch)*
-- [ ] **PRICE-02**: An unpriced bag size is never treated as free ($0); the cost/optimizer never selects a size because its price is missing (missing price is excluded or flagged, never self-selected as the cheapest). *(carried from v2.1; live bug: `priceDb[size] ?? 0`)*
-- [ ] **PRICE-03**: All money math uses integer cents and reconciles — the sum of the itemized line items always equals the displayed total, and no customer-facing $0 line ever appears for a real billable item.
+- [x] **PRICE-01**: The per-packet cost shown for a 500-count drill bag is correct and priced at its own tier, not a larger or nonexistent tier. *(carried from v2.1; live bug: `defaultPacketCost` has no 500 branch)*
+- [x] **PRICE-02**: An unpriced bag size is never treated as free ($0); the cost/optimizer never selects a size because its price is missing (missing price is excluded or flagged, never self-selected as the cheapest). *(carried from v2.1; live bug: `priceDb[size] ?? 0`)*
+- [x] **PRICE-03**: All money math uses integer cents and reconciles — the sum of the itemized line items always equals the displayed total, and no customer-facing $0 line ever appears for a real billable item.
 
 ### Data Integrity
 
@@ -90,9 +90,9 @@ Final phase mapping (phases 15–19, continuing from the previous milestone's la
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | VENDOR-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
-| PRICE-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
-| PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
-| PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| PRICE-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
+| PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
+| PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | DATA-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
 | BAG-01 | Phase 16 — Optimized Supply Plan & Savings | Pending |
 | BAG-02 | Phase 16 — Optimized Supply Plan & Savings | Pending |
