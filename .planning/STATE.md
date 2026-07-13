@@ -4,9 +4,9 @@ milestone: v3.0
 milestone_name: Two-Mode Viewport Experience — Phases 15–19
 current_phase: 16
 current_phase_name: Optimized Supply Plan & Savings
-status: verifying
+status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-07-13T01:07:15.262Z"
+last_updated: "2026-07-13T02:11:27.216Z"
 last_activity: 2026-07-13
 last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)"
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 Phase: 16 — Optimized Supply Plan & Savings
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**

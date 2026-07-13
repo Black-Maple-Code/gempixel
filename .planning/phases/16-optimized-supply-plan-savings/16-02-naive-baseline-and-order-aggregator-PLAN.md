@@ -218,7 +218,8 @@ exist in this plan.**
 
 <verification>
 - `npx tsc --noEmit` exits 0; `npm test` fully green.
-- planOrderSupply totals reconcile in integer cents; savings is provably >= 0 and
+- planOrderSupply totals reconcile in integer cents; savings is clamped >= 0 (a real
+  correctness backstop under the locked overshoot cap, never overstated) and
   $0 for <=800-only fixtures.
 - The aggregator is pure (no Preact/DOM/palette/sort) and reuses the same primitives
   the cart uses, satisfying D-13's "cannot diverge" contract.
