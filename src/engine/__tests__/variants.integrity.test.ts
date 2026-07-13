@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DRILL_VARIANTS } from '../variants';
+import { DRILL_VARIANTS, hasVariantMapping } from '../variants';
 import { DMC_PALETTE } from '../palette';
 
 /**
@@ -135,5 +135,19 @@ describe('DRILL_VARIANTS integrity (DATA-01)', () => {
       ['BLANC', 'round'],
       ['ECRU', 'round'],
     ]);
+  });
+});
+
+describe('hasVariantMapping (DATA-01 predicate)', () => {
+  // The runtime predicate App.tsx uses to surface grid colors that have no drill
+  // mapped for the selected shape (15-03 Task 2 acceptance criteria).
+  it('returns false for an allow-listed empty (code, shape) hole', () => {
+    expect(hasVariantMapping('471', 'square')).toBe(false);
+    expect(hasVariantMapping('798', 'round')).toBe(false);
+  });
+
+  it('returns true when the color has at least one drill for that shape', () => {
+    expect(hasVariantMapping('471', 'round')).toBe(true);
+    expect(hasVariantMapping('150', 'square')).toBe(true);
   });
 });
