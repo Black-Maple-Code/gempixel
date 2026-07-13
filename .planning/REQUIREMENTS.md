@@ -90,41 +90,42 @@ Explicitly excluded from v4.0.
 
 ## Traceability
 
-Phase mapping is assigned by the roadmapper (`/gsd-new-milestone` → roadmap step). All v4.0 requirements below are **Pending** until mapped. Phase numbering continues from the previous milestone (v3.0 ended at Phase 19 → v4.0 starts at Phase 20).
+Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step, 2026-07-13). Phase numbering continues from the previous milestone (v3.0 ended at Phase 19 → v4.0 spans Phases 20–25). All 19 v4.0 requirements are mapped to exactly one phase (100% coverage); Phases 21 (shared UI primitives) and 25 (strangler cleanup) are infrastructure/cleanup phases that carry no REQ-ID by design.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DESIGN-01 | TBD | Pending |
-| DESIGN-02 | TBD | Pending |
-| SHELL-01 | TBD | Pending |
-| SHELL-02 | TBD | Pending |
-| UPLOAD-01 | TBD | Pending |
-| REFINE-01 | TBD | Pending |
-| REFINE-02 | TBD | Pending |
-| REFINE-03 | TBD | Pending |
-| REFINE-04 | TBD | Pending |
-| REFINE-05 | TBD | Pending |
-| SUPPLIES-01 | TBD | Pending |
-| SUPPLIES-02 | TBD | Pending |
-| QUOTE-01 | TBD | Pending |
-| QUOTE-02 | TBD | Pending |
-| QUOTE-03 | TBD | Pending |
-| ORDER-01 | TBD | Pending |
-| ORDER-02 | TBD | Pending |
-| MOBILE-01 | TBD | Pending |
-| MOBILE-02 | TBD | Pending |
+| DESIGN-01 | Phase 20 | Pending |
+| DESIGN-02 | Phase 20 | Pending |
+| SHELL-01 | Phase 20 | Pending |
+| SHELL-02 | Phase 20 | Pending |
+| QUOTE-01 | Phase 22 | Pending |
+| QUOTE-02 | Phase 22 | Pending |
+| QUOTE-03 | Phase 22 | Pending |
+| UPLOAD-01 | Phase 23 | Pending |
+| REFINE-01 | Phase 23 | Pending |
+| REFINE-02 | Phase 23 | Pending |
+| REFINE-03 | Phase 23 | Pending |
+| REFINE-04 | Phase 23 | Pending |
+| REFINE-05 | Phase 23 | Pending |
+| SUPPLIES-01 | Phase 23 | Pending |
+| SUPPLIES-02 | Phase 23 | Pending |
+| ORDER-01 | Phase 23 | Pending |
+| ORDER-02 | Phase 23 | Pending |
+| MOBILE-01 | Phase 24 | Pending |
+| MOBILE-02 | Phase 24 | Pending |
 
 **Coverage:**
 
 - Milestone v4.0 requirements: 19 total
-- Mapped to phases: 0 (roadmapper assigns)
-- Unmapped: 19 (pending roadmap)
+- Mapped to phases: 19 (100%)
+- Unmapped: 0
+- Phases carrying no REQ-ID (infrastructure/cleanup, by design): Phase 21 (Shared UI Primitives), Phase 25 (Retire Legacy Steps + Cleanup)
 
 **Notes:**
 
-- The two marquee Refine transforms already exist in the engine (edge cleanup = `smoothing.ts::smoothMatches`; drill-merge = `color.ts::substituteLowCountColors`); REFINE-03/04 are mostly rewiring + one additive `reduceToColorCount` (target-N vs the existing threshold).
-- QUOTE-01/02 and SUPPLIES-02 share one integer-cents `engine/quote.ts` selector (extending the `planOrderSupply` single-source pattern) so no total can diverge.
-- The strangler discipline (App.tsx stays state owner, pure screen children, engine/* never diffs inside a UI phase, 240+ tests green each commit) is a build constraint the roadmapper must honor — it directly prevents the v3.0 "two big UI reworks at once → force-closed" failure.
+- The two marquee Refine transforms already exist in the engine (edge cleanup = `smoothing.ts::smoothMatches`; drill-merge = `color.ts::substituteLowCountColors`); REFINE-03/04 are mostly rewiring + one additive `reduceToColorCount` (target-N vs the existing threshold). The additive engine work (`detectedColorCount`, `reduceToColorCount`) lands isolated in **Phase 22** (engine-only commits); the UI wiring for REFINE-04 lands in **Phase 23**.
+- QUOTE-01/02 and SUPPLIES-02 share one integer-cents `engine/quote.ts` selector (extending the `planOrderSupply` single-source pattern) so no total can diverge — the selector is built in **Phase 22** and consumed by the Supplies + Order screens in **Phase 23**.
+- The strangler discipline (App.tsx stays state owner, pure screen children, `engine/*` never diffs inside a UI phase, 240+ tests green each commit) is a build constraint honored in the phase ordering — engine changes isolated to Phase 22, one screen swapped in at a time in Phase 23, cleanup last in Phase 25. It directly prevents the v3.0 "two big UI reworks at once → force-closed" failure.
 
 ---
-*Requirements defined: 2026-07-13 — Milestone v4.0 Canvas-First Redesign. Frontend-only; backend deferred to v5.0. Grounded in `.planning/research/SUMMARY.md`.*
+*Requirements defined: 2026-07-13 — Milestone v4.0 Canvas-First Redesign. Frontend-only; backend deferred to v5.0. Grounded in `.planning/research/SUMMARY.md`. Phase mapping assigned 2026-07-13 (Phases 20–25).*

@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign
-status: planning
-last_updated: "2026-07-13T21:35:32.853Z"
+status: ready_to_plan
+last_updated: "2026-07-13T22:10:00.000Z"
 last_activity: 2026-07-13
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** v4.0 Canvas-First Redesign — defining requirements
+**Current focus:** v4.0 Canvas-First Redesign — roadmap created (Phases 20–25); Phase 20 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-13 — Milestone v4.0 started
+Phase: 20 of 25 (Atelier Design System & Canvas-First Shell) — first v4.0 phase
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-07-13 — v4.0 roadmap created (6 phases, 20–25; 19/19 requirements mapped, 100% coverage)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -84,7 +86,7 @@ Last activity: 2026-07-13 — Milestone v4.0 started
 
 - **Code coverage rate:** 100%
 - **Build compiler rate:** 100%
-- **Requirement coverage rate:** 100% (v3.0: 21/21 requirements mapped to phases 15–19)
+- **Requirement coverage rate:** 100% (v4.0: 19/19 requirements mapped to Phases 20–25)
 
 ### Quick Tasks Completed
 
@@ -113,39 +115,37 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Deferred Items
 
-Items acknowledged and deferred at the v3.0 **force-close** (override closeout) on 2026-07-13. v3.0 shipped only Phases 15–16 (correctness foundation); the milestone's headline scope was carried to the ROADMAP Backlog. Full criteria in `milestones/v3.0-ROADMAP.md`; requirements in `milestones/v3.0-REQUIREMENTS.md`.
+Items acknowledged and deferred at the v3.0 **force-close** (override closeout) on 2026-07-13. v3.0 shipped only Phases 15–16 (correctness foundation); the milestone's headline scope was carried to the ROADMAP Backlog. Full criteria in `milestones/v3.0-ROADMAP.md`; requirements in `milestones/v3.0-REQUIREMENTS.md`. Under v4.0 the honest order-packet/handoff idea is partially revived (ORDER-01/02, Phase 23); the viewport-native wizard and Customer/Artist mode split are superseded by the canvas-first redesign, not resumed.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| deferred-phase | Phase 17: Service Fee & Customer Order Packet (FEE-01, ORDER-01..05) | not started — never built, re-scope into future milestone | v3.0 force-close |
-| deferred-phase | Phase 18: Viewport-Native Wizard (VIEWPORT-01..03) | not started — never built, re-scope into future milestone | v3.0 force-close |
-| deferred-phase | Phase 19: Two-Mode Split — Customer/Artist (MODE-01..04) | not started — never built, re-scope into future milestone | v3.0 force-close |
+| deferred-phase | Phase 17: Service Fee & Customer Order Packet (FEE-01, ORDER-01..05) | order-packet/handoff partially revived under v4.0 ORDER-01/02 (Phase 23); service-fee line + order-ref/threshold still deferred | v3.0 force-close |
+| deferred-phase | Phase 18: Viewport-Native Wizard (VIEWPORT-01..03) | superseded by v4.0 canvas-first shell | v3.0 force-close |
+| deferred-phase | Phase 19: Two-Mode Split — Customer/Artist (MODE-01..04) | superseded by v4.0 customer-first redesign | v3.0 force-close |
 | verification-gap | Phase 07 (07-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
 | verification-gap | Phase 08 (08-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
 | verification-gap | Phase 09 (09-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
 
 ## Session Continuity
 
-Last session: 2026-07-13T03:37:58.572Z
-Stopped at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
+Last session: 2026-07-13T22:10:00.000Z
+Stopped at: v4.0 roadmap created — 6 phases (20–25), 19/19 requirements mapped (100% coverage). Phase 20 ready to plan.
 Resume file: None
 
 ## Decisions
 
-- [Phase ?]: 11-01: Per-type storage codecs preserve legacy on-disk formats (no blanket JSON codec); safeStorage is the single guarded audit point for localStorage
-- [Phase 11]: 11-02: migrated App.tsx 7 persisted settings onto usePersistentState (IN-01); safeStorage import deferred to 11-03 under noUnusedLocals; canvasTemplate uses a custom normalization codec (Pitfall 4)
-- [Phase ?]: ERR-01: unified actionError banner folds saveErrorMsg; guarded checkout unmapped-log parse via safeStorage (corrupt -> [] + banner, checkout proceeds)
-- [Phase 13]: D-09: single loading overlay branches on loadingPhase — indeterminate 'Preparing image…' during off-thread decode, determinate 'Matching colors: {progress}%' on first worker progress
-- [Phase 13]: D-10: match-error banner copy generalized to stage-agnostic 'Couldn't process the image: {matchError}', staying a plain JSX text child
+- [v4.0 roadmap]: Structured v4.0 as 6 phases (20–25) mirroring the research's convergent, dependency-ordered build order: (20) Atelier design system + canvas-first shell → (21) shared UI primitives → (22) additive engine (density helper / detectedColorCount / target-N reduceToColorCount / single-source integer-cents quote selector, engine-only commits) → (23) the four screens in journey order (Upload → Refine keystone → Supplies → Order) → (24) mobile + touch → (25) strangler cleanup. Phase numbering continues from v3.0 (ended at Phase 19). Phases 21 and 25 carry no REQ-ID by design (infrastructure/cleanup).
+- [v4.0 roadmap]: Strangler-fig build constraint encoded in the phase ordering — App.tsx stays the state owner, screen children stay pure/props-only, engine/* signatures change only inside Phase 22 (never a UI phase), one screen swapped in at a time in Phase 23, and the 240+ Vitest baseline stays green at every commit so the app ships green at each phase. Directly prevents the v3.0 "two big UI reworks at once → force-closed at 40%" failure.
+- [v4.0 roadmap]: Density anchored to 2.5mm/dot (10 dots/inch) — the mock's inch labels are non-functional; every inch figure derives from grid dims via one helper (QUOTE-01, resolved in Phase 22). The Order step is a client-side confirm + order-packet download (no payment / lab submission — that's v5.0). Custom canvas size IS in v4.0 scope (REFINE-02).
 - [v3.0 roadmap]: Compressed the research's 8-phase suggestion to 5 phases under standard granularity — single-requirement/thin phases (Vendor cleanup, Data integrity, Service fee) folded into their nearest coherent neighbor. Load-bearing dependency order preserved: correctness (15) → optimized supply plan (16) → fee + order packet (17) → viewport wizard (18) → mode split (19, last). The two UI reworks (18, 19) are kept as separate phases.
 - [Phase 15]: 15-01: Removed Prodigi vendor; narrowed CanvasVendor union to 'lumaprints' | 'finerworks'; calculateCanvasCost returns number|null (unknown vendor -> null, never $0); normalizeVendor migrates any legacy/tampered persisted vendor to lumaprints at load; selectedVendor persisted as an additive optional ProjectData field.
 - [Phase 15]: 15-02: engine/money.ts canonical integer-cents helper (EPSILON-safe round-half-up, throws on non-finite); bagPlanner treats a missing price as Infinity (never $0-self-select), adds a 500 tier from a single canonical size table, flags hasUnpricedSize for colors coverable only by an unpriced size; App.tsx sums line items in cents to reconcile the displayed total and surfaces unpriced colors via the existing actionError banner.
 - [Phase 15]: 15-03: DATA-01 drill-variant integrity test (unique-or-allow-listed IDs, no empty reachable mappings beyond allow-list, full palette coverage) ratchets against data drift; hasVariantMapping surfaces shape-unmapped grid colors via the existing banner. Data-owner checkpoint adjudicated the known holes to safe reversible defaults: dup-ID pairs 731/732, 781/782, 776/3326 kept as intended aliases; empty mappings 471/square, 798/round, BLANC/round, ECRU/round kept surfaced-as-unmapped (DRILL_VARIANTS unchanged).
-- [Phase ?]: [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
-- [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline (<=800 reuses pack200/matches optimizer D-05; >800 buys smallest single covering PRICED bulk bag, D-07 ceil-fills largest on no-cover; never combines sizes/uses drillBagSize/uniform-200). planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized) is a real backstop under the locked overshoot cap (adversarial test proves 0 when optimized>naive); pure, no palette/sort. OrderSupplyPlan shape frozen in 16-02-SUMMARY.
-- [Phase ?]: 16-03: planOrderSupply is the sole App render-path call (D-13); optimizeBagsCost toggle + fixed-size controls fully retired (D-11, rg gate clean); totalPackets/drill-cost/unpriced codes sourced from the aggregator; SC2/BAG-02 render test asserts visible bag count == totalPackets; calculateSafetyPurchase/calculateFixedBagCost kept exported (D-12).
-- [Phase 16]: 16-04 (BAG-02/BAG-03, human-verify APPROVED): always-on savings headline next to Total Cost in Step3Canvas from planOrderSupply.savingsCents/savingsPct (money.ts, clamped >=0, truthful zero-state); a11y-safe "Why these bags?" expander (real <button>, aria-expanded/aria-controls=why-these-bags-explainer, one static DYE_LOT_WHY_SENTENCE) relocated (developer choice) into the Step 3 panel under the headline (unused whyBagsOpen state removed). Fix-forward: replaced a broken window.print() (was printing the CANVAS GRID) with an isolated print-only-report-mode/.supply-report-print-container "GemPixel Supply Plan Report" (savings + dye-lot banner + per-color table + money.ts total). Accepted deviation: separate isolated container preserves the distinct "Print Legend Sheet" button — two print buttons. tsc 0; vitest 237/237.
+- [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
+- [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline; planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized). OrderSupplyPlan shape frozen in 16-02-SUMMARY.
+- [Phase 16]: 16-03: planOrderSupply is the sole App render-path call (D-13); optimizeBagsCost toggle + fixed-size controls fully retired (D-11, rg gate clean); totalPackets/drill-cost/unpriced codes sourced from the aggregator; SC2/BAG-02 render test asserts visible bag count == totalPackets.
+- [Phase 16]: 16-04 (BAG-02/BAG-03, human-verify APPROVED): always-on savings headline from planOrderSupply.savingsCents/savingsPct; a11y-safe "Why these bags?" expander in the Step 3 panel; fix-forward replaced a broken window.print() (was printing the CANVAS GRID) with an isolated print-only "GemPixel Supply Plan Report". tsc 0; vitest 237/237.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first v4.0 phase with `/gsd-plan-phase 20`
