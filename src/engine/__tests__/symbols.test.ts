@@ -31,8 +31,11 @@ describe('Symbol Database & Allocation Engine', () => {
 
     it('has a letter-free glyph tier', () => {
       expect(GLYPH_SYMBOLS.every(g => !/[A-Za-z]/.test(g))).toBe(true);
-      // The glyph tier alone covers a 118-color chart.
-      expect(GLYPH_SYMBOLS.length).toBeGreaterThan(118);
+      // The glyph tier is the curated DISTINCT-shape tier (~105). It no longer
+      // alone-covers 118 colors by design: pure rotations and tiny-interior twins
+      // were pruned for at-cell-size legibility, so the rarest colors on a very
+      // large palette fall to the unambiguous SAFE_LETTER_SYMBOLS tail.
+      expect(GLYPH_SYMBOLS.length).toBeGreaterThanOrEqual(100);
     });
 
     it('puts unambiguous letters last, filtered of look-alike/confusable capitals', () => {

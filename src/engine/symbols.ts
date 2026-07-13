@@ -1,26 +1,31 @@
 /**
  * Symbol tiers, exhausted IN ORDER as colors are assigned by descending
- * frequency. The NEW order is symbols-first, letters-last, digits-never:
+ * frequency. The order is symbols-first, letters-last, digits-never:
  *
- *   1. GLYPH_SYMBOLS      — distinct, monochrome, text-presentation shape glyphs.
- *                           The busiest colors get these bold, instantly-legible
- *                           shapes. Large enough (>118) to cover a full 118-color
- *                           chart with glyphs ALONE — no letters in the common case.
+ *   1. GLYPH_SYMBOLS      — a curated tier of EASILY DISTINGUISHABLE, monochrome,
+ *                           text-presentation shape glyphs (~105). The busiest
+ *                           colors get these bold, instantly-legible shapes. Pure
+ *                           rotations and tiny-interior twins are deliberately
+ *                           excluded so every shape reads differently at ~10px.
  *   2. SAFE_LETTER_SYMBOLS — unambiguous capital letters, used ONLY once every
- *                           glyph is exhausted. Excludes the digit/look-alike
- *                           confusables B, G, I, O, Q, S, Z.
+ *                           glyph is exhausted, so the rarest colors on a very
+ *                           large palette fall to clean letters. Excludes the
+ *                           digit/look-alike confusables B, G, I, O, Q, S, Z.
  *
  * There are NO digits anywhere in the pool: 0/O, 1/I, 2/Z, 5/S, 8/B confusion is
- * eliminated by construction. Ornate glyphs lead; letters are a last resort.
+ * eliminated by construction, and no two-char "glyph+digit" combos appear in the
+ * common case. Distinct glyphs lead; unambiguous letters are the last resort.
  */
 
-// Tier 1 — GLYPH_SYMBOLS: a large, ordered, de-duplicated pool of visually
-// distinct, MONOCHROME, text-presentation BMP glyphs that render reliably via
-// canvas fillText in a normal sans-serif ('Outfit') font. Bold / most-distinct
-// shapes lead; subtler look-alikes are pruned. All BMP, all text-default — no
-// astral code points and no emoji-presentation glyphs (which would force color
-// rendering). The first block is the proven-safe set that already ships in
-// production, kept verbatim; the rest is a vetted expansion.
+// Tier 1 — GLYPH_SYMBOLS: a curated, ordered, de-duplicated tier of EASILY
+// DISTINGUISHABLE, MONOCHROME, text-presentation BMP glyphs that render reliably
+// via canvas fillText in a normal sans-serif ('Outfit') font. Bold / most-distinct
+// shapes lead. Beyond emoji/tofu safety, this tier is pruned for at-cell-size
+// legibility: pure rotations and tiny-interior twins are removed so no two glyphs
+// read alike at ~10px. All BMP, all text-default — no astral code points and no
+// emoji-presentation glyphs (which would force color rendering). The first block
+// is the proven-safe set that already ships in production, kept verbatim; the
+// rest is a vetted, distinctness-pruned expansion.
 export const GLYPH_SYMBOLS = [
   // --- Proven-safe production base (kept verbatim, boldest shapes first) ---
   // Playing Card Suits (filled)
@@ -30,7 +35,7 @@ export const GLYPH_SYMBOLS = [
   // Geometric Outlined
   '△', '▽', '◇', '○', '□', '☆', '◁', '▷', '⬡', '⭘',
   // Circles with Patterns
-  '◎', '⊕', '⊖', '⊗', '⊘', '⊙', '⊚', '⊛', '⊜', '⊞', '⊟', '⊠',
+  '◎', '⊕', '⊖', '⊗', '⊘', '⊙', '⊚', '⊜', '⊞', '⊟', '⊠',
   // Misc Glyphs
   '✦', '✧', '⬢', '⬣', '⭓', '⭔', '▰', '▱', '†', '‡',
 
@@ -39,20 +44,18 @@ export const GLYPH_SYMBOLS = [
   '⬟', '◈', '◢', '◣', '◤', '◥', '◸', '◹', '◺', '◿',
   // Card-suit OUTLINE variants (distinct from the filled suits above)
   '♤', '♡', '♢', '♧',
-  // Half circles
-  '◐', '◑', '◒', '◓', '◔', '◕', '◖', '◗',
+  // Half circles (mirror rotations pruned for distinctness)
+  '◐', '◑', '◔', '◕',
   // Filled-pattern circle
   '◍',
   // Partitioned / hatched squares
   '◧', '◨', '◩', '◪', '◫', '▤', '▥', '▦', '▧', '▨', '▩',
-  // Quadrant squares / circles
-  '◰', '◱', '◲', '◳', '◴', '◵', '◶', '◷',
-  // Circled operators
-  '⊝', '⊡',
-  // Star / florette dingbats (text-default)
-  '✶', '✷', '✵', '✱', '✲', '✻', '✼', '❂', '❉', '❊', '❋', '✹',
-  // Crosses / bars
-  '✚', '✜', '✠', '✢', '⧈', '⧇',
+  // Quadrant squares / circles (rotations pruned — one representative each)
+  '◰', '◴',
+  // Star / florette dingbats (text-default; interior twins pruned)
+  '✶', '✷', '✵', '✱', '✲', '✻', '❂', '❉', '❋', '✹',
+  // Crosses / bars (interior twins pruned)
+  '✚', '✠', '✢', '⧈',
   // Double arrows
   '⇐', '⇒', '⇑', '⇓', '⇔', '⇕',
   // Single arrows
