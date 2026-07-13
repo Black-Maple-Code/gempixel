@@ -65,6 +65,36 @@ export function calculateSafetyPurchase(exactCount: number, bagSize: number = 20
   return { safety, packets, purchase };
 }
 
+// Mapping-aware fixed-bag cost for a single grid color (WR-02). Mirrors the
+// optimized branch and the Shopify cart: a color with NO drill variant mapped
+// for the selected shape (hasVariantMapping === false) emits a $0 line —
+// checkout.ts drops it and bagPlanner.packColor returns an empty pack, so the
+// displayed total must reconcile to $0 for that color too. The +10% drill
+// COUNT (safety) is preserved even when unmapped to match the optimized
+// branch's Safety Margin column; only the purchasable bags and cost are zeroed.
+// Mapped colors return exactly today's fixed-bag math (byte-for-byte unchanged).
+export function calculateFixedBagCost(
+  code: string,
+  shape: 'square' | 'round',
+  count: number,
+  bagSize: number,
+  packetCost: number
+): { safety: number; packets: number; purchase: number; costExact: number; costSafety: number } {
+  const metrics = calculateSafetyPurchase(count, bagSize);
+  if (!hasVariantMapping(code, shape)) {
+    // $0 line: no drill in the selected shape, matching the cart and the
+    // optimized branch. Keep safety (drill count) non-zero; zero the rest.
+    return { safety: metrics.safety, packets: 0, purchase: 0, costExact: 0, costSafety: 0 };
+  }
+  return {
+    safety: metrics.safety,
+    packets: metrics.packets,
+    purchase: metrics.purchase,
+    costExact: (count / bagSize) * packetCost,
+    costSafety: metrics.packets * packetCost,
+  };
+}
+
 export function hexToHue(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -939,18 +969,21 @@ export function App() {
           hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
         };
       } else {
-        const metrics = calculateSafetyPurchase(count, drillBagSize);
-        const costExact = (count / drillBagSize) * drillPacketCost;
-        const costSafety = metrics.packets * drillPacketCost;
+        // WR-02: mapping-aware fixed-bag cost. An unmapped-shape color is a $0
+        // line (packets 0 => 'None' bagsText), matching the cart and optimized
+        // branch; mapped colors bill exactly as before.
+        const fixed = calculateFixedBagCost(code, drillStyle, count, drillBagSize, drillPacketCost);
         return {
           code,
           count,
           name,
           hex,
-          ...metrics,
-          costExact,
-          costSafety,
-          bagsText: `${metrics.packets} bag(s)`,
+          safety: fixed.safety,
+          packets: fixed.packets,
+          purchase: fixed.purchase,
+          costExact: fixed.costExact,
+          costSafety: fixed.costSafety,
+          bagsText: fixed.packets > 0 ? `${fixed.packets} bag(s)` : 'None',
           optimizedBags: null,
           hasUnpricedSize: false // fixed single-size pricing path is always priced
         };
