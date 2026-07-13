@@ -13,7 +13,7 @@ autonomous: true
 requirements: [BAG-02]
 must_haves:
   truths:
-    - "The supply legend, per-color bags, total bag count and total cost are computed by planOrderSupply (the shared engine), not an inline App.tsx reduction (D-13)."
+    - "The supply legend, per-color bags, total bag count and total cost are computed by planOrderSupply (the shared engine), not an inline App.tsx reduction (D-13), and the total bag count is user-visibly RENDERED from planOrderSupply.totalPackets (SC2/BAG-02)."
     - "The optimized fewest-bags plan is the SOLE displayed plan; there is no user control to switch packing modes (D-11)."
     - "calculateSafetyPurchase and calculateFixedBagCost remain exported and covered by print.test.tsx (D-12)."
   artifacts:
@@ -87,6 +87,7 @@ Output: aggregator-driven legend/cost UI with the toggle removed; green tests.
   <acceptance_criteria>
     - `npx tsc --noEmit` exits 0.
     - App.tsx calls `planOrderSupply(...)` and derives legend rows + totalPackets + drill cost + unpricedColorCodes from it (no inline per-color packing reduction remains).
+    - SC2/BAG-02: the TOTAL BAG COUNT is user-visibly RENDERED from `planOrderSupply.totalPackets` (the existing "Drills ({totalPackets} bag(s))" line in the Step3Canvas cost breakdown must be fed by the aggregator's totalPackets, not a stale inline sum).
     - The `optimizeBagsCost` useState and its passes to Step2Palette and Step3Canvas are removed from App.tsx.
     - `calculateSafetyPurchase` and `calculateFixedBagCost` remain exported from App.tsx.
     - No field is added to or removed from the ProjectData save payload (App.tsx:371-392).
@@ -160,10 +161,15 @@ Output: aggregator-driven legend/cost UI with the toggle removed; green tests.
     as-is OR removed for tidiness — either is acceptable; do NOT add an
     optimizeBagsCost field to the real save payload. Remove or rewrite any test that
     exercised the fixed-bag (non-optimized) UI path, since that UI no longer exists.
-    Keep every unrelated App.test.tsx assertion passing.
+    Additionally, add a SC2/BAG-02 render test: load an image (or use the existing
+    mock-project render harness) so a plan computes, then assert the supply/cost
+    panel DISPLAYS the total bag count text sourced from planOrderSupply.totalPackets
+    (e.g. the "{n} bag(s)" line) — proving the total bag count is user-visible, not
+    merely derived. Keep every unrelated App.test.tsx assertion passing.
   </action>
   <acceptance_criteria>
     - `npx tsc --noEmit` exits 0 and `npm test` (vitest run) is fully green.
+    - A new/updated test asserts the rendered total bag count ("{n} bag(s)") in the panel matches planOrderSupply.totalPackets for a known fixture (SC2/BAG-02 user-visible).
     - No App.test.tsx assertion depends on toggling optimizeBagsCost or on the removed fixed-bag UI.
     - print.test.tsx still imports and passes calculateSafetyPurchase / calculateFixedBagCost (D-12 kept).
     - The real save payload gains no optimizeBagsCost field.

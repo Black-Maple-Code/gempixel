@@ -13,7 +13,7 @@ must_haves:
   truths:
     - "naiveColorPack returns the smallest single covering bag for a >800 color, or ceil-fills the largest available size when no single size covers (D-07); for a <=800 color it returns the SAME 200-count pack the optimizer does (D-05)."
     - "planOrderSupply returns per-color optimized rows, total bag count, total drills, optimized cost, naive baseline cost, and savings — all reconciled in integer cents via money.ts (D-13, PRICE-03)."
-    - "savings (naive - optimized) is >= 0 for every color and in aggregate across the fixture (D-06), and is $0 for <=800 colors (truthful)."
+    - "savings is CLAMPED to >= 0 (never negative, never overstated) for every color and in aggregate (D-06); it is $0 for <=800 colors and $0 whenever the LOCKED overshoot cap forces the optimizer above the naive single bag."
   artifacts:
     - "src/engine/bagPlanner.ts — new naiveColorPack, planOrderSupply, and OrderSupplyPlan interface"
     - "src/engine/__tests__/bagPlanner.test.ts — baseline + aggregator + savings>=0 + reconciliation tests"
@@ -31,8 +31,10 @@ Add the two pure engine pieces BAG-02/BAG-03 need, following existing
 1. `naiveColorPack` (D-05/06/07) — the dye-lot-aware naive per-color baseline
    (smallest single covering bag; ceil-fill largest on no-cover) that the savings
    figure is measured against, reusing DRILL_VARIANTS availability, DYE_LOT_CEILING,
-   and the priced-size filtering so it is apples-to-apples with the optimizer and
-   provably never cheaper than it (D-06).
+   and the priced-size filtering so it is apples-to-apples with the optimizer; the
+   savings is CLAMPED to >= 0 (D-06) because under the LOCKED overshoot cap the
+   optimizer can be forced above the naive single bag, so the clamp is a real
+   correctness backstop (never overstate savings), not merely a precision guard.
 2. `planOrderSupply(counts, shape, priceDb)` (D-13) — the pure aggregator that
    replaces the inline `App.tsx` `sortedMatches` reduction, returning the optimized
    per-color rows + totals + naive baseline + savings, shared by the legend, the
@@ -122,7 +124,8 @@ Output: `naiveColorPack`, `planOrderSupply`, `OrderSupplyPlan`, and tests.
   <behavior>
     - planOrderSupply over a mixed fixture (a <=800 color, a >800 bulk color, and an unpriced-only color) returns one row per input code with the optimized planColorSupply fields.
     - totalPackets and totalDrills equal the sums of the per-color safety packs; optimizedCostCents equals sumCents(per-color safety cost cents).
-    - naiveCostCents equals sumCents(per-color naive safety cost cents); savingsCents === naiveCostCents - optimizedCostCents and is >= 0.
+    - naiveCostCents equals sumCents(per-color naive safety cost cents); savingsCents === max(0, naiveCostCents - optimizedCostCents).
+    - ADVERSARIAL pricing: with a priceDb where a single large bag is cheap but the overshoot cap forces the optimizer onto a pricier lower-overshoot multi-bag plan (optimized cost > naive cost), savingsCents === 0 (the clamp holds; savings is never negative or overstated).
     - savingsPct is 0 when naiveCostCents is 0; otherwise round(savingsCents / naiveCostCents * 100).
     - hasUnpricedSize is the OR across colors; unpricedColorCodes lists the flagged codes; unpriced-only colors contribute $0 to BOTH totals (no phantom savings).
   </behavior>
@@ -140,11 +143,14 @@ Output: `naiveColorPack`, `planOrderSupply`, `OrderSupplyPlan`, and tests.
     shape, safetyCount, priceDb), priceDb) — so the savings reconciles with the
     displayed safety-based Est. total. Accumulate optimizedCostCents and
     naiveCostCents with toCents + sumCents (never raw float addition). Set
-    savingsCents = Math.max(0, naiveCostCents - optimizedCostCents) as a defensive
-    clamp (the value is provably >= 0 because naiveColorPack always uses the fewest
-    possible bags, so the optimizer never spends its cap premium relative to it —
-    the clamp is a NaN/precision guard, not a correctness crutch). Compute
-    savingsPct from cents (0 when naiveCostCents is 0). Keep the aggregator pure —
+    savingsCents = Math.max(0, naiveCostCents - optimizedCostCents). Under the LOCKED
+    overshoot cap this clamp is a REAL correctness backstop, not merely a
+    NaN/precision guard: when the overshoot cap forces the optimizer off a cheap
+    single large bag onto a pricier lower-overshoot multi-bag plan, the optimized
+    cost can exceed the naive single-bag cost, so the raw difference goes negative
+    and the clamp keeps savings at $0 (never overstate the payoff). Note this in the
+    docstring/comment. Compute savingsPct from cents (0 when naiveCostCents is 0).
+    Keep the aggregator pure —
     NO DMC_PALETTE name/hex lookup and NO sorting (those stay in the UI). Add a
     docstring: shared by the legend estimate, the Shopify cart, and the future
     Phase 17 order packet (D-13).
@@ -152,7 +158,8 @@ Output: `naiveColorPack`, `planOrderSupply`, `OrderSupplyPlan`, and tests.
   <acceptance_criteria>
     - `npx tsc --noEmit` exits 0.
     - `bagPlanner.ts` exports `planOrderSupply` and the `OrderSupplyPlan` interface.
-    - For every fixture, savingsCents === max(0, naiveCostCents - optimizedCostCents) and is >= 0.
+    - For every fixture, savingsCents === max(0, naiveCostCents - optimizedCostCents) and is never negative.
+    - An adversarial-pricing test (overshoot cap forces optimized cost > naive cost) asserts savingsCents === 0 — the clamp holds, savings is never overstated.
     - optimizedCostCents and naiveCostCents are computed via toCents+sumCents (integer cents).
     - A <=800-only fixture yields savingsCents === 0; savingsPct is 0 when naiveCostCents is 0.
     - An unpriced-only color contributes $0 to both totals and appears in unpricedColorCodes.
@@ -163,10 +170,12 @@ Output: `naiveColorPack`, `planOrderSupply`, `OrderSupplyPlan`, and tests.
   </verify>
   <done>
     tsc exits 0; a planOrderSupply describe block asserts: per-color rows keyed by
-    code; totals reconcile via money.ts; savingsCents >= 0 for every fixture and
-    equals naive-minus-optimized; savingsPct is 0 when the naive total is 0; an
-    unpriced-only color contributes $0 to both totals and appears in
-    unpricedColorCodes; a <=800-only fixture yields savingsCents === 0 (truthful).
+    code; totals reconcile via money.ts; savingsCents === max(0, naive - optimized)
+    and is never negative; the adversarial-pricing fixture (optimized cost > naive
+    cost under the overshoot cap) yields savingsCents === 0 (clamp holds); savingsPct
+    is 0 when the naive total is 0; an unpriced-only color contributes $0 to both
+    totals and appears in unpricedColorCodes; a <=800-only fixture yields
+    savingsCents === 0 (truthful).
   </done>
 </task>
 

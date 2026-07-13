@@ -8,11 +8,11 @@ files_modified:
   - src/engine/bagPlanner.ts
   - src/engine/__tests__/bagPlanner.test.ts
   - src/engine/__tests__/checkout.test.ts
-autonomous: false
+autonomous: true
 requirements: [BAG-01]
 must_haves:
   truths:
-    - "packColor packs a >800 bulk color into the FEWEST bags that respect the cap (D-01), while the <=800 dye-lot path returns 200-count bags unchanged (D-04)."
+    - "packColor packs a >800 bulk color into the FEWEST bags within the LOCKED overshoot cap (wasted drills <= one smallest available bulk bag; D-01), while the <=800 dye-lot path returns 200-count bags unchanged (D-04)."
     - "packColor and compileShopifyCartLink return identical bags for every fixture — the shared primitive yields a total, deterministic order so legend and cart can never diverge on a tie (D-03)."
     - "packColor is a pure deterministic function: identical inputs yield an identical ColorPack across repeated calls (no Math.random, no key-order reliance)."
   artifacts:
@@ -37,8 +37,8 @@ which call the same `packColor` primitive — can never diverge (D-03).
 
 Purpose: BAG-01 — the supply plan uses the fewest bags that still respect
 dye-lot consistency, with cost as the bounded tiebreak.
-Output: an updated `minCostBulk`, extended engine + checkout tests, and a locked
-cap-semantics decision.
+Output: an updated `minCostBulk`, extended engine + checkout tests. The cap
+semantics are already LOCKED (see below) — this plan is autonomous.
 </objective>
 
 <execution_context>
@@ -53,65 +53,34 @@ cap-semantics decision.
 @src/engine/checkout.ts
 </context>
 
-<cap_ambiguity_notice>
-The planner found a material contradiction the executor MUST resolve at Task 1
-before writing any comparator code:
+<locked_decision>
+## Cap semantics — LOCKED: overshoot cap (developer sign-off 2026-07-12)
 
-- **D-01 (locked) wording** defines a COST-premium cap: accept a fewer-bags plan
-  only when `cost <= costMin + price of one smallest available bag`.
-- **The CONTEXT worked example** (1050 drills @ standard prices `{200:0.25,
-  500:0.55, 1000:0.8, 2000:1.4}`): `1x2000` = $1.40 (1 bag, wastes 950 drills)
-  vs `1x1000 + 1x500` = $1.35 (2 bags, wastes 450). The premium is only **$0.05**
-  — far below any bag price — so the LITERAL cost cap would ACCEPT `1x2000`.
-  Yet the worked example says the cap must REJECT `1x2000` here.
+During planning the planner surfaced a contradiction between D-01's literal COST
+cap and the CONTEXT worked example (1050 drills @ standard prices `{200:0.25,
+500:0.55, 1000:0.8, 2000:1.4}`: `1x2000` = $1.40 (1 bag, wastes 950) vs `1x1000 +
+1x500` = $1.35 (2 bags, wastes 450); a $0.05 premium under any cost cap would
+ACCEPT `1x2000`, but the example says REJECT it). The developer **resolved this to
+`option-b-overshoot-cap`**: the cap is an **overshoot bound** (wasted drills <= one
+smallest available BULK bag's capacity), NOT D-01's literal cost cap. Rationale:
+matches the CONTEXT worked example and the cap's stated purpose (prevent wasteful
+overshoot); D-01's literal cost-cap wording is reinterpreted accordingly.
 
-Rejecting `1x2000` for 1050 is only reproducible with an **overshoot/waste** cap
-(950 wasted drills > one bulk bag), not the cost cap D-01 literally describes.
-These cannot both hold. Task 1 (checkpoint:decision) locks which cap governs; the
-implementation and worked-example test in Tasks 2-3 branch on that decision.
-</cap_ambiguity_notice>
+**This is decided — execution MUST NOT stop to re-ask.** Tasks below bake it in.
+The concrete rule the comparator implements: among covering plans prefer the
+FEWEST bags, but REJECT a fewer-bags plan whose wasted drills (coveredDrills -
+requiredCount) exceed one smallest available bulk bag's capacity; if every
+fewer-bags option is rejected, fall back toward the cost-minimizing plan (a
+covering plan ALWAYS exists — the cost-min plan is always acceptable). Final
+tiebreaks: fewer total drills, then largest-size-first — a total deterministic
+order (D-03). Worked-example outcome to reproduce: 1050 @ standard -> `1x1000 +
+1x500` (NOT `1x2000`).
+</locked_decision>
 
 <tasks>
 
-<task type="checkpoint:decision" gate="blocking">
-  <name>Task 1: Lock the cost-premium cap semantics (D-01 vs worked example)</name>
-  <files>src/engine/bagPlanner.ts</files>
-  <action>Present the two cap options below to the developer and record their choice (option-a-cost-cap or option-b-overshoot-cap) in the SUMMARY. Do NOT write any comparator code until the option is locked — Tasks 2 and 3 branch on it.</action>
-  <decision>Which cap bounds the fewest-bags selection in minCostBulk, given the D-01-wording vs worked-example contradiction above?</decision>
-  <context>
-    D-01 (locked) is the primary contract but its literal COST cap and its own
-    worked example disagree on the 1050-drill case. BAG-01/ROADMAP SC1 make
-    "fewest bags primary" the priority; D-03 makes the resulting order a
-    non-negotiable, deterministic invariant shared by the legend and the cart.
-    Both options below produce a total deterministic order with identical final
-    tiebreaks (fewer total drills, then largest-size-first); they differ ONLY in
-    the accept/reject threshold for a fewer-bags plan.
-  </context>
-  <options>
-    <option id="option-a-cost-cap">
-      <name>Cost-premium cap — D-01 literal wording</name>
-      <pros>Implements D-01's locked text verbatim; keeps "fewest bags primary" with a cost band; simplest to reason about.</pros>
-      <cons>For 1050 @ standard it SELECTS 1x2000 ($1.40, wastes 950 drills), which the CONTEXT worked example and the downstream test say is the wasteful plan to avoid. Savings for such a color is $0.</cons>
-    </option>
-    <option id="option-b-overshoot-cap">
-      <name>Overshoot/waste cap — matches the worked example</name>
-      <pros>Reproduces the worked example (1050 -> 1x1000+1x500) and the downstream test; realizes the cap's stated PURPOSE (prevent wasteful overshoot); yields honest non-zero savings.</pros>
-      <cons>Reinterprets D-01's "cost <= costMin + smallest bag" as an overshoot bound (wasted drills <= one smallest available bulk bag). D-01 is locked, so this needs the developer's sign-off.</cons>
-    </option>
-  </options>
-  <recommendation>
-    Option B. The worked example AND the downstream test both require 1050 -> {1000:1, 500:1}, and "prevent wasteful overshoot" is the cap's stated intent. Option A honors D-01's literal wording but produces exactly the wasteful single-2000 the example warns against. Selecting B reinterprets the cap metric from cost to overshoot; confirm because D-01 is a locked decision.
-  </recommendation>
-  <acceptance_criteria>
-    - The developer explicitly selects option-a-cost-cap OR option-b-overshoot-cap.
-    - The chosen option is recorded in 16-01-SUMMARY.md so Tasks 2-3 and downstream plans can reference it.
-    - No comparator code is written before the option is locked.
-  </acceptance_criteria>
-  <resume-signal>Select: option-a-cost-cap or option-b-overshoot-cap</resume-signal>
-</task>
-
 <task type="auto" tdd="true">
-  <name>Task 2: Change minCostBulk selection to fewest-bags-within-the-locked-cap</name>
+  <name>Task 1: Change minCostBulk selection to fewest-bags-within-the-overshoot-cap</name>
   <files>src/engine/bagPlanner.ts</files>
   <read_first>
     - src/engine/bagPlanner.ts (whole file — current minCostBulk lines ~120-183 is the exact bounded search; packColor ~63-112 shows the <=800 dye-lot branch and how bulkSizes feed minCostBulk; note ColorPack shape and the isUnpriced Infinity handling)
@@ -121,7 +90,7 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
   <behavior>
     - >800 color, count 2100 @ PRICE_DB {200:2,500:4,1000:7,2000:12}: still {2000:1, 500:1} (2 bags is already the minimum for 2100; unchanged from today).
     - >800 color, count 13533 @ same PRICE_DB: still {2000:7} (7 bags is the minimum; unchanged).
-    - 1050 @ standard prices {200:0.25,500:0.55,1000:0.8,2000:1.4}: result is DECIDED by Task 1 — Option A -> {2000:1}; Option B -> {1000:1, 500:1}.
+    - 1050 @ standard prices {200:0.25,500:0.55,1000:0.8,2000:1.4}: {1000:1, 500:1} — the 1-bag 1x2000 plan wastes 950 drills, MORE than one smallest bulk bag (500), so the overshoot cap REJECTS it and falls back to the cost-min 2-bag plan (LOCKED overshoot cap).
     - <=800 color, count 800: {200:4} unchanged (dye-lot rule overrides fewest-bags, D-04).
     - Deterministic tie: when two minimal plans have equal bag count AND equal total cost, the largest-size-first plan is returned, every call.
   </behavior>
@@ -130,28 +99,32 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
     over counts of every size but the smallest, smallest ceil-fills the remainder)
     — do NOT replace it with a greedy or solver approach (D-02). Change ONLY the
     selection step: instead of tracking the single cheapest `total`, enumerate the
-    same candidate plans and select by the locked cap from Task 1:
+    same candidate plans and select by the LOCKED overshoot cap:
       1. Compute `costMin` (the minimum cost over all covering candidates) exactly
-         as today, in integer cents via money.ts (never a raw float threshold).
-      2. Determine the acceptance band per the Task-1 decision — Option A: a
-         candidate is acceptable when its cost cents <= costMin cents + toCents(price
-         of the smallest available bulk size). Option B: a candidate is acceptable
-         when its overshoot (coveredDrills - requiredCount) <= the smallest available
-         bulk size.
-      3. Among ACCEPTED candidates, pick the one with the FEWEST packets; break ties
-         by lowest cost cents; then by fewer total drills; then largest-size-first
-         (descending size composition). These final tiebreaks make the order TOTAL
-         and deterministic (D-03) so packColor never depends on Object key order or
-         float wobble.
+         as today, in integer cents via money.ts (never a raw float threshold), and
+         keep the cost-min plan as the guaranteed fallback (it is ALWAYS acceptable,
+         so a covering plan always exists).
+      2. Mark a candidate ACCEPTABLE when its overshoot (coveredDrills -
+         requiredCount) <= the smallest available bulk size (the smallest size in
+         `bulkSizes`, e.g. 500 when 500/1000/2000 exist). This is the overshoot cap:
+         a fewer-bags plan that wastes more than one smallest-bulk-bag's capacity is
+         rejected.
+      3. Among ACCEPTABLE candidates, pick the one with the FEWEST packets; break
+         ties by lowest cost cents; then by fewer total drills; then largest-size-first
+         (descending size composition). If NO fewer-bags candidate is acceptable, use
+         the cost-min plan from step 1. These final tiebreaks make the order TOTAL and
+         deterministic (D-03) so packColor never depends on Object key order or float
+         wobble.
     Keep the unpriced-size handling intact: unpriced bulk sizes stay excluded from
     the candidate set (priced-only), and a color coverable ONLY by unpriced sizes
     still returns the flagged empty pack (hasUnpricedSize=true) — unchanged from
     today. Do NOT touch packColor's <=800 pack200 branch or DYE_LOT_CEILING (D-04).
-    Update the minCostBulk docstring to state the new fewest-bags-within-cap
+    Update the minCostBulk docstring to state the fewest-bags-within-overshoot-cap
     objective and the deterministic tiebreak order.
   </action>
   <acceptance_criteria>
     - `npx tsc --noEmit` exits 0.
+    - `packColor('150','square',1050,{200:0.25,500:0.55,1000:0.8,2000:1.4}).bySize` === {1000:1, 500:1} — the wasteful 1x2000 plan is NOT selected (overshoot cap, worked example).
     - `packColor('150','square',2100,{200:2,500:4,1000:7,2000:12}).bySize` === {2000:1, 500:1} (unchanged).
     - `packColor('150','square',13533,...).bySize` === {2000:7} (unchanged).
     - `packColor('150','square',800,...).bySize` === {200:4} (dye-lot path untouched, D-04).
@@ -170,7 +143,7 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
 </task>
 
 <task type="auto">
-  <name>Task 3: Add fewest-bags, deterministic-tie, dye-lot-untouched, and no-divergence tests</name>
+  <name>Task 2: Add fewest-bags, deterministic-tie, dye-lot-untouched, and no-divergence tests</name>
   <files>src/engine/__tests__/bagPlanner.test.ts, src/engine/__tests__/checkout.test.ts</files>
   <read_first>
     - src/engine/__tests__/bagPlanner.test.ts (whole file — extend it; note existing PRICE_DB fixtures and the "estimate == cart (Candidate 1 regression)" block that already asserts packColor == compileShopifyCartLink)
@@ -178,14 +151,15 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
     - src/engine/bagPlanner.ts (the minCostBulk you just changed — to author the standard-prices fixture)
   </read_first>
   <action>
-    Add a describe block for the BAG-01 fewest-bags objective using the standard
-    price table {200:0.25, 500:0.55, 1000:0.8, 2000:1.4}:
+    Add a describe block for the BAG-01 fewest-bags-within-overshoot-cap objective
+    using the standard price table {200:0.25, 500:0.55, 1000:0.8, 2000:1.4}:
       1. The WORKED-EXAMPLE test for 1050 drills on a color with all four sizes
-         (e.g. DMC '150' square). Assert the result the Task-1 decision dictates:
-         Option A -> packColor('150','square',1050,STD).bySize === {2000:1};
-         Option B -> === {1000:1, 500:1}. Include a comment naming which option was
-         locked so the assertion's intent is unambiguous.
-      2. A DETERMINISTIC-TIE test: craft a priceDb in which two DISTINCT minimal
+         (e.g. DMC '150' square): assert packColor('150','square',1050,STD).bySize
+         === {1000:1, 500:1}, and explicitly assert the wasteful single-2000 plan is
+         NOT selected (e.g. bySize[2000] is undefined). Add a comment: the 1x2000
+         plan wastes 950 drills > one smallest bulk bag (500), so the LOCKED overshoot
+         cap rejects it.
+      2. A DETERMINISTIC-TIE test: craft a priceDb in which two DISTINCT acceptable
          plans have identical bag count AND identical total cost for one count, then
          assert packColor returns the largest-size-first composition, and that a
          second identical call returns a deeply-equal ColorPack (purity/stability).
@@ -199,7 +173,7 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
   </action>
   <acceptance_criteria>
     - `npx vitest run src/engine/__tests__/bagPlanner.test.ts src/engine/__tests__/checkout.test.ts` passes.
-    - The 1050 worked-example test asserts the Task-1-locked outcome ({2000:1} for A, {1000:1,500:1} for B) with a comment naming the locked option.
+    - The 1050 worked-example test asserts bySize === {1000:1, 500:1} AND that 1x2000 is NOT selected (overshoot cap, LOCKED).
     - A determinism test asserts two identical packColor calls return a deeply-equal ColorPack, and the tie fixture returns the largest-size-first composition.
     - A D-04 guard asserts packColor('150','square',800) === {200:4} and 700 stays on 200-count bags.
     - A no-divergence test asserts packColor bags === cart bags for a bulk fixture including 1050.
@@ -209,8 +183,8 @@ implementation and worked-example test in Tasks 2-3 branch on that decision.
   </verify>
   <done>
     All four new assertions pass; the full engine + checkout suites are green; the
-    1050 worked-example test encodes the Task-1-locked outcome; a repeated packColor
-    call is asserted deeply equal (determinism).
+    1050 worked-example test asserts {1000:1, 500:1} (1x2000 rejected); a repeated
+    packColor call is asserted deeply equal (determinism).
   </done>
 </task>
 
@@ -262,8 +236,8 @@ threats in this plan.**
   planColorSupply, estimate==cart, and PRICE-01/02 suites.
 - `minCostBulk` still contains the recursive bounded `search` (grep confirms no
   greedy/solver replacement).
-- The Task-1 decision is recorded in the SUMMARY so downstream plans know which
-  cap governs.
+- The comparator implements the LOCKED overshoot cap (wasted drills <= one smallest
+  available bulk bag); 1050 @ standard -> {1000:1, 500:1} (1x2000 rejected).
 </verification>
 
 <success_criteria>
@@ -275,5 +249,6 @@ threats in this plan.**
 
 <output>
 Create `.planning/phases/16-optimized-supply-plan-savings/16-01-SUMMARY.md` when done.
-Record the locked cap option (A or B) prominently for downstream plans.
+Note that the cap is the LOCKED overshoot cap (option-b), so downstream plans and
+the savings clamp (16-02) account for it.
 </output>

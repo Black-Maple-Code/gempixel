@@ -92,7 +92,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 
 **Wave 1**
 
-- [ ] 16-01-optimizer-fewest-bags-comparator-PLAN.md — fewest-bags-within-cap comparator in minCostBulk + determinism/dye-lot/no-divergence tests (BAG-01) — includes a blocking decision on the cap semantics
+- [ ] 16-01-optimizer-fewest-bags-comparator-PLAN.md — fewest-bags-within-overshoot-cap comparator in minCostBulk + determinism/dye-lot/no-divergence tests (BAG-01) — cap semantics LOCKED (overshoot cap)
 
 **Wave 2** *(blocked on Wave 1)*
 
