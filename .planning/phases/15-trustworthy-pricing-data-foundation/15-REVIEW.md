@@ -21,7 +21,8 @@ findings:
   warning: 2
   info: 2
   total: 4
-status: issues_found
+status: resolved
+resolution_commit: e13ddca
 ---
 
 # Phase 15: Code Review Report
@@ -29,7 +30,7 @@ status: issues_found
 **Reviewed:** 2026-07-12
 **Depth:** standard
 **Files Reviewed:** 11
-**Status:** issues_found
+**Status:** resolved (warnings fixed in `e13ddca`; info items acknowledged)
 
 ## Summary
 
@@ -121,6 +122,26 @@ owner"), not introduced by this phase, so Info — but it remains a real order-a
 until adjudicated.
 **Fix:** Route the flagged pairs to the data owner for confirm-alias-vs-fix, then either
 correct the IDs or convert the alias to an explicit, intentional mapping.
+
+## Resolution (2026-07-12, commit `e13ddca`)
+
+- **WR-01 — FIXED.** The surfacing effect now drives the banner reactively: it tracks the
+  last derived warning it set (via a `useRef`) and clears/replaces only its own message, so a
+  resolved pricing/mapping warning no longer persists — without clobbering an unrelated
+  storage/download/checkout error on the shared `actionError` channel.
+- **WR-02 — FIXED (wording).** The unmapped-color message no longer claims the colors "were
+  left out of the supply plan"; it now states the fact ("no `{shape}` drills available — switch
+  drill shape or exclude them"), removing the contradiction with the fixed-bag total. The
+  deeper estimate-vs-cart cost divergence (making the fixed-bag path mapping-aware) is
+  **pre-existing** (the cart already dropped unmapped items before this phase) and is left as a
+  **follow-up** rather than a silent cost-behavior change in a correctness phase.
+- **IN-01 — acknowledged, no change.** Not reachable in any supported browser (all expose
+  `crypto.getRandomValues`); left as documented.
+- **IN-02 — adjudicated.** The data owner confirmed the duplicate-ID pairs (731/732, 781/782,
+  776/3326) as **intended aliases**; they stay allow-listed. The DATA-01 integrity test guards
+  against any *new* duplicate.
+
+Post-fix verification: `tsc --noEmit` clean; full suite 203/203 green.
 
 ---
 
