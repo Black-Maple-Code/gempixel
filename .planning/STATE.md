@@ -8,7 +8,7 @@ status: verifying
 stopped_at: Completed 15-03-PLAN.md (Phase 15 complete — 3/3 plans)
 last_updated: "2026-07-13T00:48:36.790Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 15 complete, transitioned to Phase 16
+last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 Phase: 16 — Optimized Supply Plan & Savings
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-13 — Phase 15 complete, transitioned to Phase 16
+Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -103,6 +103,7 @@ Last activity: 2026-07-13 — Phase 15 complete, transitioned to Phase 16
 | 260711-x6p | Fix blocker B2 (match-abort race → stale wrong-dimension grid) via monotonic run-id | 2026-07-12 | 6a3e563..43b267f | [260711-x6p-fix-blocker-b2-match-abort-concurrency-r](./quick/260711-x6p-fix-blocker-b2-match-abort-concurrency-r/) |
 | 260712-05k | Fix blocker B3 (silent quota eviction → data loss) + W9 (CSPRNG UUIDs); save() returns status + UI warning | 2026-07-12 | 65f3b1a..e75a7f5 | [260712-05k-fix-blocker-b3-warning-w9-projectstore-s](./quick/260712-05k-fix-blocker-b3-warning-w9-projectstore-s/) |
 | 260712-0io | Fix blocker B4 (symbol pool wraps at 82 → duplicate legend symbols); unique multi-char overflow symbols | 2026-07-12 | cdac74e | [260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s](./quick/260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s/) |
+| 260712-qa1 | Fix WR-02 estimate-vs-cart pricing divergence: fixed-bag branch now mapping-aware ($0 line for unmapped-shape colors, matching the cart) | 2026-07-13 | 9feed49..c1c3ff8 | [260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver](./quick/260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver/) |
 
 ## Continuity & Handoff
 
