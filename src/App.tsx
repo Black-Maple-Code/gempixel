@@ -2053,7 +2053,10 @@ export function App() {
                 <span className="font-bold text-ink">{totalSafetyDrills.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted uppercase tracking-wider">Packets ({drillBagSize}-ct)</span>
+                {/* WR-02: totalPackets sums mixed-size bags (200/500/1000/2000)
+                    from the optimizer, so a "200-ct" qualifier misrepresents it.
+                    Use a size-neutral label; per-row bagsText carries the sizes. */}
+                <span className="text-muted uppercase tracking-wider">Bags</span>
                 <span className="font-bold text-ink">{totalPackets}</span>
               </div>
               <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
