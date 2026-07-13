@@ -88,7 +88,24 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   3. A plain-language explanation tells the user why bags are grouped the way they are (the dye-lot "why").
   4. The user can see how much the optimized plan saves versus a naive one-size-per-color purchase.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 16-01-optimizer-fewest-bags-comparator-PLAN.md — fewest-bags-within-cap comparator in minCostBulk + determinism/dye-lot/no-divergence tests (BAG-01) — includes a blocking decision on the cap semantics
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 16-02-naive-baseline-and-order-aggregator-PLAN.md — naiveColorPack baseline + planOrderSupply aggregator with savings totals (BAG-02, BAG-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 16-03-wire-aggregator-retire-toggle-PLAN.md — wire planOrderSupply into App.tsx + retire the optimizeBagsCost toggle (BAG-02)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 16-04-savings-headline-and-why-expander-PLAN.md — always-on savings headline + a11y "Why these bags?" expander + static print mirror (BAG-02, BAG-03)
+
 **UI hint**: yes
 
 ### Phase 17: Service Fee & Customer Order Packet
@@ -147,7 +164,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
 | 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete    | 2026-07-13 |
-| 16. Optimized Supply Plan & Savings | v3.0 | — | Not started | - |
+| 16. Optimized Supply Plan & Savings | v3.0 | 0/4 | Planned | - |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Not started | - |
