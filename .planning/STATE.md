@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 20
 current_phase_name: Atelier Design System & Canvas-First Shell
-status: ready_to_plan
-stopped_at: Phase 20 context gathered
-last_updated: "2026-07-13T22:28:31.593Z"
+status: executing
+stopped_at: Phase 20 UI-SPEC approved
+last_updated: "2026-07-13T23:24:17.244Z"
 last_activity: 2026-07-13
 last_activity_desc: v4.0 roadmap created (6 phases, 20–25; 19/19 requirements mapped, 100% coverage)
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 20 of 25 (Atelier Design System & Canvas-First Shell) — first v4.0 phase
 Plan: — (not yet planned)
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-07-13 — v4.0 roadmap created (6 phases, 20–25; 19/19 requirements mapped, 100% coverage)
 
 Progress: [░░░░░░░░░░] 0%
@@ -132,9 +132,9 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-13T22:28:31.576Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-atelier-design-system-canvas-first-shell/20-CONTEXT.md
+Last session: 2026-07-13T22:36:41.970Z
+Stopped at: Phase 20 UI-SPEC approved
+Resume file: .planning/phases/20-atelier-design-system-canvas-first-shell/20-UI-SPEC.md
 
 ## Decisions
 
