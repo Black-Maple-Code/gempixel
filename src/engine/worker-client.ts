@@ -7,8 +7,22 @@ export class MatcherClient {
   // superseded in-flight run's late replies can be filtered out client-side (B2).
   private runSeq = 0;
 
-  constructor(workerUrl: URL | string) {
-    this.worker = new Worker(workerUrl, { type: 'module' });
+  // The default branch below MUST keep the `new Worker(new URL('./matcher.worker.ts',
+  // import.meta.url), { type: 'module' })` literal inline, as a single verbatim expression.
+  // Vite only compiles+bundles the worker (and its transitive ./color, ./ingest, ./types
+  // imports) into a hashed .js chunk when it can statically see that whole expression in one
+  // place. Splitting the `new URL(...)` into a separate variable — or building it in a
+  // separate file and passing it in, as the old call site did — makes Vite emit the worker
+  // as a raw hashed .ts asset that fails to instantiate as a module worker in production
+  // (served as video/mp2t, bare ESM imports intact). The optional `workerUrl` parameter
+  // exists solely to preserve the injected-URL seam used by
+  // src/engine/__tests__/worker.test.ts; production always takes the no-arg default branch.
+  constructor(workerUrl?: URL | string) {
+    if (workerUrl) {
+      this.worker = new Worker(workerUrl, { type: 'module' });
+    } else {
+      this.worker = new Worker(new URL('./matcher.worker.ts', import.meta.url), { type: 'module' });
+    }
   }
 
   public match(
