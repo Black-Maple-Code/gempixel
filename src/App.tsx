@@ -3,9 +3,9 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
-import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
+import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents, sumCents } from './engine/money';
+import { toCents, fromCents } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -939,55 +939,40 @@ export function App() {
     window.addEventListener('afterprint', cleanup);
   };
 
+  // BAG-02/D-13: the legend, per-color bags, total bag count and total cost are all
+  // computed by the SHARED order aggregator (planOrderSupply), not an inline App.tsx
+  // reduction — so the legend estimate, the Shopify cart, and the Phase 17 order
+  // packet can never diverge. Called ONCE; the aggregator is pure (no palette
+  // name/hex lookup and no sort), so the DMC_PALETTE join and the existing sort stay
+  // here in the component.
+  const orderPlan = planOrderSupply(matchResult?.counts || {}, drillStyle, priceDb);
+
   // Calculate sorted legend table rows
-  const sortedMatches = Object.entries(matchResult?.counts || {})
-    .map(([code, count]) => {
+  const sortedMatches = orderPlan.rows
+    .map(row => {
+      const { code } = row;
+      const count = matchResult?.counts[code] ?? 0;
       const colorInfo = DMC_PALETTE.find(c => c.dmc === code);
       const name = colorInfo?.name || 'Unknown DMC Color';
       const hex = colorInfo?.hex || '#2D3748';
 
-      if (optimizeBagsCost) {
-        // +10% safety drill count (unchanged column semantics).
-        const safety = Math.ceil(Math.round(count * 110) / 100);
+      // +10% safety drill count (unchanged Safety Marg. column semantics).
+      const safety = Math.ceil(Math.round(count * 110) / 100);
 
-        // Pack exact + safety through the SAME per-color primitive the cart uses
-        // (bagPlanner.packColor), so the legend estimate always matches the cart.
-        const row = planColorSupply(code, drillStyle, count, priceDb);
-
-        return {
-          code,
-          count,
-          name,
-          hex,
-          safety, // +10% drill count (Safety Marg. column)
-          packets: row.safety.packets, // total bag/packet count
-          purchase: row.safety.totalDrills, // total drills purchased
-          costExact: row.costExact,
-          costSafety: row.costSafety,
-          bagsText: row.bagsText,
-          optimizedBags: row.safety.bySize,
-          hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
-        };
-      } else {
-        // WR-02: mapping-aware fixed-bag cost. An unmapped-shape color is a $0
-        // line (packets 0 => 'None' bagsText), matching the cart and optimized
-        // branch; mapped colors bill exactly as before.
-        const fixed = calculateFixedBagCost(code, drillStyle, count, drillBagSize, drillPacketCost);
-        return {
-          code,
-          count,
-          name,
-          hex,
-          safety: fixed.safety,
-          packets: fixed.packets,
-          purchase: fixed.purchase,
-          costExact: fixed.costExact,
-          costSafety: fixed.costSafety,
-          bagsText: fixed.packets > 0 ? `${fixed.packets} bag(s)` : 'None',
-          optimizedBags: null,
-          hasUnpricedSize: false // fixed single-size pricing path is always priced
-        };
-      }
+      return {
+        code,
+        count,
+        name,
+        hex,
+        safety, // +10% drill count (Safety Marg. column)
+        packets: row.safety.packets, // total bag/packet count
+        purchase: row.safety.totalDrills, // total drills purchased
+        costExact: row.costExact,
+        costSafety: row.costSafety,
+        bagsText: row.bagsText,
+        optimizedBags: row.safety.bySize,
+        hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
+      };
     })
     .sort((a, b) => {
       let diff = 0;
@@ -1011,12 +996,16 @@ export function App() {
 
   // Calculator derivations
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
-  const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
+  // SC2/BAG-02: the total bag count is sourced from the shared aggregator's
+  // totalPackets (sum of the per-color SAFETY packets), NOT a stale inline sum, and
+  // is rendered user-visibly as the "Drills ({totalPackets} bag(s))" line.
+  const totalPackets = orderPlan.totalPackets;
 
-  // PRICE-03: sum every displayed line item in integer cents (via money.ts) so
-  // the itemized drill costs + canvas base + shipping reconcile EXACTLY to the
-  // displayed total — no IEEE-754 float drift between the lines and the total.
-  const safetyDrillCostCents = sumCents(sortedMatches.map(row => toCents(row.costSafety)));
+  // PRICE-03: the itemized drill cost comes from the aggregator's integer-cents
+  // optimizedCostCents; the displayed total then reconciles the canvas base +
+  // shipping into it in integer cents (via money.ts) so there is no IEEE-754 float
+  // drift between the drill lines and the total.
+  const safetyDrillCostCents = orderPlan.optimizedCostCents;
   const totalCostSafetyCents =
     toCents(canvasBaseCost) + toCents(canvasShippingEstimate) + safetyDrillCostCents;
   const safetyDrillCost = fromCents(safetyDrillCostCents);
@@ -1025,9 +1014,7 @@ export function App() {
   // PRICE-02: a color coverable only by an unpriced bag size is surfaced through
   // the existing actionError banner (never rendered as a free $0 line). Derived
   // here; applied in an effect below so we never setState during render.
-  const unpricedColorCodes = sortedMatches
-    .filter(row => row.hasUnpricedSize)
-    .map(row => row.code);
+  const unpricedColorCodes = orderPlan.unpricedColorCodes;
   const unpricedColorsKey = unpricedColorCodes.join(',');
 
   // DATA-01: a grid color with NO drill variant mapped for the currently selected
