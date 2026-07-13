@@ -5,10 +5,10 @@ milestone_name: Two-Mode Viewport Experience — Phases 15–19
 current_phase: 16
 current_phase_name: Optimized Supply Plan & Savings
 status: verifying
-stopped_at: Completed 15-03-PLAN.md (Phase 15 complete — 3/3 plans)
-last_updated: "2026-07-13T00:48:36.790Z"
+stopped_at: Phase 16 context gathered
+last_updated: "2026-07-13T01:07:15.262Z"
 last_activity: 2026-07-13
-last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix"
+last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -120,9 +120,9 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-13T00:26:08.776Z
-Stopped at: Completed 15-03-PLAN.md (Phase 15 complete — 3/3 plans)
-Resume file: None
+Last session: 2026-07-13T01:07:15.245Z
+Stopped at: Phase 16 context gathered
+Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 
 ## Decisions
 
