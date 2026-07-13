@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
 import { App } from '../App';
 import { projectStore } from '../engine/projectStore';
+import { planOrderSupply } from '../engine/bagPlanner';
+import { DMC_PALETTE } from '../engine/palette';
 
 // ERR-01: force the canvas download to fail so the action-error banner path is
 // exercised deterministically (jsdom has no 2D context, but this guarantees the
@@ -184,23 +186,17 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
-    // Uncheck optimize bags checkbox to use standard simple packet costing in test
-    const optimizeBagsCheckbox = container.querySelector('#optimize-bags-checkbox') as HTMLInputElement;
-    if (optimizeBagsCheckbox && optimizeBagsCheckbox.checked) {
-      optimizeBagsCheckbox.click();
-      await new Promise(r => setTimeout(r, 10));
-    }
-
-    // Verify calculator input fields exist
+    // Single-plan UI (D-11): the per-bag-size price grid always renders, so there are
+    // 6 number inputs — Canvas price, Est. Shipping, then the 200/500/1k/2k prices.
     const inputs = container.querySelectorAll('input[type="number"]');
-    expect(inputs.length).toBe(3); // Canvas base price, Est. Shipping, Bag Price
+    expect(inputs.length).toBe(6);
     const canvasCostInput = inputs[0] as HTMLInputElement;
     const shippingEstimateInput = inputs[1] as HTMLInputElement;
-    const packetCostInput = inputs[2] as HTMLInputElement;
+    const price200Input = inputs[2] as HTMLInputElement;
 
     expect(canvasCostInput.value).toBe('15');
     expect(shippingEstimateInput.value).toBe('8');
-    expect(packetCostInput.value).toBe('0.25');
+    expect(price200Input.value).toBe('0.6'); // 200-qty default standard price
 
     // Canvas base cost: $15, shipping: $8, drills cost: $0 (no matchResult) -> Total Cost: $23.00
     const quoteSections = container.querySelectorAll('span');
@@ -239,7 +235,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(asides[1].className).toContain('w-0');
   });
 
-  it('updates default drill packet cost when drill type changes', async () => {
+  it('updates the per-bag-size price presets when drill type changes', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -259,24 +255,20 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
-    // Now switch to 'Cost & Order' tab (Step 3) to check packet price
+    // Now switch to 'Cost & Order' tab (Step 3) to check the price grid presets
     const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
-    // Uncheck optimize bags checkbox to use standard simple packet costing in test
-    const optimizeBagsCheckbox = container.querySelector('#optimize-bags-checkbox') as HTMLInputElement;
-    if (optimizeBagsCheckbox && optimizeBagsCheckbox.checked) {
-      optimizeBagsCheckbox.click();
-      await new Promise(r => setTimeout(r, 10));
-    }
-
+    // Single-plan UI (D-11): the per-bag-size price grid is the sole cost control.
+    // Switching to 'ab' loads the AB preset, so the 200-qty price input becomes 0.70.
     const inputs = container.querySelectorAll('input[type="number"]');
-    const packetCostInput = inputs[2] as HTMLInputElement;
-    expect(packetCostInput.value).toBe('0.35'); // AB price is 0.35
+    expect(inputs.length).toBe(6);
+    const price200Input = inputs[2] as HTMLInputElement;
+    expect(price200Input.value).toBe('0.7'); // AB 200-qty preset
   });
 
-  it('renders all 4 bulk bag inputs when optimize bags checkbox is checked (default)', async () => {
+  it('renders the 4 per-bag-size price inputs unconditionally (single-plan UI, D-11)', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -287,10 +279,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     quoteTab?.click();
     await new Promise(r => setTimeout(r, 10));
 
-    // By default, optimizeBagsCost is true, so we should see 6 number inputs:
-    // Canvas price, Est. Shipping, 200 qty, 500 qty, 1000 qty, and 2000 qty
+    // The optimized plan is the SOLE plan now (no toggle to flip): the per-bag-size
+    // price grid always renders, so there are 6 number inputs unconditionally —
+    // Canvas price, Est. Shipping, 200 qty, 500 qty, 1000 qty, and 2000 qty.
     const inputs = container.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
+    // D-11: the "Optimize bag sizes" toggle no longer exists.
+    expect(container.querySelector('#optimize-bags-checkbox')).toBeNull();
+    expect(container.textContent).not.toMatch(/optimize bag sizes/i);
     expect((inputs[2] as HTMLInputElement).value).toBe('0.6'); // 200 qty default standard price
     expect((inputs[3] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
     expect((inputs[4] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
@@ -524,7 +520,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Now on Step 3 (Cost & Order)
       // Verify display isolation: Step 3 options rendered, Step 2 (DMC kit select) hidden
       expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeUndefined(); // isolated
-      expect(container.querySelector('#optimize-bags-checkbox')).toBeTruthy(); // Step 3 checkbox
+      expect(container.querySelector('#canvas-print-partner')).toBeTruthy(); // Step 3 marker (canvas vendor select)
 
       // Progress to Step 4
       const nextBtnStep3 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
@@ -575,7 +571,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
         drillBagSize: 200,
         laborFee: 25,
         markupType: 'fixed',
-        optimizeBagsCost: true,
         pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
         gridData: [0, 1]
       };
@@ -655,7 +650,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
         drillBagSize: 200,
         laborFee: 25,
         markupType: 'fixed',
-        optimizeBagsCost: true,
         pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
         gridData: [0, 1]
       };
@@ -728,7 +722,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
         drillBagSize: 200,
         laborFee: 25,
         markupType: 'fixed',
-        optimizeBagsCost: true,
         pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
         gridData: [0, 1]
       };
@@ -813,7 +806,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
         drillBagSize: 200,
         laborFee: 25,
         markupType: 'fixed',
-        optimizeBagsCost: true,
         pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
         gridData: [0, 1]
       };
@@ -948,7 +940,6 @@ describe('App Component Mounting and Basic UI Inputs', () => {
         drillBagSize: 200,
         laborFee: 25,
         markupType: 'fixed',
-        optimizeBagsCost: true,
         pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
         gridData: [0, 1],
       };
@@ -1057,5 +1048,83 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       expect(container.textContent).toMatch(/storage is full/i);
     });
+  });
+});
+
+describe('BAG-02 / SC2 — the total bag count is user-visibly rendered from planOrderSupply.totalPackets', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'test-project-bag02';
+  // Two DMC codes with real square drill variants; gridData carries palette
+  // indices, so on load App rebuilds counts = { '150': 250, '151': 250 }.
+  const idx150 = DMC_PALETTE.findIndex(c => c.dmc === '150');
+  const idx151 = DMC_PALETTE.findIndex(c => c.dmc === '151');
+  const priceDb = { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 } as Record<200 | 500 | 1000 | 2000, number>;
+
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'BAG02 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'BAG02 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: priceDb,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const loadProjectToStep = async (targetStep: number) => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+    const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
+    toggleBtn?.click();
+    await new Promise(r => setTimeout(r, 10));
+    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+    expect(rowBtn).toBeTruthy();
+    rowBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+    for (let s = 1; s < targetStep; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+  };
+
+  it('renders "Drills ({n} bag(s))" where {n} equals planOrderSupply.totalPackets for a known fixture', async () => {
+    expect(idx150).toBeGreaterThanOrEqual(0);
+    expect(idx151).toBeGreaterThanOrEqual(0);
+
+    // The single source of truth for the total bag count.
+    const expected = planOrderSupply({ '150': 250, '151': 250 }, 'square', priceDb).totalPackets;
+    expect(expected).toBeGreaterThan(0); // meaningful fixture, not a trivial 0
+
+    seedProject();
+    await loadProjectToStep(3);
+
+    // SC2/BAG-02: the aggregator's totalPackets must be user-VISIBLE in the panel,
+    // not merely derived — the "Drills ({n} bag(s))" line proves it.
+    const re = new RegExp(`Drills \\(${expected} bag\\(s\\)\\)`);
+    expect(container.textContent).toMatch(re);
   });
 });

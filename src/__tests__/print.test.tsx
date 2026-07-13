@@ -1,6 +1,38 @@
-import { describe, it, expect } from 'vitest';
-import { calculateSafetyPurchase, calculateFixedBagCost } from '../App';
-import { packColor, priceColorPack } from '../engine/bagPlanner';
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { render } from 'preact';
+import { calculateSafetyPurchase, calculateFixedBagCost, App, DYE_LOT_WHY_SENTENCE } from '../App';
+import { packColor, priceColorPack, planOrderSupply } from '../engine/bagPlanner';
+import { DMC_PALETTE } from '../engine/palette';
+import { formatUSD } from '../engine/money';
+
+// Render the App only needs the heavy side-effect modules stubbed out (the same
+// worker/viewer stubs App.test.tsx uses); the print-only report block is always
+// in the DOM (jsdom applies no CSS, so `hidden print:block` is still queryable).
+vi.mock('../engine/worker-client', () => ({
+  MatcherClient: class MockMatcherClient {
+    match = vi.fn();
+    terminate = vi.fn();
+  },
+}));
+
+vi.mock('../engine/viewer', () => ({
+  CanvasViewer: class MockCanvasViewer {
+    setData = vi.fn();
+    setDrillStyle = vi.fn();
+    setHighlightedColor = vi.fn();
+    setDrillType = vi.fn();
+    fitToContainer = vi.fn();
+    destroy = vi.fn();
+    setViewMode = vi.fn();
+    setSymbolMap = vi.fn();
+    setRoundBacking = vi.fn();
+    setGridGap = vi.fn();
+    zoomIn = vi.fn();
+    zoomOut = vi.fn();
+    resetZoom = vi.fn();
+  },
+}));
 
 // Standard price table (bag size -> unit price) shared by the fixed-bag cases.
 const priceDb = { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.4 };
@@ -78,3 +110,267 @@ describe('Fixed-bag cost is mapping-aware (WR-02)', () => {
 // Candidate 1 consolidation. Dye-lot-correct per-color packing is now covered by
 // `src/engine/__tests__/bagPlanner.test.ts` (packColor / planColorSupply), and the
 // estimate == cart property is asserted there against `compileShopifyCartLink`.
+
+// BAG-03/BAG-02 · D-08/D-10: the redesigned printable "GemPixel Supply Plan
+// Report" (the "Print Supply Report" button's output, isolated via
+// print-only-report-mode) must be self-contained: a static savings/why banner,
+// a per-color supply table, and the reconciled proposed total. jsdom applies no
+// CSS, so the `.hidden` container is still queryable — assert on content/DOM
+// structure, NOT computed visibility.
+describe('Print supply report content (D-08/D-10, redesigned)', () => {
+  let container: HTMLDivElement;
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  function renderApp() {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    render(<App />, container);
+  }
+
+  // Target the redesigned supply-report container (`.supply-report-print-container`),
+  // which the "Print Supply Report" button reveals via print-only-report-mode.
+  function getPrintReport(): HTMLElement {
+    const report = container.querySelector('.supply-report-print-container');
+    expect(report).toBeTruthy();
+    return report as HTMLElement;
+  }
+
+  it('renders the static dye-lot sentence inside the supply report', () => {
+    renderApp();
+    const report = getPrintReport();
+    expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+  });
+
+  it('renders the savings headline inside the supply report (zero-state at empty plan)', () => {
+    renderApp();
+    const report = getPrintReport();
+    // With no image loaded the shared aggregator reports no bulk savings, so the
+    // mirrored headline is the truthful zero-state line (D-08) — still present,
+    // never hidden.
+    expect(report.textContent).toContain('No bulk savings at this size');
+  });
+
+  it('renders the report header and a reconciled proposed total', () => {
+    renderApp();
+    const report = getPrintReport();
+    expect(report.textContent).toContain('GemPixel Supply Plan Report');
+    // The proposed total is present and money-formatted ($X.XX) via money.ts.
+    expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
+  });
+
+  it('keeps the report sentence independent of the on-screen expander (empty plan)', () => {
+    renderApp();
+    // On the initial (step 1) empty-plan render the relocated Step3Canvas expander
+    // is not mounted, so the dye-lot sentence appears exactly once — in the static
+    // print mirror — never leaking from an on-screen expander.
+    const occurrences = (container.textContent || '').split(DYE_LOT_WHY_SENTENCE).length - 1;
+    expect(occurrences).toBe(1);
+  });
+});
+
+// BAG-02/BAG-03 · D-08/D-09/D-10: with a real plan loaded, the report carries the
+// per-color supply rows + the matching savings headline, and the relocated
+// "Why these bags?" expander (now in the Step 3 Cost & Order panel) exposes the
+// full a11y contract.
+describe('Populated supply report + relocated "Why these bags?" expander', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'test-project-print-16-04';
+  // Two DMC codes with real square drill variants; gridData carries palette
+  // indices, so on load App rebuilds counts = { '150': 250, '151': 250 }.
+  const idx150 = DMC_PALETTE.findIndex((c) => c.dmc === '150');
+  const idx151 = DMC_PALETTE.findIndex((c) => c.dmc === '151');
+  const priceDb = { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 } as Record<200 | 500 | 1000 | 2000, number>;
+  const counts = { '150': 250, '151': 250 };
+
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'Print 16-04 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'Print 16-04 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: priceDb,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const loadProjectToStep = async (targetStep: number) => {
+    render(<App />, container);
+    await new Promise((r) => setTimeout(r, 10));
+    const toggleBtn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes('My Images'));
+    toggleBtn?.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+    expect(rowBtn).toBeTruthy();
+    rowBtn.click();
+    await new Promise((r) => setTimeout(r, 10));
+    for (let s = 1; s < targetStep; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  };
+
+  it('renders per-color supply rows + the matching savings headline in the report', async () => {
+    expect(idx150).toBeGreaterThanOrEqual(0);
+    expect(idx151).toBeGreaterThanOrEqual(0);
+
+    seedProject();
+    await loadProjectToStep(3);
+
+    const report = container.querySelector('.supply-report-print-container') as HTMLElement;
+    expect(report).toBeTruthy();
+
+    // A color name is present (150 = "Dusty Rose UT DK").
+    expect(report.textContent).toContain('Dusty Rose UT DK');
+
+    // The color's recommended bags text (quantity/bags) is present.
+    const plan = planOrderSupply(counts, 'square', priceDb);
+    const row150 = plan.rows.find((r) => r.code === '150');
+    expect(row150).toBeTruthy();
+    expect(report.textContent).toContain(row150!.bagsText);
+
+    // The savings headline matches the aggregator (same string App builds).
+    const expectedHeadline =
+      plan.savingsCents > 0
+        ? `Save ${formatUSD(plan.savingsCents)} (${plan.savingsPct}%) vs per-color`
+        : 'No bulk savings at this size';
+    expect(report.textContent).toContain(expectedHeadline);
+
+    // The dye-lot sentence + a reconciled proposed total round out the report.
+    expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+    expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
+  });
+
+  // CR-01: a tampered/imported project whose kitBaseCost is non-finite (here a
+  // scientific-notation string that parses to Infinity) reaches the render body's
+  // toCents() total via loadProject — `??` only guards null/undefined. Before the
+  // sanitizeMoney guard, toCents(Infinity) threw in the render body and white-
+  // screened the app. The load + step-3 render must now complete without throwing
+  // and produce a finite, money-formatted total.
+  // WR-01: loading a project whose drillType differs from the active default
+  // ('standard') must preserve its saved per-bag prices. The drillType-keyed
+  // preset effect fires on the standard->ab change and, without the skip guard,
+  // clobbers the restored custom prices with the 'ab' type defaults.
+  it('preserves saved per-bag prices when the loaded drillType differs (WR-01)', async () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'WR-01 Custom Prices', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    // Distinctive prices that match neither the 'standard' default nor the 'ab'
+    // preset ({200:0.70,500:1.30,1000:2.20,2000:3.90}).
+    const customPrices = { 200: 0.99, 500: 1.99, 1000: 2.99, 2000: 3.99 };
+    const data = {
+      id: projectId,
+      name: 'WR-01 Custom Prices',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'ab', // differs from the initial 'standard' -> preset effect fires
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: customPrices,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+
+    await loadProjectToStep(3);
+
+    // Read the per-bag price grid inputs (200/500/1000/2000, in order).
+    const priceSection = Array.from(container.querySelectorAll('span'))
+      .find((s) => s.textContent === 'Prices per Bag Size ($)')
+      ?.closest('div');
+    expect(priceSection).toBeTruthy();
+    const priceInputs = Array.from(priceSection!.querySelectorAll('input')) as HTMLInputElement[];
+    // The restored custom prices survive — NOT overwritten by the 'ab' preset.
+    expect(priceInputs.map((i) => i.value)).toEqual(['0.99', '1.99', '2.99', '3.99']);
+  });
+
+  it('does not white-screen when a loaded project has a non-finite kitBaseCost (CR-01)', async () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'CR-01 Tampered', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'CR-01 Tampered',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      // Tampered/oversized base cost: parseFloat('1e999') === Infinity.
+      kitBaseCost: '1e999',
+      drillPacketCost: 0.25,
+      pricesPerBagSize: priceDb,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+
+    // The whole load-to-step-3 flow must not throw (the render body runs toCents);
+    // a throw here would reject this awaited promise and fail the test.
+    await loadProjectToStep(3);
+
+    // The estimate line rendered a finite, money-formatted total (base clamped to
+    // 0) — never "Infinity"/"NaN" and never a crash.
+    expect(container.textContent).toContain('Est. total');
+    expect(container.textContent).toMatch(/\$\d+\.\d{2}/);
+    expect(container.textContent).not.toContain('Infinity');
+    expect(container.textContent).not.toContain('NaN');
+  });
+
+  it('exposes the "Why these bags?" a11y contract in the Step 3 Cost & Order panel', async () => {
+    seedProject();
+    await loadProjectToStep(3);
+
+    const whyButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-controls') === 'why-these-bags-explainer',
+    );
+    expect(whyButton).toBeTruthy();
+    // Real <button type="button">.
+    expect(whyButton?.getAttribute('type')).toBe('button');
+    // Accessible name is exactly "Why these bags?" (the ▶ arrow is aria-hidden).
+    expect(whyButton?.textContent?.replace('▶', '').trim()).toBe('Why these bags?');
+    // Collapsed by default: aria-expanded=false and the region is absent.
+    expect(whyButton?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('#why-these-bags-explainer')).toBeNull();
+
+    // Toggling opens it: aria-expanded=true and the single static sentence appears.
+    whyButton!.click();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(whyButton?.getAttribute('aria-expanded')).toBe('true');
+    const region = container.querySelector('#why-these-bags-explainer');
+    expect(region).toBeTruthy();
+    expect(region?.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+  });
+});

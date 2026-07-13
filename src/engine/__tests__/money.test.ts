@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toCents, fromCents, sumCents, formatUSD } from '../money';
+import { toCents, fromCents, sumCents, formatUSD, sanitizeMoney } from '../money';
 
 describe('money.toCents', () => {
   it('converts whole and fractional dollars to integer cents', () => {
@@ -36,6 +36,46 @@ describe('money.toCents', () => {
     expect(() => toCents(NaN)).toThrow(RangeError);
     expect(() => toCents(Infinity)).toThrow(RangeError);
     expect(() => toCents(-Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('money.sanitizeMoney (CR-01: finite/non-negative guard before toCents)', () => {
+  it('passes through finite, non-negative numbers unchanged', () => {
+    expect(sanitizeMoney(15)).toBe(15);
+    expect(sanitizeMoney(8.5)).toBe(8.5);
+    expect(sanitizeMoney(0)).toBe(0);
+  });
+
+  it('parses numeric strings (the raw <input type="number"> value)', () => {
+    expect(sanitizeMoney('15')).toBe(15);
+    expect(sanitizeMoney('8.50')).toBe(8.5);
+    expect(sanitizeMoney('')).toBe(0);
+  });
+
+  it('collapses non-finite input to 0 — the exact CR-01 crash vector', () => {
+    // `<input type="number">` accepts oversized/scientific notation; parseFloat
+    // yields Infinity, and `Infinity || 0 === Infinity` (the old bug) slipped
+    // through to toCents. sanitizeMoney clamps it to 0.
+    expect(sanitizeMoney('1e999')).toBe(0);
+    expect(sanitizeMoney(Infinity)).toBe(0);
+    expect(sanitizeMoney(-Infinity)).toBe(0);
+    expect(sanitizeMoney(NaN)).toBe(0);
+  });
+
+  it('clamps negative amounts to 0', () => {
+    expect(sanitizeMoney(-5)).toBe(0);
+    expect(sanitizeMoney('-0.01')).toBe(0);
+  });
+
+  it('makes toCents(sanitizeMoney(x)) total-path-safe for any input', () => {
+    // The regression: before the guard, toCents(Infinity) threw and
+    // white-screened the render. sanitizeMoney closes the vector.
+    expect(() => toCents(sanitizeMoney('1e999'))).not.toThrow();
+    expect(toCents(sanitizeMoney('1e999'))).toBe(0);
+    expect(() => toCents(sanitizeMoney(NaN))).not.toThrow();
+    expect(toCents(sanitizeMoney(-Infinity))).toBe(0);
+    // A valid amount still converts correctly.
+    expect(toCents(sanitizeMoney('8.50'))).toBe(850);
   });
 });
 

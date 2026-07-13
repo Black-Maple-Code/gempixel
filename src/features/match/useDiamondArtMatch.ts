@@ -109,7 +109,11 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
 
   // Worker lifecycle: construct once, terminate on unmount (no leaked worker).
   useEffect(() => {
-    clientRef.current = new MatcherClient(new URL('../../engine/matcher.worker.ts', import.meta.url));
+    // No argument: route production through MatcherClient's default, statically-detectable
+    // inline `new Worker(new URL('./matcher.worker.ts', import.meta.url))` branch so Vite
+    // bundles the worker to a hashed .js chunk. Passing a decoupled `new URL(...)` here is
+    // exactly the regression that shipped the worker as raw .ts — do not reintroduce it.
+    clientRef.current = new MatcherClient();
     return () => {
       clientRef.current?.terminate();
       clientRef.current = null;

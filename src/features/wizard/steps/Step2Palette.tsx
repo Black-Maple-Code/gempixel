@@ -42,7 +42,6 @@ export interface Step2PaletteProps {
   sortedMatches: LegendRow[];
   highlightedColor: string | null;
   handleRowClick: (code: string) => void;
-  optimizeBagsCost: boolean;
 }
 
 export function Step2Palette(props: Step2PaletteProps) {
@@ -70,7 +69,6 @@ export function Step2Palette(props: Step2PaletteProps) {
     sortedMatches,
     highlightedColor,
     handleRowClick,
-    optimizeBagsCost,
   } = props;
 
   return (
@@ -313,7 +311,7 @@ export function Step2Palette(props: Step2PaletteProps) {
                           <td className="py-1 px-1 text-right text-slate-400 font-mono">{row.count}</td>
                           <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono">{row.safety}</td>
                           <td className="py-1 px-1 text-right font-bold text-slate-350 font-mono text-[9px]">
-                            {optimizeBagsCost ? row.bagsText : row.packets}
+                            {row.bagsText}
                           </td>
                         </tr>
                       );

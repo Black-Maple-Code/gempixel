@@ -41,6 +41,21 @@ export function fromCents(cents: number): number {
   return cents / 100;
 }
 
+/**
+ * Coerce an arbitrary parsed/user value to a finite, non-negative dollar number.
+ *
+ * Non-finite (NaN / ±Infinity) or negative inputs collapse to 0. This is the
+ * single guard that keeps a bad price input from ever reaching `toCents` (which
+ * throws on non-finite input by design). The `parseFloat(x) || 0` idiom it
+ * replaces catches NaN but NOT Infinity — a `<input type="number">` accepts
+ * oversized/scientific notation like `1e999`, and `Infinity || 0 === Infinity`
+ * would flow into `toCents` and white-screen the render path (CR-01).
+ */
+export function sanitizeMoney(value: number | string): number {
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 /** Exact integer sum of a list of cent values (no float accumulation). */
 export function sumCents(values: number[]): number {
   return values.reduce((acc, c) => acc + c, 0);

@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Two-Mode Viewport Experience — Phases 15–19
-current_phase: 16
-current_phase_name: Optimized Supply Plan & Savings
-status: verifying
-stopped_at: Phase 16 context gathered
-last_updated: "2026-07-13T01:07:15.262Z"
+current_phase: 17
+current_phase_name: Service Fee & Customer Order Packet
+status: completed
+stopped_at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
+last_updated: "2026-07-13T05:16:25.799Z"
 last_activity: 2026-07-13
-last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)"
+last_activity_desc: Phase 16 complete, transitioned to Phase 17
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 20
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 7
+  percent: 40
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 15 — trustworthy-pricing-data-foundation
+**Current focus:** Phase 16 — optimized-supply-plan-savings
 
 ## Current Position
 
-Phase: 16 — Optimized Supply Plan & Savings
+Phase: 17 — Service Fee & Customer Order Packet
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)
+Status: Plan 16-04 complete; awaiting phase-level completion
+Last activity: 2026-07-13 — Completed quick task 260712-wep: fixed prod Web Worker regression (matcher.worker shipped as raw .ts)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -47,7 +47,7 @@ Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs
 
 **Velocity:**
 
-- Total plans completed: 21
+- Total plans completed: 25
 - Average duration: 186s
 - Total execution time: 0.1 hours
 
@@ -65,6 +65,7 @@ Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs
 | 11 | 3 | - | - |
 | 13 | 2 | - | - |
 | 15 | 3 | - | - |
+| 16 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -88,6 +89,10 @@ Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs
 | Phase 15 P01 | 6min | 2 tasks | 5 files |
 | Phase 15 P02 | 10min | 3 tasks | 5 files |
 | Phase 15 P03 | 8min | 3 tasks | 3 files |
+| Phase 16 P01 | 6min | 2 tasks | 3 files |
+| Phase 16 P02 | 6min | 2 tasks | 2 files |
+| Phase 16 P03 | 9min | 3 tasks | 4 files |
+| Phase 16 P04 | 25min | 3 tasks | 4 files |
 
 ## Risk & Health
 
@@ -104,6 +109,7 @@ Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs
 | 260712-05k | Fix blocker B3 (silent quota eviction → data loss) + W9 (CSPRNG UUIDs); save() returns status + UI warning | 2026-07-12 | 65f3b1a..e75a7f5 | [260712-05k-fix-blocker-b3-warning-w9-projectstore-s](./quick/260712-05k-fix-blocker-b3-warning-w9-projectstore-s/) |
 | 260712-0io | Fix blocker B4 (symbol pool wraps at 82 → duplicate legend symbols); unique multi-char overflow symbols | 2026-07-12 | cdac74e | [260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s](./quick/260712-0io-fix-blocker-b4-symbol-pool-wraps-at-82-s/) |
 | 260712-qa1 | Fix WR-02 estimate-vs-cart pricing divergence: fixed-bag branch now mapping-aware ($0 line for unmapped-shape colors, matching the cart) | 2026-07-13 | 9feed49..c1c3ff8 | [260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver](./quick/260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver/) |
+| 260712-wep | Fix prod Web Worker regression: Vite shipped matcher.worker as raw .ts (image matching silently failed in prod); inline `new Worker(new URL())` in MatcherClient so Vite bundles it to hashed .js | 2026-07-13 | d7fe6fb | [260712-wep-fix-prod-web-worker-regression-vite-ship](./quick/260712-wep-fix-prod-web-worker-regression-vite-ship/) |
 
 ## Continuity & Handoff
 
@@ -120,9 +126,9 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:07:15.245Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
+Last session: 2026-07-13T03:37:58.572Z
+Stopped at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
+Resume file: None
 
 ## Decisions
 
@@ -135,6 +141,10 @@ Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 - [Phase 15]: 15-01: Removed Prodigi vendor; narrowed CanvasVendor union to 'lumaprints' | 'finerworks'; calculateCanvasCost returns number|null (unknown vendor -> null, never $0); normalizeVendor migrates any legacy/tampered persisted vendor to lumaprints at load; selectedVendor persisted as an additive optional ProjectData field.
 - [Phase 15]: 15-02: engine/money.ts canonical integer-cents helper (EPSILON-safe round-half-up, throws on non-finite); bagPlanner treats a missing price as Infinity (never $0-self-select), adds a 500 tier from a single canonical size table, flags hasUnpricedSize for colors coverable only by an unpriced size; App.tsx sums line items in cents to reconcile the displayed total and surfaces unpriced colors via the existing actionError banner.
 - [Phase 15]: 15-03: DATA-01 drill-variant integrity test (unique-or-allow-listed IDs, no empty reachable mappings beyond allow-list, full palette coverage) ratchets against data drift; hasVariantMapping surfaces shape-unmapped grid colors via the existing banner. Data-owner checkpoint adjudicated the known holes to safe reversible defaults: dup-ID pairs 731/732, 781/782, 776/3326 kept as intended aliases; empty mappings 471/square, 798/round, BLANC/round, ECRU/round kept surfaced-as-unmapped (DRILL_VARIANTS unchanged).
+- [Phase ?]: [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
+- [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline (<=800 reuses pack200/matches optimizer D-05; >800 buys smallest single covering PRICED bulk bag, D-07 ceil-fills largest on no-cover; never combines sizes/uses drillBagSize/uniform-200). planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized) is a real backstop under the locked overshoot cap (adversarial test proves 0 when optimized>naive); pure, no palette/sort. OrderSupplyPlan shape frozen in 16-02-SUMMARY.
+- [Phase ?]: 16-03: planOrderSupply is the sole App render-path call (D-13); optimizeBagsCost toggle + fixed-size controls fully retired (D-11, rg gate clean); totalPackets/drill-cost/unpriced codes sourced from the aggregator; SC2/BAG-02 render test asserts visible bag count == totalPackets; calculateSafetyPurchase/calculateFixedBagCost kept exported (D-12).
+- [Phase 16]: 16-04 (BAG-02/BAG-03, human-verify APPROVED): always-on savings headline next to Total Cost in Step3Canvas from planOrderSupply.savingsCents/savingsPct (money.ts, clamped >=0, truthful zero-state); a11y-safe "Why these bags?" expander (real <button>, aria-expanded/aria-controls=why-these-bags-explainer, one static DYE_LOT_WHY_SENTENCE) relocated (developer choice) into the Step 3 panel under the headline (unused whyBagsOpen state removed). Fix-forward: replaced a broken window.print() (was printing the CANVAS GRID) with an isolated print-only-report-mode/.supply-report-print-container "GemPixel Supply Plan Report" (savings + dye-lot banner + per-color table + money.ts total). Accepted deviation: separate isolated container preserves the distinct "Print Legend Sheet" button — two print buttons. tsc 0; vitest 237/237.
 
 ## Operator Next Steps
 

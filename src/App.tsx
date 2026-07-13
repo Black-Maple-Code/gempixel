@@ -3,9 +3,9 @@ import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
-import { planColorSupply, defaultPacketCost } from './engine/bagPlanner';
+import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents, sumCents } from './engine/money';
+import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -18,6 +18,12 @@ import { Step4Export } from './features/wizard/steps/Step4Export';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
 import type { Codec } from './hooks/usePersistentState';
 
+
+// BAG-02/D-09/D-10: the single plain-language dye-lot "why" sentence. A STATIC
+// string constant (no per-row/per-color computation) so the on-screen expander
+// and the printable report can mirror the exact same copy trivially.
+export const DYE_LOT_WHY_SENTENCE =
+  'Colors needing 800 drills or fewer stay in single-lot 200-count bags so every dot in that color comes from one dye lot and matches, while only larger colors are consolidated into bigger bulk bags.';
 
 // Default custom-canvas checkout URL template. Kept at module scope so the
 // custom codec below can reference it as its parse fallback.
@@ -147,6 +153,8 @@ export function App() {
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [recsOpen, setRecsOpen] = useState(true);
   const [supplyListOpen, setSupplyListOpen] = useState(true);
+  // BAG-02/D-09: open/closed state for the a11y-safe "Why these bags?" dye-lot
+  // explainer; follows the supplyListOpen progressive-disclosure idiom.
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
@@ -202,7 +210,6 @@ export function App() {
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
   const [drillBagSize, setDrillBagSize] = useState<number>(200);
-  const [optimizeBagsCost, setOptimizeBagsCost] = useState(true);
   const [priceDb, setPriceDb] = useState<Record<200 | 500 | 1000 | 2000, number>>({
     200: 0.60,
     500: 1.10,
@@ -213,6 +220,15 @@ export function App() {
   const updatePriceDb = (qty: 200 | 500 | 1000 | 2000, val: number) => {
     setPriceDb(prev => ({ ...prev, [qty]: val }));
   };
+
+  // WR-01: when loadProject restores a project whose drillType differs from the
+  // active one, it also restores that project's saved per-bag prices. The
+  // drillType-keyed preset effect below would otherwise fire right after commit
+  // and overwrite those restored prices with the type defaults — silently
+  // discarding the persisted pricesPerBagSize. loadProject sets this ref so the
+  // NEXT preset-effect run (the load-driven drillType change) is suppressed,
+  // while interactive drill-type switches still apply their presets.
+  const skipDrillPresetRef = useRef(false);
 
   const [affiliateTag, setAffiliateTag] = usePersistentState(
     'gempixel_affiliate_tag', '', codecs.string
@@ -277,7 +293,15 @@ export function App() {
     setRows(project.dimensions.rows);
     setDrillStyle(project.drillStyle);
     setSelectedBaseKit(project.selectedBaseKit || 'all');
-    setDrillType(project.drillType || 'standard');
+    // WR-01: only arm the preset-skip when the load actually CHANGES drillType,
+    // because the preset effect only fires on a real change. Arming it
+    // unconditionally would leave the ref stuck true after a same-type load and
+    // wrongly suppress the user's next interactive drill-type switch.
+    const loadedDrillType = project.drillType || 'standard';
+    if (loadedDrillType !== drillType) {
+      skipDrillPresetRef.current = true;
+    }
+    setDrillType(loadedDrillType);
     setExcludedColors(new Set(project.excludedDmcCodes || []));
     setHighlightedColor(null);
     setCanvasBaseCost(project.kitBaseCost ?? 15.0);
@@ -333,7 +357,6 @@ export function App() {
     setCanvasShippingEstimate(8.0);
     setDrillPacketCost(0.25);
     setDrillBagSize(200);
-    setOptimizeBagsCost(true);
     setPriceDb({
       200: 0.60,
       500: 1.10,
@@ -588,6 +611,13 @@ export function App() {
 
   // Synchronize drillPacketCost defaults and priceDb presets when drillType changes
   useEffect(() => {
+    // WR-01: a load-driven drillType change must NOT overwrite the project's
+    // just-restored per-bag prices / packet cost with the type defaults. Consume
+    // the one-shot skip flag and preserve the restored values.
+    if (skipDrillPresetRef.current) {
+      skipDrillPresetRef.current = false;
+      return;
+    }
     setDrillPacketCost(defaultPacketCost(drillType, drillBagSize));
     if (drillType === 'standard') {
       setPriceDb({ 200: 0.60, 500: 1.10, 1000: 1.80, 2000: 3.20 });
@@ -874,8 +904,21 @@ export function App() {
     }
   };
 
+  // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
+  // (header + static savings/why banner + per-color supply table + reconciled
+  // proposed total) via its own print-only mode, mirroring the proven
+  // print-only-legend-mode pattern. The plain @media print path hid the report
+  // (it lived inside <aside>, which @media print sets display:none), so the
+  // button previously printed the canvas grid instead of a report — this mode
+  // reveals ONLY the .supply-report-print-container. Cleanup on afterprint.
   const printReport = () => {
+    document.body.classList.add('print-only-report-mode');
     window.print();
+    const cleanup = () => {
+      document.body.classList.remove('print-only-report-mode');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
   };
 
   const handleDownloadCanvasOnly = async () => {
@@ -939,55 +982,40 @@ export function App() {
     window.addEventListener('afterprint', cleanup);
   };
 
+  // BAG-02/D-13: the legend, per-color bags, total bag count and total cost are all
+  // computed by the SHARED order aggregator (planOrderSupply), not an inline App.tsx
+  // reduction — so the legend estimate, the Shopify cart, and the Phase 17 order
+  // packet can never diverge. Called ONCE; the aggregator is pure (no palette
+  // name/hex lookup and no sort), so the DMC_PALETTE join and the existing sort stay
+  // here in the component.
+  const orderPlan = planOrderSupply(matchResult?.counts || {}, drillStyle, priceDb);
+
   // Calculate sorted legend table rows
-  const sortedMatches = Object.entries(matchResult?.counts || {})
-    .map(([code, count]) => {
+  const sortedMatches = orderPlan.rows
+    .map(row => {
+      const { code } = row;
+      const count = matchResult?.counts[code] ?? 0;
       const colorInfo = DMC_PALETTE.find(c => c.dmc === code);
       const name = colorInfo?.name || 'Unknown DMC Color';
       const hex = colorInfo?.hex || '#2D3748';
 
-      if (optimizeBagsCost) {
-        // +10% safety drill count (unchanged column semantics).
-        const safety = Math.ceil(Math.round(count * 110) / 100);
+      // +10% safety drill count (unchanged Safety Marg. column semantics).
+      const safety = Math.ceil(Math.round(count * 110) / 100);
 
-        // Pack exact + safety through the SAME per-color primitive the cart uses
-        // (bagPlanner.packColor), so the legend estimate always matches the cart.
-        const row = planColorSupply(code, drillStyle, count, priceDb);
-
-        return {
-          code,
-          count,
-          name,
-          hex,
-          safety, // +10% drill count (Safety Marg. column)
-          packets: row.safety.packets, // total bag/packet count
-          purchase: row.safety.totalDrills, // total drills purchased
-          costExact: row.costExact,
-          costSafety: row.costSafety,
-          bagsText: row.bagsText,
-          optimizedBags: row.safety.bySize,
-          hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
-        };
-      } else {
-        // WR-02: mapping-aware fixed-bag cost. An unmapped-shape color is a $0
-        // line (packets 0 => 'None' bagsText), matching the cart and optimized
-        // branch; mapped colors bill exactly as before.
-        const fixed = calculateFixedBagCost(code, drillStyle, count, drillBagSize, drillPacketCost);
-        return {
-          code,
-          count,
-          name,
-          hex,
-          safety: fixed.safety,
-          packets: fixed.packets,
-          purchase: fixed.purchase,
-          costExact: fixed.costExact,
-          costSafety: fixed.costSafety,
-          bagsText: fixed.packets > 0 ? `${fixed.packets} bag(s)` : 'None',
-          optimizedBags: null,
-          hasUnpricedSize: false // fixed single-size pricing path is always priced
-        };
-      }
+      return {
+        code,
+        count,
+        name,
+        hex,
+        safety, // +10% drill count (Safety Marg. column)
+        packets: row.safety.packets, // total bag/packet count
+        purchase: row.safety.totalDrills, // total drills purchased
+        costExact: row.costExact,
+        costSafety: row.costSafety,
+        bagsText: row.bagsText,
+        optimizedBags: row.safety.bySize,
+        hasUnpricedSize: row.hasUnpricedSize // PRICE-02: color coverable only by an unpriced size
+      };
     })
     .sort((a, b) => {
       let diff = 0;
@@ -1011,23 +1039,44 @@ export function App() {
 
   // Calculator derivations
   const totalSafetyDrills = sortedMatches.reduce((acc, row) => acc + row.safety, 0);
-  const totalPackets = sortedMatches.reduce((acc, row) => acc + row.packets, 0);
+  // SC2/BAG-02: the total bag count is sourced from the shared aggregator's
+  // totalPackets (sum of the per-color SAFETY packets), NOT a stale inline sum, and
+  // is rendered user-visibly as the "Drills ({totalPackets} bag(s))" line.
+  const totalPackets = orderPlan.totalPackets;
 
-  // PRICE-03: sum every displayed line item in integer cents (via money.ts) so
-  // the itemized drill costs + canvas base + shipping reconcile EXACTLY to the
-  // displayed total — no IEEE-754 float drift between the lines and the total.
-  const safetyDrillCostCents = sumCents(sortedMatches.map(row => toCents(row.costSafety)));
+  // PRICE-03: the itemized drill cost comes from the aggregator's integer-cents
+  // optimizedCostCents; the displayed total then reconciles the canvas base +
+  // shipping into it in integer cents (via money.ts) so there is no IEEE-754 float
+  // drift between the drill lines and the total.
+  const safetyDrillCostCents = orderPlan.optimizedCostCents;
+  // CR-01: belt-and-suspenders finite guard. The onInput handlers already
+  // sanitize live edits, but a tampered/imported project whose kitBaseCost is
+  // non-finite (or a string) reaches this line via loadProject — `??` only
+  // guards null/undefined — and toCents throws on non-finite input, which would
+  // white-screen the render body. sanitizeMoney clamps to a finite, non-negative
+  // dollar amount before toCents ever sees it.
   const totalCostSafetyCents =
-    toCents(canvasBaseCost) + toCents(canvasShippingEstimate) + safetyDrillCostCents;
+    toCents(sanitizeMoney(canvasBaseCost)) +
+    toCents(sanitizeMoney(canvasShippingEstimate)) +
+    safetyDrillCostCents;
   const safetyDrillCost = fromCents(safetyDrillCostCents);
   const totalCostSafety = fromCents(totalCostSafetyCents);
+
+  // BAG-03/D-08: always-on savings headline sourced from the SHARED aggregator's
+  // savingsCents/savingsPct (already integer-cents and clamped >= 0 in 16-02) —
+  // formatted ONCE here via money.ts formatUSD and never recomputed. This single
+  // string feeds both the on-screen Step3Canvas headline and the static print
+  // mirror (D-10) so the two can never diverge. When there are no bulk savings
+  // (small-color plans), a truthful zero-state line renders rather than hiding.
+  const savingsHeadline =
+    orderPlan.savingsCents > 0
+      ? `Save ${formatUSD(orderPlan.savingsCents)} (${orderPlan.savingsPct}%) vs per-color`
+      : 'No bulk savings at this size';
 
   // PRICE-02: a color coverable only by an unpriced bag size is surfaced through
   // the existing actionError banner (never rendered as a free $0 line). Derived
   // here; applied in an effect below so we never setState during render.
-  const unpricedColorCodes = sortedMatches
-    .filter(row => row.hasUnpricedSize)
-    .map(row => row.code);
+  const unpricedColorCodes = orderPlan.unpricedColorCodes;
   const unpricedColorsKey = unpricedColorCodes.join(',');
 
   // DATA-01: a grid color with NO drill variant mapped for the currently selected
@@ -1311,7 +1360,6 @@ export function App() {
             sortedMatches={sortedMatches}
             highlightedColor={highlightedColor}
             handleRowClick={handleRowClick}
-            optimizeBagsCost={optimizeBagsCost}
           />
         )}
 
@@ -1323,18 +1371,13 @@ export function App() {
             setCanvasBaseCost={setCanvasBaseCost}
             canvasShippingEstimate={canvasShippingEstimate}
             setCanvasShippingEstimate={setCanvasShippingEstimate}
-            optimizeBagsCost={optimizeBagsCost}
-            setOptimizeBagsCost={setOptimizeBagsCost}
             priceDb={priceDb}
             updatePriceDb={updatePriceDb}
-            drillBagSize={drillBagSize}
-            setDrillBagSize={setDrillBagSize}
-            drillPacketCost={drillPacketCost}
-            setDrillPacketCost={setDrillPacketCost}
             totalSafetyDrills={totalSafetyDrills}
             totalPackets={totalPackets}
             safetyDrillCost={safetyDrillCost}
             totalCostSafety={totalCostSafety}
+            savingsHeadline={savingsHeadline}
             matchResult={matchResult}
             sizingAdviceData={sizingAdviceData}
             affiliateTag={affiliateTag}
@@ -1904,8 +1947,6 @@ export function App() {
             )}
           </button>
 
-          <h2 className="hidden print:block text-2xl font-bold mb-4 font-sans">GemPixel Supply Plan Report</h2>
-
           {/* Table Container */}
           {supplyListOpen && (
             <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
@@ -1941,7 +1982,7 @@ export function App() {
                       Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th className="py-1.5 px-1 text-right">Safety</th>
-                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title={optimizeBagsCost ? 'Optimized combinations of 200, 500, 1000, 2000 bags' : `Bags of size ${drillBagSize}`}>{optimizeBagsCost ? 'Bags (Opt)' : `Bags (${drillBagSize})`}</th>
+                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title="Optimized combinations of 200, 500, 1000, 2000 bags">Bags (Opt)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1981,16 +2022,10 @@ export function App() {
                         <td className="py-1 px-1 text-right text-slate-400 font-mono text-[10px]">{row.count}</td>
                         <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono text-[10px]">{row.safety}</td>
                         <td className="py-1 px-1 text-right font-bold text-slate-300 font-mono text-[9.5px]">
-                          {optimizeBagsCost ? (
-                            <div className="flex flex-col items-end leading-none">
-                              <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
-                              <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
-                            </div>
-                          ) : (
-                            <>
-                              {row.packets} <span className="text-[8px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
-                            </>
-                          )}
+                          <div className="flex flex-col items-end leading-none">
+                            <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
+                            <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2007,58 +2042,6 @@ export function App() {
             </div>
           )}
 
-          {/* Printable Layout Table (displayed only during printing) */}
-          <div className="hidden print:block">
-            {image && (
-              <div className="mb-6 text-center page-break-inside-avoid">
-                <h3 className="text-base font-bold mb-2">Original Reference Image</h3>
-                <img
-                  src={image.src}
-                  alt="Original Reference"
-                  className="max-h-48 object-contain mx-auto rounded border border-gray-300"
-                />
-              </div>
-            )}
-            <table className="w-full text-left text-sm border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-150 border-b border-gray-300">
-                  <th className="p-2 border border-gray-300">Color Swatch</th>
-                  <th className="p-2 border border-gray-300">DMC Code</th>
-                  <th className="p-2 border border-gray-300">Color Name</th>
-                  <th className="p-2 text-right border border-gray-300">Exact Dots</th>
-                  <th className="p-2 text-right border border-gray-300">Safety Marg. (+10%)</th>
-                  <th className="p-2 text-right border border-gray-300">{optimizeBagsCost ? 'Recommended Purchase Packs' : `Recommended ${drillBagSize}-Drill Packets`}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedMatches.map(row => (
-                  <tr key={row.code} className="border-b border-gray-300">
-                    <td className="p-2 border border-gray-300 flex items-center justify-center">
-                      <span
-                        className="block w-6 h-6 rounded border border-gray-400"
-                        style={{ backgroundColor: row.hex }}
-                      />
-                    </td>
-                    <td className="p-2 font-mono font-bold border border-gray-300">
-                      {row.code}
-                      {drillType !== 'standard' ? ' ' + (drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'Glow' : 'Crystal') : ''}
-                    </td>
-                    <td className="p-2 border border-gray-300">{row.name}</td>
-                    <td className="p-2 text-right border border-gray-300">{row.count}</td>
-                    <td className="p-2 text-right border border-gray-300">{row.safety}</td>
-                    <td className="p-2 text-right font-bold border border-gray-300">
-                      {optimizeBagsCost ? (
-                        <span>{row.bagsText} ({row.purchase} drills)</span>
-                      ) : (
-                        <span>{row.packets} pack(s) ({row.packets * drillBagSize} drills)</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
         </div>
 
         {/* Legend footer summary + primary CTA */}
@@ -2070,7 +2053,10 @@ export function App() {
                 <span className="font-bold text-ink">{totalSafetyDrills.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted uppercase tracking-wider">Packets ({drillBagSize}-ct)</span>
+                {/* WR-02: totalPackets sums mixed-size bags (200/500/1000/2000)
+                    from the optimizer, so a "200-ct" qualifier misrepresents it.
+                    Use a size-neutral label; per-row bagsText carries the sizes. */}
+                <span className="text-muted uppercase tracking-wider">Bags</span>
                 <span className="font-bold text-ink">{totalPackets}</span>
               </div>
               <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
@@ -2408,6 +2394,56 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* BAG-03/BAG-02 · D-08/D-10: printable "GemPixel Supply Plan Report" — the
+          "Print Supply Report" button's output, isolated via print-only-report-mode.
+          Self-contained: header, a STATIC savings/why banner (independent of the
+          on-screen expander state), a per-color supply table, and the reconciled
+          proposed total (integer cents via money.ts). Always in the DOM (hidden by
+          default; revealed only in report print mode) so the printed report never
+          depends on the wizard step or the on-screen expander. */}
+      <div className="supply-report-print-container hidden">
+        <h1 className="supply-report-title">GemPixel Supply Plan Report</h1>
+        <div className="supply-report-savings">
+          <p className="supply-report-headline">{savingsHeadline}</p>
+          <p className="supply-report-why">{DYE_LOT_WHY_SENTENCE}</p>
+        </div>
+        <table className="supply-report-table">
+          <thead>
+            <tr>
+              <th>Color</th>
+              <th>DMC</th>
+              <th>Color Name</th>
+              <th className="num">Exact Dots</th>
+              <th className="num">Safety (+10%)</th>
+              <th className="num">Recommended Bags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedMatches.map(row => (
+              <tr key={row.code}>
+                <td>
+                  <span className="supply-report-swatch" style={{ backgroundColor: row.hex }} />
+                </td>
+                <td className="mono">
+                  {row.code}
+                  {drillType !== 'standard' ? ' ' + (drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'Glow' : 'Crystal') : ''}
+                </td>
+                <td>{row.name}</td>
+                <td className="num">{row.count}</td>
+                <td className="num">{row.safety}</td>
+                <td className="num">{row.bagsText} ({row.purchase} pcs)</td>
+              </tr>
+            ))}
+            {sortedMatches.length === 0 && (
+              <tr>
+                <td colSpan={6} className="supply-report-empty">Load an image to compute your supply plan.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <p className="supply-report-total">Proposed total: {formatUSD(totalCostSafetyCents)}</p>
+      </div>
     </div>
   );
 }
