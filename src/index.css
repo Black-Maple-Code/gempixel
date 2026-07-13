@@ -373,6 +373,138 @@
     border-bottom: 1px dashed #CBD5E1 !important;
     break-inside: avoid; /* Prevents splitting a single checklist item across pages */
   }
+
+  /* ── Print Supply Report (print-only-report-mode) ──────────────────────────
+     The "Print Supply Report" button reveals ONLY .supply-report-print-container:
+     a clean black-on-white supply printout (header, static savings/why banner,
+     per-color supply table, reconciled proposed total). Mirrors the isolated
+     print-only-legend-mode pattern so it never depends on the fragile plain
+     @media print aside-hiding behavior. */
+  body.print-only-report-mode {
+    page: portrait-layout;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body.print-only-report-mode #app,
+  body.print-only-report-mode #app > div {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    display: block !important;
+    height: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide all regular UI + the other print artifacts while printing the report */
+  body.print-only-report-mode .no-print,
+  body.print-only-report-mode nav,
+  body.print-only-report-mode aside,
+  body.print-only-report-mode main,
+  body.print-only-report-mode footer,
+  body.print-only-report-mode .print-canvas-sheet,
+  body.print-only-report-mode .legend-checklist-print-container,
+  body.print-only-report-mode .min-h-screen {
+    display: none !important;
+  }
+
+  /* Expose the supply report container */
+  body.print-only-report-mode .supply-report-print-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-family: sans-serif;
+  }
+
+  .supply-report-print-container * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .supply-report-print-container .supply-report-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0 0 6px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #000000;
+  }
+
+  .supply-report-print-container .supply-report-savings {
+    margin-bottom: 10px;
+  }
+
+  .supply-report-print-container .supply-report-headline {
+    font-size: 13px;
+    font-weight: bold;
+    margin: 0 0 2px 0;
+  }
+
+  .supply-report-print-container .supply-report-why {
+    font-size: 11px;
+    color: #333333;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .supply-report-print-container .supply-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .supply-report-print-container .supply-report-table th,
+  .supply-report-print-container .supply-report-table td {
+    border: 1px solid #000000;
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .supply-report-print-container .supply-report-table th.num,
+  .supply-report-print-container .supply-report-table td.num {
+    text-align: right;
+  }
+
+  .supply-report-print-container .supply-report-table thead tr {
+    background: #E5E7EB !important;
+  }
+
+  .supply-report-print-container .supply-report-table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .supply-report-print-container .supply-report-table td.mono {
+    font-family: monospace;
+    font-weight: bold;
+  }
+
+  .supply-report-print-container .supply-report-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid #000000;
+  }
+
+  .supply-report-print-container .supply-report-empty {
+    text-align: center;
+    color: #666666;
+  }
+
+  .supply-report-print-container .supply-report-total {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: right;
+  }
 }
 
 @media (max-width: 767.98px) {

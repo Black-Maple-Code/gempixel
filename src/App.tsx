@@ -155,7 +155,6 @@ export function App() {
   const [supplyListOpen, setSupplyListOpen] = useState(true);
   // BAG-02/D-09: open/closed state for the a11y-safe "Why these bags?" dye-lot
   // explainer; follows the supplyListOpen progressive-disclosure idiom.
-  const [whyBagsOpen, setWhyBagsOpen] = useState(false);
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
@@ -881,8 +880,21 @@ export function App() {
     }
   };
 
+  // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
+  // (header + static savings/why banner + per-color supply table + reconciled
+  // proposed total) via its own print-only mode, mirroring the proven
+  // print-only-legend-mode pattern. The plain @media print path hid the report
+  // (it lived inside <aside>, which @media print sets display:none), so the
+  // button previously printed the canvas grid instead of a report — this mode
+  // reveals ONLY the .supply-report-print-container. Cleanup on afterprint.
   const printReport = () => {
+    document.body.classList.add('print-only-report-mode');
     window.print();
+    const cleanup = () => {
+      document.body.classList.remove('print-only-report-mode');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
   };
 
   const handleDownloadCanvasOnly = async () => {
@@ -1903,35 +1915,6 @@ export function App() {
             )}
           </button>
 
-          {/* BAG-02/D-09: persistent, keyboard-focusable "Why these bags?" explainer.
-              A real <button> (not a hover tooltip) with aria-expanded bound to the
-              open state and aria-controls pointing at the revealed region; the native
-              button already handles Enter/Space. Reveals exactly ONE static
-              plain-language dye-lot sentence. On-screen only — the print report
-              mirrors the same sentence statically below (D-10). */}
-          <div className="no-print mb-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setWhyBagsOpen(!whyBagsOpen)}
-              aria-expanded={whyBagsOpen}
-              aria-controls="why-these-bags-explainer"
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 rounded px-1 py-0.5"
-            >
-              <span aria-hidden="true" className={`text-[8px] text-indigo-500 transition-transform duration-200 ${whyBagsOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span>Why these bags?</span>
-            </button>
-            {whyBagsOpen && (
-              <p
-                id="why-these-bags-explainer"
-                className="mt-1.5 text-[11px] leading-relaxed text-slate-400 bg-slate-950/40 border border-slate-850/50 rounded px-2.5 py-2"
-              >
-                {DYE_LOT_WHY_SENTENCE}
-              </p>
-            )}
-          </div>
-
-          <h2 className="hidden print:block text-2xl font-bold mb-4 font-sans">GemPixel Supply Plan Report</h2>
-
           {/* Table Container */}
           {supplyListOpen && (
             <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
@@ -2026,64 +2009,6 @@ export function App() {
               </table>
             </div>
           )}
-
-          {/* Printable Layout Table (displayed only during printing) */}
-          <div className="hidden print:block">
-            {image && (
-              <div className="mb-6 text-center page-break-inside-avoid">
-                <h3 className="text-base font-bold mb-2">Original Reference Image</h3>
-                <img
-                  src={image.src}
-                  alt="Original Reference"
-                  className="max-h-48 object-contain mx-auto rounded border border-gray-300"
-                />
-              </div>
-            )}
-
-            {/* BAG-03/BAG-02 · D-08/D-10: static print mirror of the on-screen
-                savings headline and the dye-lot "why" sentence. Both render as
-                plain static text regardless of the on-screen expander state, so
-                the printed report is self-contained. */}
-            <div className="mb-6 page-break-inside-avoid">
-              <p className="text-base font-bold mb-1">{savingsHeadline}</p>
-              <p className="text-sm text-gray-700">{DYE_LOT_WHY_SENTENCE}</p>
-            </div>
-
-            <table className="w-full text-left text-sm border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-150 border-b border-gray-300">
-                  <th className="p-2 border border-gray-300">Color Swatch</th>
-                  <th className="p-2 border border-gray-300">DMC Code</th>
-                  <th className="p-2 border border-gray-300">Color Name</th>
-                  <th className="p-2 text-right border border-gray-300">Exact Dots</th>
-                  <th className="p-2 text-right border border-gray-300">Safety Marg. (+10%)</th>
-                  <th className="p-2 text-right border border-gray-300">Recommended Purchase Packs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedMatches.map(row => (
-                  <tr key={row.code} className="border-b border-gray-300">
-                    <td className="p-2 border border-gray-300 flex items-center justify-center">
-                      <span
-                        className="block w-6 h-6 rounded border border-gray-400"
-                        style={{ backgroundColor: row.hex }}
-                      />
-                    </td>
-                    <td className="p-2 font-mono font-bold border border-gray-300">
-                      {row.code}
-                      {drillType !== 'standard' ? ' ' + (drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'Glow' : 'Crystal') : ''}
-                    </td>
-                    <td className="p-2 border border-gray-300">{row.name}</td>
-                    <td className="p-2 text-right border border-gray-300">{row.count}</td>
-                    <td className="p-2 text-right border border-gray-300">{row.safety}</td>
-                    <td className="p-2 text-right font-bold border border-gray-300">
-                      <span>{row.bagsText} ({row.purchase} drills)</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
 
         </div>
 
@@ -2434,6 +2359,56 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* BAG-03/BAG-02 · D-08/D-10: printable "GemPixel Supply Plan Report" — the
+          "Print Supply Report" button's output, isolated via print-only-report-mode.
+          Self-contained: header, a STATIC savings/why banner (independent of the
+          on-screen expander state), a per-color supply table, and the reconciled
+          proposed total (integer cents via money.ts). Always in the DOM (hidden by
+          default; revealed only in report print mode) so the printed report never
+          depends on the wizard step or the on-screen expander. */}
+      <div className="supply-report-print-container hidden">
+        <h1 className="supply-report-title">GemPixel Supply Plan Report</h1>
+        <div className="supply-report-savings">
+          <p className="supply-report-headline">{savingsHeadline}</p>
+          <p className="supply-report-why">{DYE_LOT_WHY_SENTENCE}</p>
+        </div>
+        <table className="supply-report-table">
+          <thead>
+            <tr>
+              <th>Color</th>
+              <th>DMC</th>
+              <th>Color Name</th>
+              <th className="num">Exact Dots</th>
+              <th className="num">Safety (+10%)</th>
+              <th className="num">Recommended Bags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedMatches.map(row => (
+              <tr key={row.code}>
+                <td>
+                  <span className="supply-report-swatch" style={{ backgroundColor: row.hex }} />
+                </td>
+                <td className="mono">
+                  {row.code}
+                  {drillType !== 'standard' ? ' ' + (drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'Glow' : 'Crystal') : ''}
+                </td>
+                <td>{row.name}</td>
+                <td className="num">{row.count}</td>
+                <td className="num">{row.safety}</td>
+                <td className="num">{row.bagsText} ({row.purchase} pcs)</td>
+              </tr>
+            ))}
+            {sortedMatches.length === 0 && (
+              <tr>
+                <td colSpan={6} className="supply-report-empty">Load an image to compute your supply plan.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <p className="supply-report-total">Proposed total: {formatUSD(totalCostSafetyCents)}</p>
+      </div>
     </div>
   );
 }

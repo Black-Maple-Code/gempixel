@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render } from 'preact';
 import { calculateSafetyPurchase, calculateFixedBagCost, App, DYE_LOT_WHY_SENTENCE } from '../App';
-import { packColor, priceColorPack } from '../engine/bagPlanner';
+import { packColor, priceColorPack, planOrderSupply } from '../engine/bagPlanner';
+import { DMC_PALETTE } from '../engine/palette';
+import { formatUSD } from '../engine/money';
 
 // Render the App only needs the heavy side-effect modules stubbed out (the same
 // worker/viewer stubs App.test.tsx uses); the print-only report block is always
@@ -109,10 +111,13 @@ describe('Fixed-bag cost is mapping-aware (WR-02)', () => {
 // `src/engine/__tests__/bagPlanner.test.ts` (packColor / planColorSupply), and the
 // estimate == cart property is asserted there against `compileShopifyCartLink`.
 
-// BAG-03/BAG-02 · D-08/D-10: the printable "GemPixel Supply Plan Report" must
-// mirror BOTH the savings headline and the one-sentence dye-lot "why" as static
-// text — self-contained regardless of the on-screen expander state.
-describe('Print report mirrors the savings headline + dye-lot "why" (D-10)', () => {
+// BAG-03/BAG-02 · D-08/D-10: the redesigned printable "GemPixel Supply Plan
+// Report" (the "Print Supply Report" button's output, isolated via
+// print-only-report-mode) must be self-contained: a static savings/why banner,
+// a per-color supply table, and the reconciled proposed total. jsdom applies no
+// CSS, so the `.hidden` container is still queryable — assert on content/DOM
+// structure, NOT computed visibility.
+describe('Print supply report content (D-08/D-10, redesigned)', () => {
   let container: HTMLDivElement;
 
   afterEach(() => {
@@ -127,23 +132,21 @@ describe('Print report mirrors the savings headline + dye-lot "why" (D-10)', () 
     render(<App />, container);
   }
 
-  // Locate the print-only report block (`hidden print:block` div that holds the
-  // supply table) so the assertions target the mirror, not the on-screen UI.
+  // Target the redesigned supply-report container (`.supply-report-print-container`),
+  // which the "Print Supply Report" button reveals via print-only-report-mode.
   function getPrintReport(): HTMLElement {
-    const report = Array.from(container.querySelectorAll('div')).find(
-      (d) => d.className.includes('print:block') && d.querySelector('table') !== null,
-    );
+    const report = container.querySelector('.supply-report-print-container');
     expect(report).toBeTruthy();
     return report as HTMLElement;
   }
 
-  it('renders the static dye-lot sentence inside the print report', () => {
+  it('renders the static dye-lot sentence inside the supply report', () => {
     renderApp();
     const report = getPrintReport();
     expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
   });
 
-  it('renders the savings headline inside the print report (zero-state at empty plan)', () => {
+  it('renders the savings headline inside the supply report (zero-state at empty plan)', () => {
     renderApp();
     const report = getPrintReport();
     // With no image loaded the shared aggregator reports no bulk savings, so the
@@ -152,20 +155,142 @@ describe('Print report mirrors the savings headline + dye-lot "why" (D-10)', () 
     expect(report.textContent).toContain('No bulk savings at this size');
   });
 
-  it('keeps the print sentence independent of the on-screen expander (closed by default)', () => {
+  it('renders the report header and a reconciled proposed total', () => {
     renderApp();
-    // The "Why these bags?" expander is collapsed by default, so its on-screen
-    // copy is absent — yet the print mirror still carries the sentence exactly once.
+    const report = getPrintReport();
+    expect(report.textContent).toContain('GemPixel Supply Plan Report');
+    // The proposed total is present and money-formatted ($X.XX) via money.ts.
+    expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
+  });
+
+  it('keeps the report sentence independent of the on-screen expander (empty plan)', () => {
+    renderApp();
+    // On the initial (step 1) empty-plan render the relocated Step3Canvas expander
+    // is not mounted, so the dye-lot sentence appears exactly once — in the static
+    // print mirror — never leaking from an on-screen expander.
+    const occurrences = (container.textContent || '').split(DYE_LOT_WHY_SENTENCE).length - 1;
+    expect(occurrences).toBe(1);
+  });
+});
+
+// BAG-02/BAG-03 · D-08/D-09/D-10: with a real plan loaded, the report carries the
+// per-color supply rows + the matching savings headline, and the relocated
+// "Why these bags?" expander (now in the Step 3 Cost & Order panel) exposes the
+// full a11y contract.
+describe('Populated supply report + relocated "Why these bags?" expander', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'test-project-print-16-04';
+  // Two DMC codes with real square drill variants; gridData carries palette
+  // indices, so on load App rebuilds counts = { '150': 250, '151': 250 }.
+  const idx150 = DMC_PALETTE.findIndex((c) => c.dmc === '150');
+  const idx151 = DMC_PALETTE.findIndex((c) => c.dmc === '151');
+  const priceDb = { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 } as Record<200 | 500 | 1000 | 2000, number>;
+  const counts = { '150': 250, '151': 250 };
+
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'Print 16-04 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'Print 16-04 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: priceDb,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const loadProjectToStep = async (targetStep: number) => {
+    render(<App />, container);
+    await new Promise((r) => setTimeout(r, 10));
+    const toggleBtn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes('My Images'));
+    toggleBtn?.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+    expect(rowBtn).toBeTruthy();
+    rowBtn.click();
+    await new Promise((r) => setTimeout(r, 10));
+    for (let s = 1; s < targetStep; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  };
+
+  it('renders per-color supply rows + the matching savings headline in the report', async () => {
+    expect(idx150).toBeGreaterThanOrEqual(0);
+    expect(idx151).toBeGreaterThanOrEqual(0);
+
+    seedProject();
+    await loadProjectToStep(3);
+
+    const report = container.querySelector('.supply-report-print-container') as HTMLElement;
+    expect(report).toBeTruthy();
+
+    // A color name is present (150 = "Dusty Rose UT DK").
+    expect(report.textContent).toContain('Dusty Rose UT DK');
+
+    // The color's recommended bags text (quantity/bags) is present.
+    const plan = planOrderSupply(counts, 'square', priceDb);
+    const row150 = plan.rows.find((r) => r.code === '150');
+    expect(row150).toBeTruthy();
+    expect(report.textContent).toContain(row150!.bagsText);
+
+    // The savings headline matches the aggregator (same string App builds).
+    const expectedHeadline =
+      plan.savingsCents > 0
+        ? `Save ${formatUSD(plan.savingsCents)} (${plan.savingsPct}%) vs per-color`
+        : 'No bulk savings at this size';
+    expect(report.textContent).toContain(expectedHeadline);
+
+    // The dye-lot sentence + a reconciled proposed total round out the report.
+    expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+    expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
+  });
+
+  it('exposes the "Why these bags?" a11y contract in the Step 3 Cost & Order panel', async () => {
+    seedProject();
+    await loadProjectToStep(3);
+
     const whyButton = Array.from(container.querySelectorAll('button')).find(
       (b) => b.getAttribute('aria-controls') === 'why-these-bags-explainer',
     );
     expect(whyButton).toBeTruthy();
+    // Real <button type="button">.
     expect(whyButton?.getAttribute('type')).toBe('button');
     // Accessible name is exactly "Why these bags?" (the ▶ arrow is aria-hidden).
     expect(whyButton?.textContent?.replace('▶', '').trim()).toBe('Why these bags?');
+    // Collapsed by default: aria-expanded=false and the region is absent.
     expect(whyButton?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('#why-these-bags-explainer')).toBeNull();
 
-    const occurrences = (container.textContent || '').split(DYE_LOT_WHY_SENTENCE).length - 1;
-    expect(occurrences).toBe(1); // only the static print mirror, not the collapsed expander
+    // Toggling opens it: aria-expanded=true and the single static sentence appears.
+    whyButton!.click();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(whyButton?.getAttribute('aria-expanded')).toBe('true');
+    const region = container.querySelector('#why-these-bags-explainer');
+    expect(region).toBeTruthy();
+    expect(region?.textContent).toContain(DYE_LOT_WHY_SENTENCE);
   });
 });

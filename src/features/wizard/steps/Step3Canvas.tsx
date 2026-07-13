@@ -1,5 +1,10 @@
+import { useState } from 'preact/hooks';
 import { VENDOR_REGISTRY, type CanvasVendor } from '../../../engine/checkout';
 import { safeStorage } from '../../../engine/safeStorage';
+// BAG-02/D-09: the single static dye-lot "why" sentence lives in App (also
+// mirrored statically into the print report), imported here so the relocated
+// on-screen "Why these bags?" expander shows the exact same copy.
+import { DYE_LOT_WHY_SENTENCE } from '../../../App';
 
 /**
  * Step3Canvas — despite the name, the wizard's "Cost & Order" form: canvas print
@@ -84,6 +89,11 @@ export function Step3Canvas(props: Step3CanvasProps) {
     printLegendSheetOnly,
     printReport,
   } = props;
+
+  // BAG-02/D-09: local open/closed state for the relocated "Why these bags?"
+  // expander. Independent of the print mirror (which is always static), so no
+  // shared/lifted state is needed.
+  const [whyOpen, setWhyOpen] = useState(false);
 
   return (
           <div className="flex flex-col gap-4">
@@ -218,6 +228,35 @@ export function Step3Canvas(props: Step3CanvasProps) {
                         {savingsHeadline}
                       </span>
                     </div>
+                  </div>
+
+                  {/* BAG-02/D-09: persistent, keyboard-focusable "Why these bags?"
+                      explainer, relocated next to the savings headline in the
+                      Cost & Order panel. A real <button> (not a hover tooltip)
+                      with aria-expanded bound to the open state and aria-controls
+                      pointing at the revealed region; the native button handles
+                      Enter/Space (and click/touch). Reveals exactly ONE static
+                      plain-language dye-lot sentence. On-screen only — the print
+                      report mirrors the same sentence statically (D-10). */}
+                  <div className="no-print">
+                    <button
+                      type="button"
+                      onClick={() => setWhyOpen(!whyOpen)}
+                      aria-expanded={whyOpen}
+                      aria-controls="why-these-bags-explainer"
+                      className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 rounded px-1 py-0.5"
+                    >
+                      <span aria-hidden="true" className={`text-[8px] text-indigo-500 transition-transform duration-200 ${whyOpen ? 'rotate-90' : ''}`}>▶</span>
+                      <span>Why these bags?</span>
+                    </button>
+                    {whyOpen && (
+                      <p
+                        id="why-these-bags-explainer"
+                        className="mt-1.5 text-[11px] leading-relaxed text-slate-400 bg-slate-950/40 border border-slate-850/50 rounded px-2.5 py-2"
+                      >
+                        {DYE_LOT_WHY_SENTENCE}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
