@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: atelier-design-system-canvas-first-shell
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-07-13
+reviewed_at: 2026-07-13
 ---
 
 # Phase 20 — UI Design Contract
