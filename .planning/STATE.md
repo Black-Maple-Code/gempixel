@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Two-Mode Viewport Experience — FORCE-CLOSED partial (Phases 15–16 shipped)
-current_phase: 0
-status: Awaiting next milestone
-stopped_at: v3.0 force-closed at 40% — Phases 17/18/19 never built (carried to Backlog)
-last_updated: "2026-07-13T21:08:52.839Z"
+milestone: v4.0
+milestone_name: Canvas-First Redesign
+status: planning
+last_updated: "2026-07-13T21:35:32.853Z"
 last_activity: 2026-07-13
-last_activity_desc: Milestone v3.0 force-closed partial (40%) and archived
 progress:
-  total_phases: 5
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 40
-current_phase_name: —
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,14 +20,14 @@ current_phase_name: —
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** v4.0 Canvas-First Redesign — defining requirements
 
 ## Current Position
 
-Phase: v3.0 force-closed at 40% (Phases 15–16 shipped; 17/18/19 never built)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-13 — Milestone v3.0 force-closed partial and archived
+Status: Defining requirements
+Last activity: 2026-07-13 — Milestone v4.0 started
 
 ## Performance Metrics
 

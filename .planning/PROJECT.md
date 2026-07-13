@@ -8,23 +8,20 @@ GemPixel is a client-side utility web application designed for diamond painting/
 
 Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
 
-## Current Milestone: v3.0 Two-Mode Viewport Experience — ⚠️ FORCE-CLOSED 2026-07-13 (partial, 40%)
+## Current Milestone: v4.0 Canvas-First Redesign
 
-**Status:** Force-closed at 40% (2 of 5 phases). Shipped only the correctness foundation — **Phase 15** (trustworthy pricing & data) and **Phase 16** (optimized supply plan & savings). The two namesake capabilities — the **viewport-native wizard** and the **Customer/Artist mode split** — and the **service-fee + customer order packet** flow were never built. Phases 17/18/19 (FEE-01, ORDER-01..05, VIEWPORT-01..03, MODE-01..04) are carried to the Backlog for a future milestone. See `.planning/MILESTONES.md` → v3.0 Known Gaps.
+**Goal:** Rebuild the customer experience as a canvas-first, no-side-menus 4-step flow (Upload → Refine → Supplies → Order) in the new Atelier design system, working great on mobile, with accurate canvas quoting — recreated faithfully in the Preact/Vite codebase from the high-fidelity design handoff.
 
-**Original goal (unmet):** Move GemPixel into a viewport-native, guided experience with two tailored paths — self-serve **Artist** and done-for-you **Customer** — backed by trustworthy pricing and a fulfillment-ready customer order flow.
+**Target features (frontend-only, client-side):**
+- **Canvas-first flow, no side menus** — a horizontal 4-step bar (Upload → Refine → Supplies → Order) is the *only* navigator; the DMC color list, gem/drill bags, and cleanup tools are all surfaced inline. Retires the expand/collapse sidebars and page-flip wizard.
+- **Refine (the key screen)** — live chart preview + an always-open refine rail: size cards with live drill counts, an edge-cleanup 4-segment control, and a **color-count slider whose max tracks the real detected color count** (lowering it merges rare one-off drills into a near-identical already-used shade, no visible change to the picture).
+- **Supplies** — inline legend/supply table (symbol · swatch · DMC · drills+10% · bags) + an order-summary panel, wired to the shipped `planOrderSupply` engine so numbers can't diverge.
+- **Order (confirm/handoff)** — a single confirm screen with an auto-filled, locked spec (Rolled Canvas, size from grid, finish) + a full price breakdown. Client-side handoff (no real payment/lab submission this milestone).
+- **Atelier design system, light-only** — dark mode retired; new tokens (bg `#F4F1E9`, accent green `#0E6E5C`) and type (Newsreader / Pixelify Sans / Archivo / JetBrains Mono).
+- **Mobile rework** — the same 4 steps in one portrait column on a phone; everything inline, never in a drawer.
+- **Accurate canvas quoting** — real cols→inches mapping + a cost table (canvas + shipping + tax estimate) so the customer quote is correct.
 
-**Target features:**
-- **Viewport-native interactive wizard** — the app lives in the viewport; contextual options and guidance surface in-canvas as needed (extending the Phase 9 HUD), progressively phasing out expand/collapse sidebars and the page-flipping wizard.
-- **Mode selector + two-mode UX** — Customer vs Artist, each a tailored path through the viewport wizard.
-- **Artist mode** — refined self-serve: design → order own canvas (Lumaprints / FinerWorks) + drill cart to diamonddrillsusa.com.
-- **Vendor cleanup** — remove Prodigi as a canvas option; keep Lumaprints + FinerWorks.
-- **Price accuracy** — correct 500-bag cost, no $0 unpriced sizes, and a drill-variant integrity test (pulls in deferred PRICE-01/02, DATA-01) so quotes and fees are trustworthy.
-- **Percent-based service fee** — customer quote includes a configurable % fee for quality/handling.
-- **Customer purchase flow** — "Buy" captures a structured order packet (PNG + optimized gem-bag list + canvas spec + fee + totals) for manual/offline fulfillment; large orders flagged for human review.
-- **Gem-bag purchase optimization** — fewest bags while preserving dye-lot color consistency.
-
-**Scope boundary:** Frontend-first and still client-side. Payments are manual/offline this milestone. The customer order packet is designed to feed a real order-management **backend + admin dashboard**, which — together with automated payments and direct printer/vendor API fulfillment — is **deferred to v4.0**. This milestone intentionally begins crossing the historical "client-side only / no backend" constraint (see Out of Scope).
+**Scope boundary:** Frontend-first and still **100% client-side** — this milestone deliberately does NOT build the backend. The **backend ops console** (orders queue / order detail / sourcing), **Lumaprints API order submission + payments** (merchant-of-record), **server-side chart rendering** (PNG+PDF), **asset storage**, **shipment tracking** (canvas + drills), and **gem-sourcing POs** are all deferred to a later fulfillment milestone (v5.0). Live vendor rate APIs are out; quoting uses a curated cost table. The design handoff's Storyboard C is out of scope here.
 
 ## Requirements
 
@@ -55,27 +52,32 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 
 ### Active
 
-**No active milestone.** v3.0 was force-closed partial on 2026-07-13; the next milestone starts via `/gsd-new-milestone`.
+**Milestone v4.0 Canvas-First Redesign** is active (opened 2026-07-13). See the Current Milestone section above for goal and target features; scoped requirements land in `.planning/REQUIREMENTS.md`. Frontend-only, 100% client-side; the fulfillment backend is explicitly deferred to v5.0.
 
-**Deferred from v3.0 (force-close gaps — the milestone's headline scope, never built; requirements preserved in `milestones/v3.0-REQUIREMENTS.md`):**
-- [ ] Service Fee & Customer Order Packet — % service fee line + versioned self-contained JSON order packet with review/confirmation/threshold-flagging/client-side handoff (FEE-01, ORDER-01..05).
-- [ ] Viewport-Native Wizard — contextual in-viewport controls replacing sidebars + page-flip flow, ships green, mode-agnostic (VIEWPORT-01..03).
-- [ ] Two-Mode Split (Customer / Artist) — capability-map layer giving each mode a tailored path with no leakage (MODE-01..04).
+**Deferred to v5.0 — Fulfillment Backend** (the design handoff's Storyboard C + server-side integrations; first real backend):
+- [ ] Backend ops console — orders queue, order detail (three artifacts + print spec + gem quantities), sourcing aggregation → provider POs.
+- [ ] Lumaprints API order submission (merchant-of-record) + payments + billing/address on file.
+- [ ] Server-side chart rendering (PNG print + PDF legend) so "what shipped = what bought".
+- [ ] Asset storage (source PNG + chart PNG/PDF by URL reference).
+- [ ] Two independent shipment tracks per order (canvas via lab + drills via gem provider) via webhooks/polling.
+- [ ] Live vendor rate APIs (Lumaprints / FinerWorks) — v4.0 uses a curated cost table instead.
 
-**Still deferred to a future milestone** (roadmapped under v2.1, never built — requirements preserved in `milestones/v2.1-REQUIREMENTS.md`):
+**Superseded by v4.0** (the v3.0 force-close gaps — the two-mode/viewport/order-packet scope is replaced by the canvas-first redesign vision; criteria preserved in `milestones/v3.0-REQUIREMENTS.md`):
+- ~~Service Fee & Customer Order Packet (FEE-01, ORDER-01..05)~~ — reconsidered under the redesigned Order step.
+- ~~Viewport-Native Wizard (VIEWPORT-01..03)~~ — superseded by the canvas-first flow.
+- ~~Two-Mode Split — Customer/Artist (MODE-01..04)~~ — the redesign is customer-first; a separate artist mode is not part of v4.0.
+
+**Still deferred** (roadmapped under v2.1, never built — requirements preserved in `milestones/v2.1-REQUIREMENTS.md`):
 - [ ] Project Load Correctness — restored projects keep their saved price and grid (LOAD-01, LOAD-02).
 - [ ] Security & Cleanup — validate the partner canvas URL against an http/https allowlist and wire-up-or-remove the unfinished partner-link path (SEC-01).
 
-**Deferred to v4.0** (target for the customer order packet built in v3.0):
-- [ ] Order-management backend + admin dashboard — order queue, gem-count review, push PNG to printer.
-- [ ] Automated payments (customer flow is manual/offline in v3.0).
-- [ ] Direct printer/vendor API fulfillment.
-
 ### Out of Scope
 
-- [ ] Server-side processing or user accounts — kept the utility lightweight and client-side through v2.1. **Being revisited in v3.0/v4.0:** the Customer mode introduces done-for-you fulfillment, so a server-side order-management backend is now a planned v4.0 capability. v3.0 stays client-side (order-packet generation only).
-- [ ] AI-based color enhancement or style generation — stick to clean mathematical color matching.
-- [ ] In-app / automated payment processing — customer purchases are handled manually/offline in v3.0; automated payments deferred to v4.0.
+- [ ] Backend / server-side processing this milestone — v4.0 stays 100% client-side; the fulfillment backend + admin console is a planned **v5.0** capability, not v4.0.
+- [ ] Automated payment processing / real lab order submission — the v4.0 Order step is a client-side confirm/handoff; payments and Lumaprints API submission are v5.0.
+- [ ] Dark mode — retired; ship the Atelier light theme only.
+- [ ] Live vendor inventory / sales-tax/VAT calculation — quoting uses a curated cost table with a tax estimate, not live APIs.
+- [ ] AI-based color enhancement or style generation — stick to clean mathematical color matching (standing exclusion).
 
 ## Context
 
@@ -112,6 +114,8 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | v3.0 two-mode pivot | Split into Customer (done-for-you) and Artist (self-serve) modes inside a viewport-native wizard; begin crossing the client-side-only constraint. Frontend-first — order backend, payments, and printer APIs deferred to v4.0. | ◆ In progress (Milestone v3.0) |
 | v3.0 payments manual/offline | Capture customer orders as an exportable packet and fulfill manually rather than building payment processing now. | ◆ Lowers v3.0 risk; automated payments = v4.0 |
 | v3.0 force-closed at 40% | Closed the milestone after only the correctness foundation (Phases 15–16) shipped; the two UI reworks (viewport wizard, mode split) and the service-fee/order-packet flow (Phases 17–19) were carried to the Backlog rather than built. | ⚠️ Revisit — headline scope unmet; re-scope into a fresh milestone (`milestones/v3.0-*` preserves criteria) |
+| v4.0 canvas-first redesign (fresh direction) | Instead of resuming the v3.0 viewport/mode scope, pivot to a full customer-facing redesign from a high-fidelity design handoff: canvas-first no-side-menus 4-step flow + Atelier light-only design system + mobile rework + accurate quoting. Customer-first (no separate Artist mode). | ◆ In progress (Milestone v4.0) |
+| v4.0 stays client-side; backend → v5.0 | Ship the frontend redesign only; defer the fulfillment backend (ops console, Lumaprints API + payments, server-side render, asset storage, shipment tracking, sourcing) to v5.0. Quoting uses a curated cost table, not live vendor APIs. | ◆ Lowers v4.0 risk; keeps the client-side-only invariant one more milestone |
 
 ## Evolution
 
@@ -131,4 +135,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 — Milestone v3.0 Two-Mode Viewport Experience FORCE-CLOSED at 40% (Phases 15–16 shipped: VENDOR-02 + PRICE-01/02/03 + DATA-01 + BAG-01/02/03, 8/21 requirements). Phases 17–19 (FEE/ORDER/VIEWPORT/MODE) never built — carried to Backlog. Next: `/gsd-new-milestone`.*
+*Last updated: 2026-07-13 — Milestone v4.0 Canvas-First Redesign OPENED (frontend-only canvas-first 4-step flow + Atelier light design system + mobile rework + accurate quoting; recreated from the high-fidelity design handoff). Backend/fulfillment (Storyboard C + vendor APIs + payments) deferred to v5.0. Prior: v3.0 force-closed at 40% (Phases 15–16 shipped). Next: define v4.0 requirements → roadmap.*
