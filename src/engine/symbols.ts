@@ -19,7 +19,7 @@
 
 // Tier 1 — GLYPH_SYMBOLS: a curated, ordered, de-duplicated tier of EASILY
 // DISTINGUISHABLE, MONOCHROME, text-presentation BMP glyphs that render reliably
-// via canvas fillText in a normal sans-serif ('Outfit') font. Bold / most-distinct
+// via canvas fillText in the body/UI sans-serif font. Bold / most-distinct
 // shapes lead. Beyond emoji/tofu safety, this tier is pruned for at-cell-size
 // legibility: pure rotations and tiny-interior twins are removed so no two glyphs
 // read alike at ~10px. All BMP, all text-default — no astral code points and no

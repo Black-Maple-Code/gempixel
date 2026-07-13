@@ -82,7 +82,8 @@ export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElem
       const symbol = symbolMap[dmcCode];
       if (symbol) {
         ctx.fillStyle = getContrastColor(color);
-        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Outfit', sans-serif`;
+        // PHASE 22: remove theme param
+        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Archivo Variable', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, Math.round(x + cellScale / 2), Math.round(y + cellScale / 2));
@@ -170,7 +171,8 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
       const symbol = symbolMap[dmcCode];
       if (symbol) {
         ctx.fillStyle = getContrastColor(color);
-        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Outfit', sans-serif`;
+        // PHASE 22: remove theme param
+        ctx.font = `bold ${symbolFontPx(Math.floor(cellScale * 0.65), symbol)}px 'Archivo Variable', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, Math.round(x + cellScale / 2), Math.round(y + cellScale / 2));
