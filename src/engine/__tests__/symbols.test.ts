@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   CURATED_SYMBOLS,
-  LETTER_SYMBOLS,
-  NUMBER_SYMBOLS,
-  WINGDING_SYMBOLS,
+  GLYPH_SYMBOLS,
+  SAFE_LETTER_SYMBOLS,
   generateSymbolAllocation,
   getContrastColor,
   symbolFontPx,
@@ -11,34 +10,46 @@ import {
 
 describe('Symbol Database & Allocation Engine', () => {
   describe('CURATED_SYMBOLS pool', () => {
-    it('contains at least 80 distinct, highly distinguishable symbols', () => {
-      expect(CURATED_SYMBOLS.length).toBeGreaterThanOrEqual(80);
-      
+    it('contains a large pool (>118) of distinct, unique symbols', () => {
+      // A full 118-color chart must be coverable by glyphs alone, so the whole
+      // pool comfortably exceeds 118.
+      expect(CURATED_SYMBOLS.length).toBeGreaterThan(118);
+
       // Ensure all symbols in the pool are unique (no duplicates)
       const uniqueSymbols = new Set(CURATED_SYMBOLS);
       expect(uniqueSymbols.size).toBe(CURATED_SYMBOLS.length);
     });
 
-    it('is ordered Letters (A-Z) → Numbers (0-9) → Wingdings', () => {
-      // Tier 1: the first 26 symbols are the uppercase alphabet in order.
-      expect(CURATED_SYMBOLS.slice(0, 26)).toEqual(LETTER_SYMBOLS);
-      expect(LETTER_SYMBOLS).toEqual('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
-
-      // Tier 2: the next 10 symbols are the digits 0-9 in order.
-      expect(CURATED_SYMBOLS.slice(26, 36)).toEqual(NUMBER_SYMBOLS);
-      expect(NUMBER_SYMBOLS).toEqual('0123456789'.split(''));
-
-      // Tier 3: everything after is the non-alphanumeric Wingding glyph pool.
-      expect(CURATED_SYMBOLS.slice(36)).toEqual(WINGDING_SYMBOLS);
-      const alphanumerics = /[A-Za-z0-9]/;
-      WINGDING_SYMBOLS.forEach(char => {
-        expect(alphanumerics.test(char)).toBe(false);
-      });
+    it('leads with a non-alphanumeric shape glyph (symbols-first)', () => {
+      // The most-frequent color gets a distinct shape, never a letter or digit.
+      expect(/[A-Za-z0-9]/.test(CURATED_SYMBOLS[0])).toBe(false);
     });
 
-    it('assigns the most-frequent color a plain letter, starting at A', () => {
-      expect(CURATED_SYMBOLS[0]).toBe('A');
-      expect(CURATED_SYMBOLS[1]).toBe('B');
+    it('never contains a digit (0-9) anywhere in the pool', () => {
+      expect(CURATED_SYMBOLS.every(s => !/[0-9]/.test(s))).toBe(true);
+    });
+
+    it('has a letter-free glyph tier', () => {
+      expect(GLYPH_SYMBOLS.every(g => !/[A-Za-z]/.test(g))).toBe(true);
+      // The glyph tier alone covers a 118-color chart.
+      expect(GLYPH_SYMBOLS.length).toBeGreaterThan(118);
+    });
+
+    it('puts unambiguous letters last, filtered of look-alike/confusable capitals', () => {
+      // Exactly the 19 unambiguous capitals, in order.
+      expect(SAFE_LETTER_SYMBOLS).toEqual(
+        ['A', 'C', 'D', 'E', 'F', 'H', 'J', 'K', 'L', 'M',
+         'N', 'P', 'R', 'T', 'U', 'V', 'W', 'X', 'Y']
+      );
+
+      // None of the digit/look-alike confusables are present.
+      ['B', 'G', 'I', 'O', 'Q', 'S', 'Z'].forEach(bad => {
+        expect(SAFE_LETTER_SYMBOLS).not.toContain(bad);
+      });
+
+      // The letter tier sits strictly AFTER every glyph.
+      expect(CURATED_SYMBOLS.slice(0, GLYPH_SYMBOLS.length)).toEqual(GLYPH_SYMBOLS);
+      expect(CURATED_SYMBOLS.slice(GLYPH_SYMBOLS.length)).toEqual(SAFE_LETTER_SYMBOLS);
     });
   });
 
@@ -101,26 +112,28 @@ describe('Symbol Database & Allocation Engine', () => {
     });
 
     it('keeps every symbol UNIQUE when active color count exceeds pool size (B4)', () => {
-      // The 200-color kit routinely activates >82 colors. The old `index % 82`
-      // wraparound reused glyphs (the 83rd color collided with the 1st), making the
-      // exported legend ambiguous. Each distinct color must now get a unique symbol.
-      const codeCount = 200;
+      // A palette larger than the WHOLE single-symbol pool must still get a
+      // unique symbol per color — the old `index % poolSize` wraparound reused
+      // the first glyph and made the exported legend ambiguous. This test derives
+      // from the live pool size so it tracks the (now much larger) glyph tier.
+      const poolSize = CURATED_SYMBOLS.length;
+      const codeCount = poolSize + 20;
       const activePaletteCodes = Array.from({ length: codeCount }, (_, i) => `COLOR_${String(i).padStart(3, '0')}`);
 
       const allocation = generateSymbolAllocation([], activePaletteCodes);
 
       const assignedSymbols = Object.values(allocation);
       expect(assignedSymbols.length).toBe(codeCount);
-      // No collisions across all 200 colors.
+      // No collisions across the whole oversized palette.
       expect(new Set(assignedSymbols).size).toBe(codeCount);
 
-      // The first 82 (pool size) colors keep their single curated glyph.
-      const poolSize = CURATED_SYMBOLS.length;
+      // The first `poolSize` colors keep their single curated glyph.
       expect(allocation['COLOR_000']).toBe(CURATED_SYMBOLS[0]);
       expect(allocation[`COLOR_${String(poolSize - 1).padStart(3, '0')}`]).toBe(CURATED_SYMBOLS[poolSize - 1]);
 
-      // The 83rd color (index 82) falls back to a deterministic multi-char symbol
-      // (base glyph + tier suffix >= 1), which no longer collides with 'A'.
+      // The color at index `poolSize` triggers the overflow branch: a
+      // deterministic multi-char symbol (base glyph + tier suffix >= 1) that no
+      // longer collides with the first glyph.
       const overflowSymbol = allocation[`COLOR_${String(poolSize).padStart(3, '0')}`];
       expect(overflowSymbol).toBe(`${CURATED_SYMBOLS[0]}1`);
       expect(overflowSymbol).not.toBe(CURATED_SYMBOLS[0]);
