@@ -5,7 +5,7 @@ import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_RE
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents } from './engine/money';
+import { toCents, fromCents, formatUSD } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -1009,6 +1009,17 @@ export function App() {
   const safetyDrillCost = fromCents(safetyDrillCostCents);
   const totalCostSafety = fromCents(totalCostSafetyCents);
 
+  // BAG-03/D-08: always-on savings headline sourced from the SHARED aggregator's
+  // savingsCents/savingsPct (already integer-cents and clamped >= 0 in 16-02) —
+  // formatted ONCE here via money.ts formatUSD and never recomputed. This single
+  // string feeds both the on-screen Step3Canvas headline and the static print
+  // mirror (D-10) so the two can never diverge. When there are no bulk savings
+  // (small-color plans), a truthful zero-state line renders rather than hiding.
+  const savingsHeadline =
+    orderPlan.savingsCents > 0
+      ? `Save ${formatUSD(orderPlan.savingsCents)} (${orderPlan.savingsPct}%) vs per-color`
+      : 'No bulk savings at this size';
+
   // PRICE-02: a color coverable only by an unpriced bag size is surfaced through
   // the existing actionError banner (never rendered as a free $0 line). Derived
   // here; applied in an effect below so we never setState during render.
@@ -1313,6 +1324,7 @@ export function App() {
             totalPackets={totalPackets}
             safetyDrillCost={safetyDrillCost}
             totalCostSafety={totalCostSafety}
+            savingsHeadline={savingsHeadline}
             matchResult={matchResult}
             sizingAdviceData={sizingAdviceData}
             affiliateTag={affiliateTag}

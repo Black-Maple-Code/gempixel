@@ -34,6 +34,12 @@ export interface Step3CanvasProps {
   totalPackets: number;
   safetyDrillCost: number;
   totalCostSafety: number;
+  /**
+   * BAG-03/D-08: preformatted always-on savings headline, computed ONCE in App
+   * from planOrderSupply.savingsCents/savingsPct (money.ts formatUSD). This
+   * component only renders the string — it never recomputes savings.
+   */
+  savingsHeadline: string;
   matchResult: { matches: string[]; counts: Record<string, number> } | null;
   sizingAdviceData: SizingAdvice;
   affiliateTag: string;
@@ -63,6 +69,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
     totalPackets,
     safetyDrillCost,
     totalCostSafety,
+    savingsHeadline,
     matchResult,
     sizingAdviceData,
     affiliateTag,
@@ -202,6 +209,13 @@ export function Step3Canvas(props: Step3CanvasProps) {
                       <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Total Cost</span>
                       <span className="text-sm font-bold text-emerald-400 font-mono">
                         ${totalCostSafety.toFixed(2)}
+                      </span>
+                      {/* BAG-03/D-08: always-on savings headline next to the Total
+                          Cost figure, driven by planOrderSupply savings. Static text;
+                          when there are no bulk savings it renders a truthful
+                          zero-state line rather than hiding. */}
+                      <span className="text-[9px] font-semibold text-emerald-500/90 mt-0.5">
+                        {savingsHeadline}
                       </span>
                     </div>
                   </div>
