@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agent-sops": {
+      "command": "/opt/homebrew/bin/strands-agents-sops",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}
