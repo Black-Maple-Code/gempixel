@@ -20,7 +20,7 @@ Committed scope for v3.0. Each maps to exactly one roadmap phase. Grounded in `.
 
 ### Data Integrity
 
-- [ ] **DATA-01**: An automated integrity test verifies the drill-variant table — unique (or explicitly allow-listed) variant IDs, no empty reachable size mappings, and every palette DMC color has a mapping; an unmapped color is surfaced to the user, never silently dropped. *(carried from v2.1; known holes: empty mappings 471/798, duplicate IDs 731/732, 781/782 to adjudicate)*
+- [x] **DATA-01**: An automated integrity test verifies the drill-variant table — unique (or explicitly allow-listed) variant IDs, no empty reachable size mappings, and every palette DMC color has a mapping; an unmapped color is surfaced to the user, never silently dropped. *(carried from v2.1; known holes: empty mappings 471/798, duplicate IDs 731/732, 781/782 to adjudicate)*
 
 ### Supply Optimization
 
@@ -93,7 +93,7 @@ Final phase mapping (phases 15–19, continuing from the previous milestone's la
 | PRICE-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
-| DATA-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Pending |
+| DATA-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | BAG-01 | Phase 16 — Optimized Supply Plan & Savings | Pending |
 | BAG-02 | Phase 16 — Optimized Supply Plan & Savings | Pending |
 | BAG-03 | Phase 16 — Optimized Supply Plan & Savings | Pending |

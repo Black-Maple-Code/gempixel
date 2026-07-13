@@ -40,7 +40,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 
 ### 🚧 v3.0 Two-Mode Viewport Experience — Phases 15–19 (ACTIVE)
 
-- [ ] **Phase 15: Trustworthy Pricing & Data Foundation** — vendor cleanup + correct pricing + variant integrity, all test-guarded before any UI churn
+- [x] **Phase 15: Trustworthy Pricing & Data Foundation** — vendor cleanup + correct pricing + variant integrity, all test-guarded before any UI churn (completed 2026-07-13)
 - [ ] **Phase 16: Optimized Supply Plan & Savings** — surface the fewest-bags plan with a dye-lot "why" and a savings-vs-naive explainer
 - [ ] **Phase 17: Service Fee & Customer Order Packet** — % service fee + versioned, fulfillment-ready order packet with review, confirmation, and client-side handoff
 - [ ] **Phase 18: Viewport-Native Wizard** — mode-agnostic in-canvas wizard replacing the sidebars + page-flip flow, ships green (UI rework #1)
@@ -63,7 +63,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   4. Itemized line items always sum exactly to the displayed total (integer-cents money math reconciles).
   5. An automated integrity test guards the drill-variant table (unique or explicitly allow-listed IDs, no empty reachable mappings, every palette color mapped), and any unmapped color is surfaced to the user rather than silently dropped.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 15-01-PLAN.md — Vendor cleanup: remove Prodigi, narrow the vendor union, null-guard unknown-vendor cost, migrate persisted vendor (VENDOR-02)
@@ -74,7 +74,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 15-03-PLAN.md — Data integrity: variant-table integrity test + unmapped-color surfacing + data-owner adjudication (DATA-01)
+- [x] 15-03-PLAN.md — Data integrity: variant-table integrity test + unmapped-color surfacing + data-owner adjudication (DATA-01)
 
 ### Phase 16: Optimized Supply Plan & Savings
 
@@ -146,7 +146,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 10. Project Load Correctness | v2.1 | — | Deferred | — |
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
-| 15. Trustworthy Pricing & Data Foundation | v3.0 | 2/3 | In Progress|  |
+| 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete   | 2026-07-13 |
 | 16. Optimized Supply Plan & Savings | v3.0 | — | Not started | - |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |

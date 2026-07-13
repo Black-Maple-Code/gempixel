@@ -4,17 +4,17 @@ milestone: v3.0
 milestone_name: Two-Mode Viewport Experience — Phases 15–19
 current_phase: 15
 current_phase_name: trustworthy-pricing-data-foundation
-status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-07-13T00:12:17.791Z"
+status: verifying
+stopped_at: Completed 15-03-PLAN.md (Phase 15 complete — 3/3 plans)
+last_updated: "2026-07-13T00:26:09.025Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 20
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 Phase: 15 (trustworthy-pricing-data-foundation) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-12 — Phase 15 execution started
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
@@ -86,6 +86,7 @@ Last activity: 2026-07-12 — Phase 15 execution started
 | Phase 13 P02 | 5min | 2 tasks | 1 files |
 | Phase 15 P01 | 6min | 2 tasks | 5 files |
 | Phase 15 P02 | 10min | 3 tasks | 5 files |
+| Phase 15 P03 | 8min | 3 tasks | 3 files |
 
 ## Risk & Health
 
@@ -117,8 +118,8 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-13T00:10:26.460Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-07-13T00:26:08.776Z
+Stopped at: Completed 15-03-PLAN.md (Phase 15 complete — 3/3 plans)
 Resume file: None
 
 ## Decisions
@@ -131,6 +132,7 @@ Resume file: None
 - [v3.0 roadmap]: Compressed the research's 8-phase suggestion to 5 phases under standard granularity — single-requirement/thin phases (Vendor cleanup, Data integrity, Service fee) folded into their nearest coherent neighbor. Load-bearing dependency order preserved: correctness (15) → optimized supply plan (16) → fee + order packet (17) → viewport wizard (18) → mode split (19, last). The two UI reworks (18, 19) are kept as separate phases.
 - [Phase 15]: 15-01: Removed Prodigi vendor; narrowed CanvasVendor union to 'lumaprints' | 'finerworks'; calculateCanvasCost returns number|null (unknown vendor -> null, never $0); normalizeVendor migrates any legacy/tampered persisted vendor to lumaprints at load; selectedVendor persisted as an additive optional ProjectData field.
 - [Phase 15]: 15-02: engine/money.ts canonical integer-cents helper (EPSILON-safe round-half-up, throws on non-finite); bagPlanner treats a missing price as Infinity (never $0-self-select), adds a 500 tier from a single canonical size table, flags hasUnpricedSize for colors coverable only by an unpriced size; App.tsx sums line items in cents to reconcile the displayed total and surfaces unpriced colors via the existing actionError banner.
+- [Phase 15]: 15-03: DATA-01 drill-variant integrity test (unique-or-allow-listed IDs, no empty reachable mappings beyond allow-list, full palette coverage) ratchets against data drift; hasVariantMapping surfaces shape-unmapped grid colors via the existing banner. Data-owner checkpoint adjudicated the known holes to safe reversible defaults: dup-ID pairs 731/732, 781/782, 776/3326 kept as intended aliases; empty mappings 471/square, 798/round, BLANC/round, ECRU/round kept surfaced-as-unmapped (DRILL_VARIANTS unchanged).
 
 ## Operator Next Steps
 
