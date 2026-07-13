@@ -27,10 +27,12 @@ function isUnpriced(priceDb: Record<number, number>, size: number): boolean {
  *   bags only (never mixed with bulk sizes), preserving color consistency.
  * - Availability: a color is only ever packed into bag sizes that actually
  *   exist for it in `DRILL_VARIANTS[dmcCode][shape]`.
- * - Cost minimization: for bulk orders (> 800), pick the CHEAPEST combination of
- *   the color's available bulk sizes that covers the required count (never mixing
- *   200s in), using the caller's per-bag `priceDb`. This avoids fragmentation
- *   like `1×1000 + 2×500` where a single `1×2000` is fewer bags and cheaper.
+ * - Fewest bags within an overshoot cap (BAG-01, D-01): for bulk orders (> 800),
+ *   pick the combination of the color's available bulk sizes that covers the
+ *   required count in the FEWEST bags, but REJECT a fewer-bags plan that wastes
+ *   more than one smallest available bulk bag's capacity (the LOCKED overshoot
+ *   cap). Cost (in integer cents) is only a bounded tiebreak, never the objective.
+ *   200s are never mixed into a bulk order.
  *
  * `checkout.ts::compileShopifyCartLink` calls this with the same `priceDb`, so
  * the Shopify cart and the legend estimate always pack identically.
@@ -112,10 +114,21 @@ export function packColor(
 }
 
 /**
- * Cheapest combination of the given bulk sizes that covers >= requiredCount.
- * Bounded search: iterate counts of every size except the smallest; the smallest
- * ceil-fills the remainder, so the whole solution space is covered with only a
- * few hundred evaluations even for large counts.
+ * Fewest-bags-within-the-overshoot-cap combination of the given bulk sizes that
+ * covers >= requiredCount (BAG-01, D-01). Bounded search (D-02, unchanged):
+ * iterate counts of every size except the smallest; the smallest ceil-fills the
+ * remainder, so the whole solution space is covered with only a few hundred
+ * evaluations even for large counts.
+ *
+ * Selection (changed from cost-min): among the enumerated covering plans, keep
+ * only those whose wasted drills (coveredDrills − requiredCount) are at most one
+ * smallest available bulk bag's capacity — the LOCKED overshoot cap — then pick a
+ * winner by a TOTAL, deterministic order (D-03): fewest packets, then lowest cost
+ * cents (reconciled through money.ts, never a raw float threshold), then fewer
+ * total drills, then largest-size-first. The all-smallest ceil-fill plan always
+ * satisfies the cap (its overshoot < the smallest bulk bag), so an acceptable
+ * plan always exists; the cost-min plan is retained only as a guaranteed fallback
+ * for the (unreachable in practice) case where the cap rejects everything.
  */
 function minCostBulk(
   requiredCount: number,
@@ -135,42 +148,109 @@ function minCostBulk(
   }
 
   const sizesDesc = [...pricedSizes].sort((a, b) => b - a);
-  const smallest = sizesDesc[sizesDesc.length - 1];
+  const smallest = sizesDesc[sizesDesc.length - 1]; // smallest available bulk bag
   const larger = sizesDesc.slice(0, -1); // sizes above the smallest, largest first
   // Missing price => Infinity (was `?? 0`): pricedSizes are all finite here, so
-  // Infinity can never win, but the guard keeps the intent explicit and safe.
+  // toCents never sees a non-finite value, but the guard keeps intent explicit.
   const priceOf = (size: number) => priceDb[size] ?? Infinity;
+  // Per-bag cost in integer cents (money.ts): the cap/tiebreak reconciles through
+  // integer cents so a tampered priceDb can't make the comparator pick a NaN/$0
+  // plan (threat T-16-02); toCents throws on a non-finite price.
+  const centsOf = (size: number) => toCents(priceOf(size));
 
-  let bestCounts: number[] = [];
-  let bestCost = Infinity;
+  // The LOCKED overshoot cap: a fewer-bags plan may waste at most one smallest
+  // available bulk bag's worth of drills.
+  const overshootCap = smallest;
+
+  interface Candidate {
+    counts: number[]; // aligned to sizesDesc (largest-first)
+    covered: number;
+    overshoot: number;
+    packets: number;
+    cents: number;
+  }
+
+  // Strict total order (D-03): fewest packets -> lowest cost cents -> fewer total
+  // drills -> largest-size-first (more of the larger sizes). Never depends on
+  // Object key order or float wobble, so packColor is a pure deterministic fn.
+  const isBetter = (a: Candidate, b: Candidate): boolean => {
+    if (a.packets !== b.packets) return a.packets < b.packets;
+    if (a.cents !== b.cents) return a.cents < b.cents;
+    if (a.covered !== b.covered) return a.covered < b.covered; // fewer total drills
+    for (let i = 0; i < a.counts.length; i++) {
+      if (a.counts[i] !== b.counts[i]) return a.counts[i] > b.counts[i]; // largest-size-first
+    }
+    return false;
+  };
+
+  let bestAcceptable: Candidate | null = null; // best plan within the overshoot cap
+  let costMin: Candidate | null = null; // guaranteed cheapest covering fallback
   const counts = new Array(larger.length).fill(0);
 
-  const search = (idx: number, covered: number, cost: number) => {
+  const consider = (fullCounts: number[]): void => {
+    let covered = 0;
+    let packets = 0;
+    const lineCents: number[] = [];
+    sizesDesc.forEach((size, i) => {
+      const qty = fullCounts[i];
+      if (qty > 0) {
+        covered += size * qty;
+        packets += qty;
+        lineCents.push(centsOf(size) * qty);
+      }
+    });
+    const cand: Candidate = {
+      counts: fullCounts,
+      covered,
+      overshoot: covered - requiredCount,
+      packets,
+      cents: sumCents(lineCents),
+    };
+    // Fallback tracker: lowest cost cents, ties broken by the same total order.
+    if (
+      costMin === null ||
+      cand.cents < costMin.cents ||
+      (cand.cents === costMin.cents && isBetter(cand, costMin))
+    ) {
+      costMin = cand;
+    }
+    // Overshoot-cap-acceptable set: fewer-bags plans that waste too much are
+    // rejected here, so the wasteful (fewer-bags, higher-overshoot) plan can
+    // never win even when it is cheaper.
+    if (cand.overshoot <= overshootCap && (bestAcceptable === null || isBetter(cand, bestAcceptable))) {
+      bestAcceptable = cand;
+    }
+  };
+
+  // Bounded enumeration preserved verbatim (D-02): counts of every larger size,
+  // smallest ceil-fills the remainder. Only the leaf action changed (was: track
+  // the single cheapest total; now: evaluate against the cap + total order).
+  const search = (idx: number, covered: number): void => {
     if (idx === larger.length) {
       const remaining = Math.max(0, requiredCount - covered);
       const nSmall = Math.ceil(remaining / smallest);
-      const total = cost + nSmall * priceOf(smallest);
-      if (total < bestCost - 1e-9) {
-        bestCost = total;
-        bestCounts = [...counts, nSmall];
-      }
+      consider([...counts, nSmall]);
       return;
     }
     const size = larger[idx];
     const maxN = Math.ceil(requiredCount / size);
     for (let n = 0; n <= maxN; n++) {
       counts[idx] = n;
-      search(idx + 1, covered + n * size, cost + n * priceOf(size));
+      search(idx + 1, covered + n * size);
     }
     counts[idx] = 0;
   };
-  search(0, 0, 0);
+  search(0, 0);
+
+  // Prefer the cap-acceptable winner; fall back to the cost-min plan only if the
+  // cap somehow rejected everything (the all-smallest plan makes this unreachable).
+  const chosen: Candidate = bestAcceptable ?? costMin!;
 
   const bySize: Record<number, number> = {};
   let totalDrills = 0;
   let packets = 0;
   sizesDesc.forEach((size, i) => {
-    const qty = bestCounts[i];
+    const qty = chosen.counts[i];
     if (qty > 0) {
       bySize[size] = qty;
       totalDrills += size * qty;
