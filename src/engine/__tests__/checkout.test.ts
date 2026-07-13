@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { compileShopifyCartLink, compileCanvasPartnerUrl, calculateCanvasCost, normalizeVendor } from '../checkout';
+import { packColor } from '../bagPlanner';
+import { DRILL_VARIANTS, VariantMapping } from '../variants';
 
 // The dye-lot aggregate `optimizeBags(count)` was removed in the Candidate 1
 // consolidation (unused in production). Its dye-lot rule is now covered per-color
@@ -51,6 +53,44 @@ describe('Checkout and Sizing Integration', () => {
       const result = compileShopifyCartLink(items, '', 'none');
       expect(result.unmappedItems.length).toBe(0);
       expect(result.url).toContain('29699704848466:1,29699704782930:1'); // 2000 then 500
+    });
+  });
+
+  describe('packColor == cart no-divergence (D-03, BAG-01 overshoot cap)', () => {
+    it('the cart emits exactly the bags packColor produces, including the 1050 overshoot-cap case', () => {
+      // Shared primitive contract: compileShopifyCartLink and the legend both call
+      // packColor with the same priceDb, so under the new fewest-bags comparator
+      // they can never diverge on a tie. 1050 exercises the overshoot cap directly.
+      const STD: Record<number, number> = { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.4 };
+      const fixture = [
+        { dmcCode: '150', shape: 'square' as const, requiredCount: 1050 }, // cap -> 1×1000+1×500
+        { dmcCode: '150', shape: 'square' as const, requiredCount: 2100 }, // 1×2000+1×500
+        { dmcCode: '150', shape: 'round' as const, requiredCount: 3000 },  // 200-only color
+        { dmcCode: '310', shape: 'square' as const, requiredCount: 150 },  // dye-lot 200s
+      ];
+
+      // Cart side: parse variantId -> total qty out of the compiled cart URL.
+      const cart = compileShopifyCartLink(fixture, '', 'none', STD);
+      const cartTokens: Record<string, number> = {};
+      const tokenStr = cart.url.split('/cart/')[1].split('?')[0];
+      for (const tok of tokenStr.split(',')) {
+        if (!tok) continue;
+        const [id, qty] = tok.split(':');
+        cartTokens[id] = (cartTokens[id] || 0) + Number(qty);
+      }
+
+      // Estimate side: map packColor's bags (size -> qty) to the same variant IDs.
+      const packTokens: Record<string, number> = {};
+      for (const item of fixture) {
+        const pack = packColor(item.dmcCode, item.shape, item.requiredCount, STD);
+        const mapping = DRILL_VARIANTS[item.dmcCode][item.shape];
+        for (const [size, qty] of Object.entries(pack.bySize)) {
+          const id = String(mapping[Number(size) as keyof VariantMapping]);
+          packTokens[id] = (packTokens[id] || 0) + qty;
+        }
+      }
+
+      expect(packTokens).toEqual(cartTokens);
     });
   });
 

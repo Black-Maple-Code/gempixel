@@ -61,7 +61,10 @@ describe('bagPlanner.packColor', () => {
   });
 });
 
-describe('bagPlanner.packColor — BAG-01 fewest-bags within the overshoot cap (RED)', () => {
+describe('bagPlanner.packColor — BAG-01 fewest-bags within the overshoot cap', () => {
+  // The standard per-bag price table (CONTEXT worked example).
+  const STD: Record<number, number> = { 200: 0.25, 500: 0.55, 1000: 0.8, 2000: 1.4 };
+
   it('rejects a cost-cheaper single-2000 plan whose overshoot exceeds one smallest bulk bag', () => {
     // 1050 drills, 2000 deliberately CHEAP so cost-min alone would buy 1×2000
     // ($1.00) over 1×1000+1×500 ($1.35). The LOCKED overshoot cap rejects the
@@ -71,6 +74,55 @@ describe('bagPlanner.packColor — BAG-01 fewest-bags within the overshoot cap (
     const pack = packColor('150', 'square', 1050, CHEAP_2000);
     expect(pack.bySize).toEqual({ 1000: 1, 500: 1 });
     expect(pack.bySize[2000]).toBeUndefined(); // wasteful 1×2000 is NOT selected
+  });
+
+  it('WORKED EXAMPLE: 1050 @ standard prices -> {1000:1, 500:1}, never the wasteful 1×2000', () => {
+    // The single 2000 bag wastes 950 drills > one smallest bulk bag (500), so the
+    // LOCKED overshoot cap rejects it; the fewest acceptable plan is 1×1000+1×500.
+    const pack = packColor('150', 'square', 1050, STD);
+    expect(pack.bySize).toEqual({ 1000: 1, 500: 1 });
+    expect(pack.bySize[2000]).toBeUndefined();
+    expect(pack.totalDrills).toBe(1500);
+    expect(pack.packets).toBe(2);
+  });
+
+  it('prefers the fewer-bags plan even when it costs MORE, so long as it is within the cap', () => {
+    // 2000 priced ABOVE two 1000s: cost-min would buy 2×1000 ($1.60), but the
+    // single 2000 bag wastes exactly 400 <= 500 (cap), and 1 bag < 2 bags — the
+    // fewest-bags objective (not cost) selects it. Proves the objective changed.
+    const PRICEY_2000: Record<number, number> = { 200: 0.25, 500: 0.5, 1000: 0.8, 2000: 2.0 };
+    const pack = packColor('150', 'square', 1600, PRICEY_2000);
+    expect(pack.bySize).toEqual({ 2000: 1 });
+    expect(pack.packets).toBe(1);
+  });
+
+  it('is a pure, deterministic function: identical inputs yield a deeply-equal ColorPack', () => {
+    const a = packColor('150', 'square', 1050, STD);
+    const b = packColor('150', 'square', 1050, STD);
+    expect(a).toEqual(b);
+    expect(a).not.toBe(b); // fresh object each call, but structurally identical
+  });
+
+  it('breaks a bag-count + cost tie by a TOTAL deterministic order (never key-order/float wobble)', () => {
+    // 2000 is unpriced (excluded); with 500 and 1000 priced identically, two
+    // 2-bag plans covering 1500 tie on packets (2) AND cost: {1000:1,500:1}
+    // (1500 drills) vs {1000:2} (2000 drills). The total order resolves the tie
+    // by fewer total drills -> {1000:1,500:1}, deterministically, every call.
+    const TIE: Record<number, number> = { 200: 0.25, 500: 1, 1000: 1 };
+    const first = packColor('150', 'square', 1500, TIE);
+    expect(first.bySize).toEqual({ 1000: 1, 500: 1 });
+
+    // Same priceDb with a DIFFERENT key-insertion order must give the same pack:
+    // proves no Object.keys ordering dependence (D-03).
+    const REORDERED: Record<number, number> = { 1000: 1, 200: 0.25, 500: 1 };
+    const second = packColor('150', 'square', 1500, REORDERED);
+    expect(second).toEqual(first);
+  });
+
+  it('D-04 dye-lot path is untouched: <=800 stays on 200-count bags (no fewest-bags leak)', () => {
+    expect(packColor('150', 'square', 800, STD).bySize).toEqual({ 200: 4 });
+    // 700 also stays on 200-count bags — fewest-bags must NOT pull a bulk bag in.
+    expect(packColor('150', 'square', 700, STD).bySize).toEqual({ 200: 4 });
   });
 });
 
