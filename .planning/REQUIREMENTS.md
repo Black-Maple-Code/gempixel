@@ -10,8 +10,8 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 ### Design System (Atelier, light-only)
 
-- [ ] **DESIGN-01**: The app renders in the Atelier light theme only — dark mode is fully retired (the toggle, the persisted `gempixel_theme` key, the `[data-theme]` CSS, and the canvas viewer's theme dependency are all removed) so a returning user never sees a half-dark UI.
-- [ ] **DESIGN-02**: The UI is built from the Atelier design tokens (palette, radii, shadows, 8px spacing) and self-hosted webfonts (Newsreader / Archivo / JetBrains Mono) with no external font requests and no font-driven layout shift (FOUT/CLS).
+- [x] **DESIGN-01**: The app renders in the Atelier light theme only — dark mode is fully retired (the toggle, the persisted `gempixel_theme` key, the `[data-theme]` CSS, and the canvas viewer's theme dependency are all removed) so a returning user never sees a half-dark UI.
+- [x] **DESIGN-02**: The UI is built from the Atelier design tokens (palette, radii, shadows, 8px spacing) and self-hosted webfonts (Newsreader / Archivo / JetBrains Mono) with no external font requests and no font-driven layout shift (FOUT/CLS).
 
 ### Canvas-First Shell & Navigation
 
@@ -94,8 +94,8 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DESIGN-01 | Phase 20 | Pending |
-| DESIGN-02 | Phase 20 | Pending |
+| DESIGN-01 | Phase 20 | Complete |
+| DESIGN-02 | Phase 20 | Complete |
 | SHELL-01 | Phase 20 | Pending |
 | SHELL-02 | Phase 20 | Pending |
 | QUOTE-01 | Phase 22 | Pending |

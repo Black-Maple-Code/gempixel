@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 20
-current_phase_name: Atelier Design System & Canvas-First Shell
+current_phase_name: atelier-design-system-canvas-first-shell
 status: executing
 stopped_at: Phase 20 UI-SPEC approved
-last_updated: "2026-07-13T23:24:17.244Z"
+last_updated: "2026-07-13T23:38:59.635Z"
 last_activity: 2026-07-13
-last_activity_desc: v4.0 roadmap created (6 phases, 20–25; 19/19 requirements mapped, 100% coverage)
+last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 5
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** v4.0 Canvas-First Redesign — roadmap created (Phases 20–25); Phase 20 ready to plan
+**Current focus:** Phase 20 — atelier-design-system-canvas-first-shell
 
 ## Current Position
 
-Phase: 20 of 25 (Atelier Design System & Canvas-First Shell) — first v4.0 phase
-Plan: — (not yet planned)
+Phase: 20 (atelier-design-system-canvas-first-shell) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-07-13 — v4.0 roadmap created (6 phases, 20–25; 19/19 requirements mapped, 100% coverage)
+Last activity: 2026-07-13 — Phase 20 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -85,6 +85,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P02 | 6min | 2 tasks | 2 files |
 | Phase 16 P03 | 9min | 3 tasks | 4 files |
 | Phase 16 P04 | 25min | 3 tasks | 4 files |
+| Phase 20 P01 | 5 min | 3 tasks | 8 files |
 
 ## Risk & Health
 
@@ -132,7 +133,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-13T22:36:41.970Z
+Last session: 2026-07-13T23:38:39.549Z
 Stopped at: Phase 20 UI-SPEC approved
 Resume file: .planning/phases/20-atelier-design-system-canvas-first-shell/20-UI-SPEC.md
 
@@ -149,6 +150,8 @@ Resume file: .planning/phases/20-atelier-design-system-canvas-first-shell/20-UI-
 - [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline; planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized). OrderSupplyPlan shape frozen in 16-02-SUMMARY.
 - [Phase 16]: 16-03: planOrderSupply is the sole App render-path call (D-13); optimizeBagsCost toggle + fixed-size controls fully retired (D-11, rg gate clean); totalPackets/drill-cost/unpriced codes sourced from the aggregator; SC2/BAG-02 render test asserts visible bag count == totalPackets.
 - [Phase 16]: 16-04 (BAG-02/BAG-03, human-verify APPROVED): always-on savings headline from planOrderSupply.savingsCents/savingsPct; a11y-safe "Why these bags?" expander in the Step 3 panel; fix-forward replaced a broken window.print() (was printing the CANVAS GRID) with an isolated print-only "GemPixel Supply Plan Report". tsc 0; vitest 237/237.
+- [Phase 20]: Repointed engine 'Outfit'->'Archivo Variable' canvas symbol literals (string-only, signatures frozen per strangler rule) — Keeps a loaded font for canvas symbols without touching engine signatures; theme-param removal deferred to Phase 22
+- [Phase 20]: Self-hosted fonts via @fontsource JS imports + Fontaine no-CLS metric fallbacks; each --font-* value names its fallback family — Dodges Tailwind v4 external-URL bug and satisfies DESIGN-02 no-external-request + no-CLS
 
 ## Operator Next Steps
 
