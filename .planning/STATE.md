@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Two-Mode Viewport Experience — Phases 15–19
-current_phase: 16
-current_phase_name: optimized-supply-plan-savings
-status: executing
-stopped_at: Phase 16 Plan 04 complete (4/4 plans) — awaiting orchestrator phase completion
-last_updated: "2026-07-13T03:38:09.336Z"
+current_phase: 17
+current_phase_name: Service Fee & Customer Order Packet
+status: completed
+stopped_at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
+last_updated: "2026-07-13T05:16:25.799Z"
 last_activity: 2026-07-13
-last_activity_desc: Completed 16-04-PLAN.md (savings headline + why expander + print report)
+last_activity_desc: Phase 16 complete, transitioned to Phase 17
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
   completed_plans: 7
-  percent: 20
+  percent: 40
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 ## Current Position
 
-Phase: 16 (optimized-supply-plan-savings) — EXECUTING (all 4 plans complete; phase completion owned by orchestrator)
-Plan: 4 of 4 — COMPLETE
+Phase: 17 — Service Fee & Customer Order Packet
+Plan: Not started
 Status: Plan 16-04 complete; awaiting phase-level completion
-Last activity: 2026-07-13 — Completed 16-04 (savings headline + why expander + print report)
+Last activity: 2026-07-13 — Phase 16 complete, transitioned to Phase 17
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -47,7 +47,7 @@ Last activity: 2026-07-13 — Completed 16-04 (savings headline + why expander +
 
 **Velocity:**
 
-- Total plans completed: 21
+- Total plans completed: 25
 - Average duration: 186s
 - Total execution time: 0.1 hours
 
@@ -65,6 +65,7 @@ Last activity: 2026-07-13 — Completed 16-04 (savings headline + why expander +
 | 11 | 3 | - | - |
 | 13 | 2 | - | - |
 | 15 | 3 | - | - |
+| 16 | 4 | - | - |
 
 **Recent Trend:**
 
