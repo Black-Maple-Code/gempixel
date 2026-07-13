@@ -41,7 +41,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 ### 🚧 v3.0 Two-Mode Viewport Experience — Phases 15–19 (ACTIVE)
 
 - [x] **Phase 15: Trustworthy Pricing & Data Foundation** — vendor cleanup + correct pricing + variant integrity, all test-guarded before any UI churn (completed 2026-07-13)
-- [ ] **Phase 16: Optimized Supply Plan & Savings** — surface the fewest-bags plan with a dye-lot "why" and a savings-vs-naive explainer
+- [x] **Phase 16: Optimized Supply Plan & Savings** — surface the fewest-bags plan with a dye-lot "why" and a savings-vs-naive explainer (completed 2026-07-13)
 - [ ] **Phase 17: Service Fee & Customer Order Packet** — % service fee + versioned, fulfillment-ready order packet with review, confirmation, and client-side handoff
 - [ ] **Phase 18: Viewport-Native Wizard** — mode-agnostic in-canvas wizard replacing the sidebars + page-flip flow, ships green (UI rework #1)
 - [ ] **Phase 19: Two-Mode Split (Customer / Artist)** — thin capability-map layer over the stabilized wizard giving each mode a tailored path (UI rework #2, last)
@@ -88,7 +88,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   3. A plain-language explanation tells the user why bags are grouped the way they are (the dye-lot "why").
   4. The user can see how much the optimized plan saves versus a naive one-size-per-color purchase.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1**
 
@@ -104,7 +104,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 16-04-savings-headline-and-why-expander-PLAN.md — always-on savings headline + a11y "Why these bags?" expander + static print mirror (BAG-02, BAG-03)
+- [x] 16-04-savings-headline-and-why-expander-PLAN.md — always-on savings headline + a11y "Why these bags?" expander + static print mirror (BAG-02, BAG-03)
 
 **UI hint**: yes
 
@@ -164,7 +164,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
 | 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete    | 2026-07-13 |
-| 16. Optimized Supply Plan & Savings | v3.0 | 3/4 | In Progress|  |
+| 16. Optimized Supply Plan & Savings | v3.0 | 4/4 | Complete   | 2026-07-13 |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Not started | - |

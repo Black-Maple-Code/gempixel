@@ -5,15 +5,15 @@ milestone_name: Two-Mode Viewport Experience — Phases 15–19
 current_phase: 16
 current_phase_name: optimized-supply-plan-savings
 status: executing
-stopped_at: Phase 16 context gathered
+stopped_at: Phase 16 Plan 04 complete (4/4 plans) — awaiting orchestrator phase completion
 last_updated: "2026-07-13T03:38:09.336Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 16 execution started
+last_activity_desc: Completed 16-04-PLAN.md (savings headline + why expander + print report)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 ## Current Position
 
-Phase: 16 (optimized-supply-plan-savings) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-13 — Phase 16 execution started
+Phase: 16 (optimized-supply-plan-savings) — EXECUTING (all 4 plans complete; phase completion owned by orchestrator)
+Plan: 4 of 4 — COMPLETE
+Status: Plan 16-04 complete; awaiting phase-level completion
+Last activity: 2026-07-13 — Completed 16-04 (savings headline + why expander + print report)
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -91,6 +91,7 @@ Last activity: 2026-07-13 — Phase 16 execution started
 | Phase 16 P01 | 6min | 2 tasks | 3 files |
 | Phase 16 P02 | 6min | 2 tasks | 2 files |
 | Phase 16 P03 | 9min | 3 tasks | 4 files |
+| Phase 16 P04 | 25min | 3 tasks | 4 files |
 
 ## Risk & Health
 
@@ -124,8 +125,8 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 ## Session Continuity
 
 Last session: 2026-07-13T03:37:58.572Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
+Stopped at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
+Resume file: None
 
 ## Decisions
 
@@ -141,6 +142,7 @@ Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 - [Phase ?]: [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
 - [Phase 16]: 16-02: naiveColorPack = dye-lot-aware naive baseline (<=800 reuses pack200/matches optimizer D-05; >800 buys smallest single covering PRICED bulk bag, D-07 ceil-fills largest on no-cover; never combines sizes/uses drillBagSize/uniform-200). planOrderSupply (D-13/BAG-02) = shared aggregator: optimized rows + totals + naive baseline priced on SAME +10% safety basis, all integer-cents; savingsCents=max(0,naive-optimized) is a real backstop under the locked overshoot cap (adversarial test proves 0 when optimized>naive); pure, no palette/sort. OrderSupplyPlan shape frozen in 16-02-SUMMARY.
 - [Phase ?]: 16-03: planOrderSupply is the sole App render-path call (D-13); optimizeBagsCost toggle + fixed-size controls fully retired (D-11, rg gate clean); totalPackets/drill-cost/unpriced codes sourced from the aggregator; SC2/BAG-02 render test asserts visible bag count == totalPackets; calculateSafetyPurchase/calculateFixedBagCost kept exported (D-12).
+- [Phase 16]: 16-04 (BAG-02/BAG-03, human-verify APPROVED): always-on savings headline next to Total Cost in Step3Canvas from planOrderSupply.savingsCents/savingsPct (money.ts, clamped >=0, truthful zero-state); a11y-safe "Why these bags?" expander (real <button>, aria-expanded/aria-controls=why-these-bags-explainer, one static DYE_LOT_WHY_SENTENCE) relocated (developer choice) into the Step 3 panel under the headline (unused whyBagsOpen state removed). Fix-forward: replaced a broken window.print() (was printing the CANVAS GRID) with an isolated print-only-report-mode/.supply-report-print-container "GemPixel Supply Plan Report" (savings + dye-lot banner + per-color table + money.ts total). Accepted deviation: separate isolated container preserves the distinct "Print Legend Sheet" button — two print buttons. tsc 0; vitest 237/237.
 
 ## Operator Next Steps
 
