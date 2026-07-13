@@ -1,5 +1,33 @@
 # Milestones
 
+## v3.0 Two-Mode Viewport Experience (partial — pricing & supply-plan foundation) (Shipped: 2026-07-13)
+
+**Phases completed:** 2 phases, 7 plans, 18 tasks
+
+**⚠ Override closeout (force-closed at 40%).** Only the correctness foundation shipped — Phases 15 (Trustworthy Pricing & Data) and 16 (Optimized Supply Plan & Savings). The milestone's two namesake capabilities (the viewport-native wizard and the Customer/Artist mode split) and the service-fee/order-packet flow were **never built**. 8 of 21 v3.0 requirements were satisfied; the remaining 13 are carried forward. Pre-existing verification gaps (Phases 07/08/09 UAT, `human_needed`) remain acknowledged from the v2.1 close.
+
+### Known Gaps
+
+Unbuilt phases and unsatisfied requirements at force-close (see `milestones/v3.0-ROADMAP.md` for full success criteria and `milestones/v3.0-REQUIREMENTS.md` for descriptions):
+
+| Phase | Requirements | Status |
+|-------|--------------|--------|
+| 17 — Service Fee & Customer Order Packet | FEE-01, ORDER-01, ORDER-02, ORDER-03, ORDER-04, ORDER-05 | Not started — no plans |
+| 18 — Viewport-Native Wizard | VIEWPORT-01, VIEWPORT-02, VIEWPORT-03 | Not started — no plans |
+| 19 — Two-Mode Split (Customer / Artist) | MODE-01, MODE-02, MODE-03, MODE-04 | Not started — no plans |
+
+**Key accomplishments:**
+
+- Removed Prodigi as a canvas vendor, narrowed the vendor type to `CanvasVendor = 'lumaprints' | 'finerworks'` everywhere, guarded `calculateCanvasCost` to `number | null` so a removed/tampered vendor can never yield a free $0 canvas, and added a `normalizeVendor` load-time migration that remaps any persisted legacy/unknown vendor to `lumaprints`.
+- Introduced `engine/money.ts` as the single canonical integer-cents money authority (EPSILON-safe round-half-up, fail-loud on non-finite input); fixed the missing 500 bag tier so a 500 bag prices at its own tier instead of the 5000 bulk tier; killed the `$0-as-free` bug so the cost minimizer treats a missing price as `Infinity` (never self-selected) and flags colors coverable only by an unpriced size (`hasUnpricedSize`), surfaced through the existing banner; and reconciled the displayed total to the sum of its itemized line items in integer cents.
+- Shipped the DATA-01 automated integrity guard for the 5,107-line `DRILL_VARIANTS` SKU table (positive-integer SKUs, unique-or-allow-listed IDs, no empty reachable mappings beyond the allow-list, full palette coverage) plus an exported `hasVariantMapping` predicate that surfaces any grid color unmapped for the selected drill shape through the existing `actionError` banner — never silently dropping a color. A blocking data-owner checkpoint adjudicated the known holes: all three duplicate-ID pairs are confirmed intended aliases (kept allow-listed) and all four empty mappings are confirmed surfaced-as-unmapped (data left unchanged), finalizing the safe reversible defaults.
+- minCostBulk now packs a bulk color into the FEWEST bags within a LOCKED overshoot cap (wasted drills <= one smallest bulk bag) via a total, deterministic order — the cost-min objective is retired, and the legend/cart shared primitive can never diverge on a tie.
+- `naiveColorPack` gives the dye-lot-aware naive per-color baseline (smallest single covering bag; ceil-fill the largest on no-cover) and `planOrderSupply` aggregates the whole order into one shared plan — optimized rows + totals + naive baseline + a savings figure clamped >= 0, all reconciled in integer cents — so the legend, the cart, and the future order packet can never diverge.
+- The optimized fewest-bags plan is now the SOLE displayed plan: `App.tsx` derives the legend rows, total bag count, drill cost and unpriced codes from the shared `planOrderSupply` engine (D-13) instead of an inline reduction, and the user-facing `optimizeBagsCost` toggle plus the fixed-size bag controls are fully retired across App/Step2Palette/Step3Canvas (D-11) — with a render test proving the visible "Drills ({n} bag(s))" count equals the aggregator's `totalPackets` (SC2/BAG-02).
+- Always-on savings headline and an a11y-safe "Why these bags?" expander in the Step 3 Cost & Order panel, backed by an isolated print-only "GemPixel Supply Plan Report" that mirrors both statically — replacing a broken window.print() that had been printing the canvas grid.
+
+---
+
 ## v2.1 Post-Review Remediation (Shipped: 2026-07-12)
 
 **Phases completed:** 11 phases, 25 plans, 49 tasks

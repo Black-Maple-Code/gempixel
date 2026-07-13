@@ -8,9 +8,11 @@ GemPixel is a client-side utility web application designed for diamond painting/
 
 Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
 
-## Current Milestone: v3.0 Two-Mode Viewport Experience
+## Current Milestone: v3.0 Two-Mode Viewport Experience — ⚠️ FORCE-CLOSED 2026-07-13 (partial, 40%)
 
-**Goal:** Move GemPixel into a viewport-native, guided experience with two tailored paths — self-serve **Artist** and done-for-you **Customer** — backed by trustworthy pricing and a fulfillment-ready customer order flow.
+**Status:** Force-closed at 40% (2 of 5 phases). Shipped only the correctness foundation — **Phase 15** (trustworthy pricing & data) and **Phase 16** (optimized supply plan & savings). The two namesake capabilities — the **viewport-native wizard** and the **Customer/Artist mode split** — and the **service-fee + customer order packet** flow were never built. Phases 17/18/19 (FEE-01, ORDER-01..05, VIEWPORT-01..03, MODE-01..04) are carried to the Backlog for a future milestone. See `.planning/MILESTONES.md` → v3.0 Known Gaps.
+
+**Original goal (unmet):** Move GemPixel into a viewport-native, guided experience with two tailored paths — self-serve **Artist** and done-for-you **Customer** — backed by trustworthy pricing and a fulfillment-ready customer order flow.
 
 **Target features:**
 - **Viewport-native interactive wizard** — the app lives in the viewport; contextual options and guidance surface in-canvas as needed (extending the Phase 9 HUD), progressively phasing out expand/collapse sidebars and the page-flipping wizard.
@@ -47,12 +49,18 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Storage robustness & error feedback — app survives blocked/private-mode storage, persisted settings centralized behind one `usePersistentState` helper, and save/download/checkout failures surfaced in a dismissible banner (Validated in Phase 11, STORE-01/02, ERR-01).
 - Off-main-thread image decode — the resample + `getImageData` readback + box-sampling now run in the matcher Web Worker via a zero-copy `ImageBitmap` transfer, keeping the UI responsive on large images with bit-identical output (Validated in Phase 13, PERF-01).
 
-**Milestone v3.0 Two-Mode Viewport Experience (in progress, Phase 15 complete 2026-07-12):**
+**Milestone v3.0 Two-Mode Viewport Experience (force-closed partial 2026-07-13, Phases 15–16 shipped):**
 - Trustworthy pricing & data foundation — Prodigi removed and the unknown-vendor canvas cost guarded so it can never be a silent $0 (`calculateCanvasCost` returns `number | null`; a load-time `normalizeVendor` migrates legacy/tampered `selectedVendor`); the missing 500-bag tier added, the cost minimizer no longer self-selects an unpriced $0-phantom size (missing price → `Infinity`, unplannable colors flagged/surfaced), and itemized line items reconcile exactly to the displayed total via a canonical integer-cents `money.ts` (epsilon-safe round-half-up); a DATA-01 drill-variant integrity test ratchets against duplicate-ID / empty-mapping drift and unmapped grid colors are surfaced at runtime rather than silently dropped (Validated in Phase 15, VENDOR-02 + PRICE-01/02/03 + DATA-01).
+- Optimized supply plan & savings — `minCostBulk` packs each bulk color into the fewest bags within a locked overshoot cap (deterministic order, legend/cart can't diverge); `naiveColorPack` + the shared `planOrderSupply` aggregator produce one reconciled integer-cents plan (optimized rows + totals + naive baseline + a clamped-≥0 savings figure); the optimized fewest-bags plan is the sole displayed plan (the `optimizeBagsCost` toggle and fixed-size controls retired), with an always-on savings headline, an a11y "Why these bags?" dye-lot explainer, and an isolated print-only Supply Plan Report (Validated in Phase 16, BAG-01/02/03).
 
 ### Active
 
-**Milestone v3.0 Two-Mode Viewport Experience** is in progress (opened 2026-07-12). See the Current Milestone section above for goal and target features; scoped requirements land in `.planning/REQUIREMENTS.md`. **Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) is pulled into v3.0** because the customer quote/fee depends on it.
+**No active milestone.** v3.0 was force-closed partial on 2026-07-13; the next milestone starts via `/gsd-new-milestone`.
+
+**Deferred from v3.0 (force-close gaps — the milestone's headline scope, never built; requirements preserved in `milestones/v3.0-REQUIREMENTS.md`):**
+- [ ] Service Fee & Customer Order Packet — % service fee line + versioned self-contained JSON order packet with review/confirmation/threshold-flagging/client-side handoff (FEE-01, ORDER-01..05).
+- [ ] Viewport-Native Wizard — contextual in-viewport controls replacing sidebars + page-flip flow, ships green, mode-agnostic (VIEWPORT-01..03).
+- [ ] Two-Mode Split (Customer / Artist) — capability-map layer giving each mode a tailored path with no leakage (MODE-01..04).
 
 **Still deferred to a future milestone** (roadmapped under v2.1, never built — requirements preserved in `milestones/v2.1-REQUIREMENTS.md`):
 - [ ] Project Load Correctness — restored projects keep their saved price and grid (LOAD-01, LOAD-02).
@@ -73,7 +81,7 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 
 The target user is a professional or hobbyist gem art artist who takes custom commissions. Currently, there is no simple tool to map custom image colors to the specific Art Dot kits (100 and 200 colors). A key pain point is estimating the exact number of gem drills needed before starting a project.
 
-**Current state (v2.1, 2026-07-12):** Preact 10 + Vite 6 + TypeScript (strict) + Tailwind v4; `culori` color science; native Web Worker for CIEDE2000 matching **and (as of v2.1) off-main-thread image decode**; persistence via a guarded `localStorage` helper. 100% client-side, no backend. Test suite: 178 passing (Vitest, node env). Shipped to `Black-Maple-Code/gempixel` master, tagged `v2.1`. Known tech debt: Phases 07/08/09 lack formal UAT sign-off; Phases 10/12/14 deferred.
+**Current state (v3.0 partial, 2026-07-13):** Preact 10 + Vite 6 + TypeScript (strict) + Tailwind v4; `culori` color science; native Web Worker for CIEDE2000 matching + off-main-thread image decode; persistence via a guarded `localStorage` helper. 100% client-side, no backend. A canonical integer-cents `engine/money.ts` now backs all pricing. Shipped to `Black-Maple-Code/gempixel` master; first prod deploy tagged `0.1.0` (gem-pixel.com), grid-symbol redesign committed (2978605..db586e3, deploy pending). Known tech debt carried forward: Phases 07/08/09 lack formal UAT sign-off; Phases 10/14 deferred from v2.1; **v3.0 force-closed at 40% — Phases 17/18/19 (service fee + order packet, viewport wizard, mode split) never built.**
 
 ## Constraints
 
@@ -103,6 +111,7 @@ The target user is a professional or hobbyist gem art artist who takes custom co
 | v2.1 scope cut | Ship only the two highest-value review items (Phases 11 + 13); defer Phases 10/12/14 to a later rewrite. | ⚠ Revisit — deferred requirements carried in `milestones/v2.1-REQUIREMENTS.md` |
 | v3.0 two-mode pivot | Split into Customer (done-for-you) and Artist (self-serve) modes inside a viewport-native wizard; begin crossing the client-side-only constraint. Frontend-first — order backend, payments, and printer APIs deferred to v4.0. | ◆ In progress (Milestone v3.0) |
 | v3.0 payments manual/offline | Capture customer orders as an exportable packet and fulfill manually rather than building payment processing now. | ◆ Lowers v3.0 risk; automated payments = v4.0 |
+| v3.0 force-closed at 40% | Closed the milestone after only the correctness foundation (Phases 15–16) shipped; the two UI reworks (viewport wizard, mode split) and the service-fee/order-packet flow (Phases 17–19) were carried to the Backlog rather than built. | ⚠️ Revisit — headline scope unmet; re-scope into a fresh milestone (`milestones/v3.0-*` preserves criteria) |
 
 ## Evolution
 
@@ -122,4 +131,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 — Milestone v3.0 Phase 15 (Trustworthy Pricing & Data Foundation) complete: VENDOR-02 + PRICE-01/02/03 + DATA-01 validated, 205 tests passing. Next: Phase 16 (Optimized Supply Plan & Savings).*
+*Last updated: 2026-07-13 — Milestone v3.0 Two-Mode Viewport Experience FORCE-CLOSED at 40% (Phases 15–16 shipped: VENDOR-02 + PRICE-01/02/03 + DATA-01 + BAG-01/02/03, 8/21 requirements). Phases 17–19 (FEE/ORDER/VIEWPORT/MODE) never built — carried to Backlog. Next: `/gsd-new-milestone`.*

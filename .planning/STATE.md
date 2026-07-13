@@ -1,47 +1,37 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.0
-milestone_name: Two-Mode Viewport Experience — Phases 15–19
-current_phase: 17
-current_phase_name: Service Fee & Customer Order Packet
-status: completed
-stopped_at: Phase 16 Plan 04 complete (4/4) — awaiting orchestrator phase completion
-last_updated: "2026-07-13T05:16:25.799Z"
+milestone_name: Two-Mode Viewport Experience — FORCE-CLOSED partial (Phases 15–16 shipped)
+current_phase: 0
+status: Awaiting next milestone
+stopped_at: v3.0 force-closed at 40% — Phases 17/18/19 never built (carried to Backlog)
+last_updated: "2026-07-13T21:08:52.839Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 16 complete, transitioned to Phase 17
+last_activity_desc: Milestone v3.0 force-closed partial (40%) and archived
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 7
   completed_plans: 7
   percent: 40
+current_phase_name: —
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-12)
+See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 16 — optimized-supply-plan-savings
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 17 — Service Fee & Customer Order Packet
-Plan: Not started
-Status: Plan 16-04 complete; awaiting phase-level completion
-Last activity: 2026-07-13 — Completed quick task 260713-01y: redesigned grid+symbols allocation (distinct glyphs first, clean letters last, no digits/combos)
-
-**v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
-
-| Phase | Name | Requirements |
-|-------|------|--------------|
-| 15 | Trustworthy Pricing & Data Foundation | VENDOR-02, PRICE-01/02/03, DATA-01 |
-| 16 | Optimized Supply Plan & Savings | BAG-01/02/03 |
-| 17 | Service Fee & Customer Order Packet | FEE-01, ORDER-01..05 |
-| 18 | Viewport-Native Wizard (UI rework #1, ships green) | VIEWPORT-01/02/03 |
-| 19 | Two-Mode Split (UI rework #2, last) | MODE-01/02/03/04 |
+Phase: v3.0 force-closed at 40% (Phases 15–16 shipped; 17/18/19 never built)
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-13 — Milestone v3.0 force-closed partial and archived
 
 ## Performance Metrics
 
@@ -125,6 +115,19 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 | verification-gap | Phase 08 (08-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
 | verification-gap | Phase 09 (09-VERIFICATION.md) | human_needed — UAT not signed off | v2.1 close |
 
+## Deferred Items
+
+Items acknowledged and deferred at the v3.0 **force-close** (override closeout) on 2026-07-13. v3.0 shipped only Phases 15–16 (correctness foundation); the milestone's headline scope was carried to the ROADMAP Backlog. Full criteria in `milestones/v3.0-ROADMAP.md`; requirements in `milestones/v3.0-REQUIREMENTS.md`.
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| deferred-phase | Phase 17: Service Fee & Customer Order Packet (FEE-01, ORDER-01..05) | not started — never built, re-scope into future milestone | v3.0 force-close |
+| deferred-phase | Phase 18: Viewport-Native Wizard (VIEWPORT-01..03) | not started — never built, re-scope into future milestone | v3.0 force-close |
+| deferred-phase | Phase 19: Two-Mode Split — Customer/Artist (MODE-01..04) | not started — never built, re-scope into future milestone | v3.0 force-close |
+| verification-gap | Phase 07 (07-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
+| verification-gap | Phase 08 (08-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
+| verification-gap | Phase 09 (09-VERIFICATION.md) | human_needed — UAT not signed off (carried from v2.1) | re-ack v3.0 close |
+
 ## Session Continuity
 
 Last session: 2026-07-13T03:37:58.572Z
@@ -149,4 +152,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Plan the first v3.0 phase with `/gsd-plan-phase 15`
+- Start the next milestone with /gsd-new-milestone

@@ -32,9 +32,39 @@ A living retrospective across milestones.
 
 ---
 
+## Milestone: v3.0 — Two-Mode Viewport Experience (partial — FORCE-CLOSED at 40%)
+
+**Shipped:** 2026-07-13
+**Phases:** 2 of 5 (15–16 shipped; 17/18/19 never built) | **Plans:** 7 | **Requirements:** 8/21
+
+### What Was Built
+- **Phase 15 — Trustworthy Pricing & Data Foundation:** removed Prodigi, narrowed the vendor union, guarded `calculateCanvasCost` to `number | null` (no silent $0), added a load-time `normalizeVendor` migration; a canonical integer-cents `engine/money.ts` (epsilon-safe round-half-up, fail-loud) fixed the missing 500 tier and the `$0-as-free` optimizer bug and reconciled the displayed total; a DATA-01 integrity guard ratchets the 5,107-line `DRILL_VARIANTS` table and surfaces unmapped colors. (VENDOR-02, PRICE-01/02/03, DATA-01)
+- **Phase 16 — Optimized Supply Plan & Savings:** `minCostBulk` fewest-bags-within-a-locked-overshoot-cap; the shared `planOrderSupply` aggregator (optimized rows + naive baseline + clamped savings, all integer-cents) is now the sole displayed plan; the `optimizeBagsCost` toggle retired; always-on savings headline + a11y "Why these bags?" explainer + isolated print-only Supply Plan Report. (BAG-01/02/03)
+- Between-phase quick tasks fixed a prod Web Worker regression (matcher shipped as raw `.ts`) and redesigned the grid-symbol allocation (distinct glyphs first, no digit/combo ambiguity).
+
+### What Worked
+- **Correctness-first sequencing held up.** Landing all pricing/data/optimizer correctness (15–16) while the app was still the familiar wizard means the foundation is test-guarded and trustworthy even though the UI reworks never happened — the shipped slice is coherent on its own.
+- **The shared `planOrderSupply` aggregator** as the single engine for legend + cart (+ the future order packet) prevents figure divergence by construction.
+- **Human-verify checkpoints caught real UX bugs** (16-04 found the expander in the wrong panel and a `window.print()` that printed the canvas grid) before they shipped.
+
+### What Was Inefficient
+- **The milestone was closed at 40%.** Only the correctness foundation shipped; the two namesake capabilities (viewport-native wizard, Customer/Artist mode split) and the service-fee/order-packet flow were never built. A milestone named "Two-Mode Viewport Experience" that ships neither the viewport rework nor the modes is a scope/naming mismatch — the correctness work was arguably its own milestone.
+- **Force-close semantics:** the honest record required a Known Gaps section and Backlog carry-forward rather than a clean archive.
+
+### Patterns Established
+- **Canonical integer-cents money authority** (`engine/money.ts`) — all pricing routes through one epsilon-safe, fail-loud helper; no floats in money math.
+- **One shared plan aggregator** feeding every surface, so displayed numbers can't diverge.
+
+### Key Lessons
+- Size milestones so the namesake scope is achievable, or the correctness foundation and the UI rework it enables belong in separate milestones.
+- When force-closing partial, record gaps explicitly (Known Gaps + Backlog + Deferred Items) so the next milestone can pick them up cleanly.
+
+---
+
 ## Cross-Milestone Trends
 
 | Milestone | Phases (active) | Shipped | Notable |
 |-----------|-----------------|---------|---------|
 | v2.0 | 1–9 | 2026-07-07 → 07-10 | Full product build; UAT sign-off deferred on Phases 7–9 |
 | v2.1 | 11, 13 (10/12/14 deferred) | 2026-07-12 | Post-review hardening; review caught 2 real bugs the tests missed |
+| v3.0 | 15, 16 (17/18/19 never built) | 2026-07-13 | Force-closed at 40%: correctness foundation only; headline viewport/mode scope carried to Backlog |
