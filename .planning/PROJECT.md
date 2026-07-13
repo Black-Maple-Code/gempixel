@@ -47,6 +47,9 @@ Provide a simple, non-AI, high-fidelity grid preview of any image mapped directl
 - Storage robustness & error feedback — app survives blocked/private-mode storage, persisted settings centralized behind one `usePersistentState` helper, and save/download/checkout failures surfaced in a dismissible banner (Validated in Phase 11, STORE-01/02, ERR-01).
 - Off-main-thread image decode — the resample + `getImageData` readback + box-sampling now run in the matcher Web Worker via a zero-copy `ImageBitmap` transfer, keeping the UI responsive on large images with bit-identical output (Validated in Phase 13, PERF-01).
 
+**Milestone v3.0 Two-Mode Viewport Experience (in progress, Phase 15 complete 2026-07-12):**
+- Trustworthy pricing & data foundation — Prodigi removed and the unknown-vendor canvas cost guarded so it can never be a silent $0 (`calculateCanvasCost` returns `number | null`; a load-time `normalizeVendor` migrates legacy/tampered `selectedVendor`); the missing 500-bag tier added, the cost minimizer no longer self-selects an unpriced $0-phantom size (missing price → `Infinity`, unplannable colors flagged/surfaced), and itemized line items reconcile exactly to the displayed total via a canonical integer-cents `money.ts` (epsilon-safe round-half-up); a DATA-01 drill-variant integrity test ratchets against duplicate-ID / empty-mapping drift and unmapped grid colors are surfaced at runtime rather than silently dropped (Validated in Phase 15, VENDOR-02 + PRICE-01/02/03 + DATA-01).
+
 ### Active
 
 **Milestone v3.0 Two-Mode Viewport Experience** is in progress (opened 2026-07-12). See the Current Milestone section above for goal and target features; scoped requirements land in `.planning/REQUIREMENTS.md`. **Supply Pricing Accuracy (PRICE-01, PRICE-02, DATA-01) is pulled into v3.0** because the customer quote/fee depends on it.
@@ -119,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 — opened Milestone v3.0 Two-Mode Viewport Experience (viewport-native wizard + Customer/Artist modes + pricing accuracy; frontend-first, backend/payments deferred to v4.0)*
+*Last updated: 2026-07-12 — Milestone v3.0 Phase 15 (Trustworthy Pricing & Data Foundation) complete: VENDOR-02 + PRICE-01/02/03 + DATA-01 validated, 205 tests passing. Next: Phase 16 (Optimized Supply Plan & Savings).*
