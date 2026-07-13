@@ -269,6 +269,46 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
     expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
   });
 
+  // CR-01: a tampered/imported project whose kitBaseCost is non-finite (here a
+  // scientific-notation string that parses to Infinity) reaches the render body's
+  // toCents() total via loadProject — `??` only guards null/undefined. Before the
+  // sanitizeMoney guard, toCents(Infinity) threw in the render body and white-
+  // screened the app. The load + step-3 render must now complete without throwing
+  // and produce a finite, money-formatted total.
+  it('does not white-screen when a loaded project has a non-finite kitBaseCost (CR-01)', async () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'CR-01 Tampered', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'CR-01 Tampered',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      // Tampered/oversized base cost: parseFloat('1e999') === Infinity.
+      kitBaseCost: '1e999',
+      drillPacketCost: 0.25,
+      pricesPerBagSize: priceDb,
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+
+    // The whole load-to-step-3 flow must not throw (the render body runs toCents);
+    // a throw here would reject this awaited promise and fail the test.
+    await loadProjectToStep(3);
+
+    // The estimate line rendered a finite, money-formatted total (base clamped to
+    // 0) — never "Infinity"/"NaN" and never a crash.
+    expect(container.textContent).toContain('Est. total');
+    expect(container.textContent).toMatch(/\$\d+\.\d{2}/);
+    expect(container.textContent).not.toContain('Infinity');
+    expect(container.textContent).not.toContain('NaN');
+  });
+
   it('exposes the "Why these bags?" a11y contract in the Step 3 Cost & Order panel', async () => {
     seedProject();
     await loadProjectToStep(3);

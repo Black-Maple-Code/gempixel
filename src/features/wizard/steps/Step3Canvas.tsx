@@ -1,6 +1,9 @@
 import { useState } from 'preact/hooks';
 import { VENDOR_REGISTRY, type CanvasVendor } from '../../../engine/checkout';
 import { safeStorage } from '../../../engine/safeStorage';
+// CR-01: finite/non-negative coercion for every money input so a non-finite
+// value (e.g. `1e999` -> Infinity) can never reach `toCents` and crash the render.
+import { sanitizeMoney } from '../../../engine/money';
 // BAG-02/D-09: the single static dye-lot "why" sentence lives in App (also
 // mirrored statically into the print report), imported here so the relocated
 // on-screen "Why these bags?" expander shows the exact same copy.
@@ -120,7 +123,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                   step="0.01"
                   min="0"
                   value={canvasBaseCost}
-                  onInput={(e) => setCanvasBaseCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                  onInput={(e) => setCanvasBaseCost(sanitizeMoney((e.target as HTMLInputElement).value))}
                   className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
                 />
               </div>
@@ -131,7 +134,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                   step="0.01"
                   min="0"
                   value={canvasShippingEstimate}
-                  onInput={(e) => setCanvasShippingEstimate(parseFloat((e.target as HTMLInputElement).value) || 0)}
+                  onInput={(e) => setCanvasShippingEstimate(sanitizeMoney((e.target as HTMLInputElement).value))}
                   className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
                 />
               </div>
@@ -150,7 +153,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                     step="0.01"
                     min="0"
                     value={priceDb[200]}
-                    onInput={(e) => updatePriceDb(200, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    onInput={(e) => updatePriceDb(200, sanitizeMoney((e.target as HTMLInputElement).value))}
                     className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
@@ -161,7 +164,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                     step="0.01"
                     min="0"
                     value={priceDb[500]}
-                    onInput={(e) => updatePriceDb(500, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    onInput={(e) => updatePriceDb(500, sanitizeMoney((e.target as HTMLInputElement).value))}
                     className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
@@ -172,7 +175,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                     step="0.01"
                     min="0"
                     value={priceDb[1000]}
-                    onInput={(e) => updatePriceDb(1000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    onInput={(e) => updatePriceDb(1000, sanitizeMoney((e.target as HTMLInputElement).value))}
                     className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
@@ -183,7 +186,7 @@ export function Step3Canvas(props: Step3CanvasProps) {
                     step="0.01"
                     min="0"
                     value={priceDb[2000]}
-                    onInput={(e) => updatePriceDb(2000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    onInput={(e) => updatePriceDb(2000, sanitizeMoney((e.target as HTMLInputElement).value))}
                     className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>

@@ -5,7 +5,7 @@ import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_RE
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents, formatUSD } from './engine/money';
+import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -1025,8 +1025,16 @@ export function App() {
   // shipping into it in integer cents (via money.ts) so there is no IEEE-754 float
   // drift between the drill lines and the total.
   const safetyDrillCostCents = orderPlan.optimizedCostCents;
+  // CR-01: belt-and-suspenders finite guard. The onInput handlers already
+  // sanitize live edits, but a tampered/imported project whose kitBaseCost is
+  // non-finite (or a string) reaches this line via loadProject — `??` only
+  // guards null/undefined — and toCents throws on non-finite input, which would
+  // white-screen the render body. sanitizeMoney clamps to a finite, non-negative
+  // dollar amount before toCents ever sees it.
   const totalCostSafetyCents =
-    toCents(canvasBaseCost) + toCents(canvasShippingEstimate) + safetyDrillCostCents;
+    toCents(sanitizeMoney(canvasBaseCost)) +
+    toCents(sanitizeMoney(canvasShippingEstimate)) +
+    safetyDrillCostCents;
   const safetyDrillCost = fromCents(safetyDrillCostCents);
   const totalCostSafety = fromCents(totalCostSafetyCents);
 
