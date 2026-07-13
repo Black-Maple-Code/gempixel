@@ -202,7 +202,6 @@ export function App() {
   const [canvasShippingEstimate, setCanvasShippingEstimate] = useState(8.0);
   const [drillPacketCost, setDrillPacketCost] = useState(0.25);
   const [drillBagSize, setDrillBagSize] = useState<number>(200);
-  const [optimizeBagsCost, setOptimizeBagsCost] = useState(true);
   const [priceDb, setPriceDb] = useState<Record<200 | 500 | 1000 | 2000, number>>({
     200: 0.60,
     500: 1.10,
@@ -333,7 +332,6 @@ export function App() {
     setCanvasShippingEstimate(8.0);
     setDrillPacketCost(0.25);
     setDrillBagSize(200);
-    setOptimizeBagsCost(true);
     setPriceDb({
       200: 0.60,
       500: 1.10,
@@ -1298,7 +1296,6 @@ export function App() {
             sortedMatches={sortedMatches}
             highlightedColor={highlightedColor}
             handleRowClick={handleRowClick}
-            optimizeBagsCost={optimizeBagsCost}
           />
         )}
 
@@ -1310,14 +1307,8 @@ export function App() {
             setCanvasBaseCost={setCanvasBaseCost}
             canvasShippingEstimate={canvasShippingEstimate}
             setCanvasShippingEstimate={setCanvasShippingEstimate}
-            optimizeBagsCost={optimizeBagsCost}
-            setOptimizeBagsCost={setOptimizeBagsCost}
             priceDb={priceDb}
             updatePriceDb={updatePriceDb}
-            drillBagSize={drillBagSize}
-            setDrillBagSize={setDrillBagSize}
-            drillPacketCost={drillPacketCost}
-            setDrillPacketCost={setDrillPacketCost}
             totalSafetyDrills={totalSafetyDrills}
             totalPackets={totalPackets}
             safetyDrillCost={safetyDrillCost}
@@ -1928,7 +1919,7 @@ export function App() {
                       Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
                     </th>
                     <th className="py-1.5 px-1 text-right">Safety</th>
-                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title={optimizeBagsCost ? 'Optimized combinations of 200, 500, 1000, 2000 bags' : `Bags of size ${drillBagSize}`}>{optimizeBagsCost ? 'Bags (Opt)' : `Bags (${drillBagSize})`}</th>
+                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title="Optimized combinations of 200, 500, 1000, 2000 bags">Bags (Opt)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1968,16 +1959,10 @@ export function App() {
                         <td className="py-1 px-1 text-right text-slate-400 font-mono text-[10px]">{row.count}</td>
                         <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono text-[10px]">{row.safety}</td>
                         <td className="py-1 px-1 text-right font-bold text-slate-300 font-mono text-[9.5px]">
-                          {optimizeBagsCost ? (
-                            <div className="flex flex-col items-end leading-none">
-                              <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
-                              <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
-                            </div>
-                          ) : (
-                            <>
-                              {row.packets} <span className="text-[8px] text-slate-500 font-normal font-sans">({row.packets * drillBagSize})</span>
-                            </>
-                          )}
+                          <div className="flex flex-col items-end leading-none">
+                            <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
+                            <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2014,7 +1999,7 @@ export function App() {
                   <th className="p-2 border border-gray-300">Color Name</th>
                   <th className="p-2 text-right border border-gray-300">Exact Dots</th>
                   <th className="p-2 text-right border border-gray-300">Safety Marg. (+10%)</th>
-                  <th className="p-2 text-right border border-gray-300">{optimizeBagsCost ? 'Recommended Purchase Packs' : `Recommended ${drillBagSize}-Drill Packets`}</th>
+                  <th className="p-2 text-right border border-gray-300">Recommended Purchase Packs</th>
                 </tr>
               </thead>
               <tbody>
@@ -2034,11 +2019,7 @@ export function App() {
                     <td className="p-2 text-right border border-gray-300">{row.count}</td>
                     <td className="p-2 text-right border border-gray-300">{row.safety}</td>
                     <td className="p-2 text-right font-bold border border-gray-300">
-                      {optimizeBagsCost ? (
-                        <span>{row.bagsText} ({row.purchase} drills)</span>
-                      ) : (
-                        <span>{row.packets} pack(s) ({row.packets * drillBagSize} drills)</span>
-                      )}
+                      <span>{row.bagsText} ({row.purchase} drills)</span>
                     </td>
                   </tr>
                 ))}

@@ -28,14 +28,8 @@ export interface Step3CanvasProps {
   setCanvasBaseCost: (v: number) => void;
   canvasShippingEstimate: number;
   setCanvasShippingEstimate: (v: number) => void;
-  optimizeBagsCost: boolean;
-  setOptimizeBagsCost: (v: boolean) => void;
   priceDb: Record<200 | 500 | 1000 | 2000, number>;
   updatePriceDb: (size: 200 | 500 | 1000 | 2000, value: number) => void;
-  drillBagSize: number;
-  setDrillBagSize: (v: number) => void;
-  drillPacketCost: number;
-  setDrillPacketCost: (v: number) => void;
   totalSafetyDrills: number;
   totalPackets: number;
   safetyDrillCost: number;
@@ -63,14 +57,8 @@ export function Step3Canvas(props: Step3CanvasProps) {
     setCanvasBaseCost,
     canvasShippingEstimate,
     setCanvasShippingEstimate,
-    optimizeBagsCost,
-    setOptimizeBagsCost,
     priceDb,
     updatePriceDb,
-    drillBagSize,
-    setDrillBagSize,
-    drillPacketCost,
-    setDrillPacketCost,
     totalSafetyDrills,
     totalPackets,
     safetyDrillCost,
@@ -132,98 +120,58 @@ export function Step3Canvas(props: Step3CanvasProps) {
               </div>
             </div>
 
-            {/* Optimize Bag Combinations Checkbox */}
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                id="optimize-bags-checkbox"
-                type="checkbox"
-                checked={optimizeBagsCost}
-                onChange={(e) => setOptimizeBagsCost((e.target as HTMLInputElement).checked)}
-                className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer shrink-0"
-              />
-              <label htmlFor="optimize-bags-checkbox" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                Optimize bag sizes (Adaptive)
-              </label>
-            </div>
-
-            {optimizeBagsCost ? (
-              <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Prices per Bag Size ($)</span>
-                <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-500 font-mono">200 qty</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={priceDb[200]}
-                      onInput={(e) => updatePriceDb(200, parseFloat((e.target as HTMLInputElement).value) || 0)}
-                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-500 font-mono">500 qty</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={priceDb[500]}
-                      onInput={(e) => updatePriceDb(500, parseFloat((e.target as HTMLInputElement).value) || 0)}
-                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-500 font-mono">1k qty</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={priceDb[1000]}
-                      onInput={(e) => updatePriceDb(1000, parseFloat((e.target as HTMLInputElement).value) || 0)}
-                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-500 font-mono">2k qty</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={priceDb[2000]}
-                      onInput={(e) => updatePriceDb(2000, parseFloat((e.target as HTMLInputElement).value) || 0)}
-                      className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
+            {/* Per-bag-size price grid — the optimized plan is now the sole plan
+                (the "Optimize bag sizes" toggle and the fixed-size controls were
+                retired in Plan 16-03, D-11). */}
+            <div className="flex flex-col gap-1.5 bg-slate-950/60 p-2.5 rounded border border-slate-850/50">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Prices per Bag Size ($)</span>
+              <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Drill Bag Size</label>
-                  <select
-                    value={drillBagSize}
-                    onChange={(e) => setDrillBagSize(parseInt((e.target as HTMLSelectElement).value, 10))}
-                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200 cursor-pointer h-[26px]"
-                  >
-                    <option value={200}>200 Drills</option>
-                    <option value={1000}>1,000 Drills</option>
-                    <option value={2000}>2,000 Drills</option>
-                    <option value={5000}>5,000 Drills</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bag Price ($)</label>
+                  <span className="text-slate-500 font-mono">200 qty</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={drillPacketCost}
-                    onInput={(e) => setDrillPacketCost(parseFloat((e.target as HTMLInputElement).value) || 0)}
-                    className="bg-slate-950/80 border border-slate-850 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-slate-200"
+                    value={priceDb[200]}
+                    onInput={(e) => updatePriceDb(200, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-500 font-mono">500 qty</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceDb[500]}
+                    onInput={(e) => updatePriceDb(500, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-500 font-mono">1k qty</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceDb[1000]}
+                    onInput={(e) => updatePriceDb(1000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-500 font-mono">2k qty</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceDb[2000]}
+                    onInput={(e) => updatePriceDb(2000, parseFloat((e.target as HTMLInputElement).value) || 0)}
+                    className="bg-slate-900 border border-slate-800 rounded px-1 py-0.5 font-mono text-center text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Quoting Cost Breakdown card */}
             <div className="flex flex-col gap-2">
