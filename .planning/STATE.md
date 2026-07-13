@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Two-Mode Viewport Experience — Phases 15–19
 current_phase: 16
-current_phase_name: Optimized Supply Plan & Savings
+current_phase_name: optimized-supply-plan-savings
 status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-07-13T02:11:27.216Z"
+last_updated: "2026-07-13T03:07:11.367Z"
 last_activity: 2026-07-13
-last_activity_desc: "Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)"
+last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 20
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 15 — trustworthy-pricing-data-foundation
+**Current focus:** Phase 16 — optimized-supply-plan-savings
 
 ## Current Position
 
-Phase: 16 — Optimized Supply Plan & Savings
-Plan: Not started
+Phase: 16 (optimized-supply-plan-savings) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs-cart pricing fix (fixed-bag mapping-aware)
+Last activity: 2026-07-13 — Phase 16 execution started
 
 **v3.0 phase map (dependency-ordered — correctness → UI reworks, both UI reworks separate):**
 
@@ -88,6 +88,7 @@ Last activity: 2026-07-13 — Completed quick task 260712-qa1: WR-02 estimate-vs
 | Phase 15 P01 | 6min | 2 tasks | 5 files |
 | Phase 15 P02 | 10min | 3 tasks | 5 files |
 | Phase 15 P03 | 8min | 3 tasks | 3 files |
+| Phase 16 P01 | 6min | 2 tasks | 3 files |
 
 ## Risk & Health
 
@@ -120,7 +121,7 @@ Items acknowledged and carried forward at the v2.1 milestone close (2026-07-12),
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:07:15.245Z
+Last session: 2026-07-13T03:07:02.304Z
 Stopped at: Phase 16 context gathered
 Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 
@@ -135,6 +136,7 @@ Resume file: .planning/phases/16-optimized-supply-plan-savings/16-CONTEXT.md
 - [Phase 15]: 15-01: Removed Prodigi vendor; narrowed CanvasVendor union to 'lumaprints' | 'finerworks'; calculateCanvasCost returns number|null (unknown vendor -> null, never $0); normalizeVendor migrates any legacy/tampered persisted vendor to lumaprints at load; selectedVendor persisted as an additive optional ProjectData field.
 - [Phase 15]: 15-02: engine/money.ts canonical integer-cents helper (EPSILON-safe round-half-up, throws on non-finite); bagPlanner treats a missing price as Infinity (never $0-self-select), adds a 500 tier from a single canonical size table, flags hasUnpricedSize for colors coverable only by an unpriced size; App.tsx sums line items in cents to reconcile the displayed total and surfaces unpriced colors via the existing actionError banner.
 - [Phase 15]: 15-03: DATA-01 drill-variant integrity test (unique-or-allow-listed IDs, no empty reachable mappings beyond allow-list, full palette coverage) ratchets against data drift; hasVariantMapping surfaces shape-unmapped grid colors via the existing banner. Data-owner checkpoint adjudicated the known holes to safe reversible defaults: dup-ID pairs 731/732, 781/782, 776/3326 kept as intended aliases; empty mappings 471/square, 798/round, BLANC/round, ECRU/round kept surfaced-as-unmapped (DRILL_VARIANTS unchanged).
+- [Phase ?]: [Phase 16]: 16-01: minCostBulk retires cost-min for FEWEST-bags-within-the-LOCKED-overshoot-cap (option-b; wasted drills <= one smallest available bulk bag). Same bounded recursive search (D-02, no solver/greedy/dep); cost only a bounded tiebreak via money.ts cents. Total deterministic order so legend==cart (D-03); dye-lot <=800 pack200 path untouched (D-04). 1050 @ standard -> {1000:1,500:1}, 1x2000 rejected.
 
 ## Operator Next Steps
 

@@ -24,7 +24,7 @@ Committed scope for v3.0. Each maps to exactly one roadmap phase. Grounded in `.
 
 ### Supply Optimization
 
-- [ ] **BAG-01**: The gem-bag optimizer minimizes the **number of bags** while respecting the dye-lot consistency rule, using total cost as the tiebreaker.
+- [x] **BAG-01**: The gem-bag optimizer minimizes the **number of bags** while respecting the dye-lot consistency rule, using total cost as the tiebreaker.
 - [ ] **BAG-02**: The user can see the optimized supply plan — per-color bags, total bag count, and total cost — with a plain-language explanation of the dye-lot "why".
 - [ ] **BAG-03**: The user can see how much the optimized plan saves versus a naive per-color purchase (the "why these bags" savings explainer). *(differentiator)*
 
@@ -94,7 +94,7 @@ Final phase mapping (phases 15–19, continuing from the previous milestone's la
 | PRICE-02 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | PRICE-03 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
 | DATA-01 | Phase 15 — Trustworthy Pricing & Data Foundation | Complete |
-| BAG-01 | Phase 16 — Optimized Supply Plan & Savings | Pending |
+| BAG-01 | Phase 16 — Optimized Supply Plan & Savings | Complete |
 | BAG-02 | Phase 16 — Optimized Supply Plan & Savings | Pending |
 | BAG-03 | Phase 16 — Optimized Supply Plan & Savings | Pending |
 | FEE-01 | Phase 17 — Service Fee & Customer Order Packet | Pending |

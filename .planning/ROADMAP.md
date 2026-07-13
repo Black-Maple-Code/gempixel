@@ -88,11 +88,11 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
   3. A plain-language explanation tells the user why bags are grouped the way they are (the dye-lot "why").
   4. The user can see how much the optimized plan saves versus a naive one-size-per-color purchase.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 **Wave 1**
 
-- [ ] 16-01-optimizer-fewest-bags-comparator-PLAN.md — fewest-bags-within-overshoot-cap comparator in minCostBulk + determinism/dye-lot/no-divergence tests (BAG-01) — cap semantics LOCKED (overshoot cap)
+- [x] 16-01-optimizer-fewest-bags-comparator-PLAN.md — fewest-bags-within-overshoot-cap comparator in minCostBulk + determinism/dye-lot/no-divergence tests (BAG-01) — cap semantics LOCKED (overshoot cap)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -164,7 +164,7 @@ Pre-milestone: review blockers B1–B4 fixed via quick tasks (260711-wvv, 260711
 | 12. Supply Pricing Accuracy | v2.1 | — | Deferred (superseded by Phase 15) | — |
 | 14. Security & Cleanup | v2.1 | — | Deferred | — |
 | 15. Trustworthy Pricing & Data Foundation | v3.0 | 3/3 | Complete    | 2026-07-13 |
-| 16. Optimized Supply Plan & Savings | v3.0 | 0/4 | Planned | - |
+| 16. Optimized Supply Plan & Savings | v3.0 | 1/4 | In Progress|  |
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Not started | - |
 | 18. Viewport-Native Wizard | v3.0 | — | Not started | - |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Not started | - |
