@@ -80,7 +80,14 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
   3. A horizontal 4-step bar (Upload → Refine → Supplies → Order) is the *only* navigator — no sidebars, hamburger, or page-flip wizard; the user advances via the primary CTA and returns by tapping a completed step.
   4. The flow is validation-gated — Refine is unreachable without an uploaded image and Supplies without a computed match — and the canvas viewer is mounted once and never remounts on step changes.
   5. The existing viewer/legend/supply UI still functions inside the new shell and the full 240+ Vitest suite stays green.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Atelier CSS tokens + self-hosted fonts + Fontaine no-CLS + engine font-literal repoint (DESIGN-01 CSS-side, DESIGN-02) [Wave 1]
+- [ ] 20-02-PLAN.md — Dark-mode rip in index.html + App.tsx (boot script, theme hook/effect/toggle, removeItem) (DESIGN-01) [Wave 1]
+- [ ] 20-03-PLAN.md — StepBar + AtelierShell + STEP_META pure chrome components with D-12 gating/a11y (SHELL-01, SHELL-02) [Wave 1]
+- [ ] 20-04-PLAN.md — Wire shell into App: delete both legacy navs, single navigator, CSS-toggle single-mount viewer (SHELL-01, SHELL-02) [Wave 2]
+- [ ] 20-05-PLAN.md — Soft-invalidate + "Recompute match" banner (SHELL-02) [Wave 3]
 **UI hint**: yes
 
 ### Phase 21: Shared UI Primitives
@@ -157,7 +164,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Deferred (force-close gap) | — |
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
-| 20. Atelier Design System & Canvas-First Shell | v4.0 | TBD | Not started | — |
+| 20. Atelier Design System & Canvas-First Shell | v4.0 | 0/5 | Planned | — |
 | 21. Shared UI Primitives | v4.0 | TBD | Not started | — |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
