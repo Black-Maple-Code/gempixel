@@ -158,14 +158,12 @@ export function App() {
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
-  // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted via the guarded
-  // hook; the DOM side-effect (applying data-theme to <html>) stays a separate effect.
-  const [theme, setTheme] = usePersistentState<'dark' | 'light'>(
-    'gempixel_theme', 'light', codecs.string as unknown as Codec<'dark' | 'light'>
-  );
+  // Dark mode is fully retired (Atelier light only). Clear the abandoned persisted
+  // key once on boot so a returning dark-mode user carries no residue; routed
+  // through the guarded storage boundary so a blocked store never throws.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    safeStorage.removeItem('gempixel_theme');
+  }, []);
   const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<RecentImage[]>(() => projectStore.recents.list());
@@ -553,13 +551,15 @@ export function App() {
     }
   }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode, symbolMap]);
 
-  // Push theme colors into the canvas viewer (canvas can't read CSS vars itself).
+  // Push CSS-var canvas tokens into the viewer (canvas can't read CSS vars itself).
+  // The real theme->canvas mechanism: :root now always resolves to Atelier light.
+  // PHASE 22: remove theme param — the `theme` dep was dropped when dark mode retired.
   useEffect(() => {
     if (!viewerRef.current) return;
     const styles = getComputedStyle(document.documentElement);
     viewerRef.current.setRoundBacking(styles.getPropertyValue('--drill-round-backing').trim());
     viewerRef.current.setGridGap(styles.getPropertyValue('--canvas-gap').trim());
-  }, [theme, image, matchResult, drillStyle]);
+  }, [image, matchResult, drillStyle]);
 
   const savedViewportModeRef = useRef<'grid' | 'symbols' | 'reference'>('grid');
 
@@ -1432,22 +1432,6 @@ export function App() {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
               <span>Artist Resources</span>
-            </button>
-
-            {/* Simple light/dark pill toggle */}
-            <button
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              aria-label="Toggle light or dark theme"
-              className="relative w-[58px] h-8 rounded-full bg-panel border border-border cursor-pointer shrink-0 transition-colors"
-            >
-              <span
-                className={`absolute top-[3px] h-6 w-6 rounded-full bg-accent text-on-accent flex items-center justify-center text-[12px] leading-none transition-all duration-200 ${
-                  theme === 'light' ? 'left-[3px]' : 'left-[27px]'
-                }`}
-              >
-                {theme === 'light' ? '☀' : '☾'}
-              </span>
             </button>
           </div>
         </div>
