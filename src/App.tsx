@@ -22,7 +22,13 @@ import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from 
 import { UploadScreen } from './features/screens/UploadScreen';
 import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
 import { SuppliesScreen, type SuppliesScreenProps } from './features/screens/SuppliesScreen';
-import { OrderScreen } from './features/screens/OrderScreen';
+import { OrderScreen, type OrderScreenProps } from './features/screens/OrderScreen';
+import {
+  buildOrderPacket,
+  LOCKED_CANVAS_PRODUCT,
+  type OrderFinish,
+  type OrderPacketShipTo,
+} from './features/screens/orderPacket';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
 import type { Codec } from './hooks/usePersistentState';
 
@@ -210,7 +216,23 @@ export function App() {
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set());
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
   const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
-  
+
+  // ORDER-01/02 (D-08/D-09): Order-screen-only state. App stays sole state owner
+  // (D-01); the pure OrderScreen reads these via props. `finish` is a fixed UI enum
+  // with NO price impact (RESEARCH Q3); `shipTo` is CLIENT-SIDE only — embedded in
+  // the downloaded packet and NEVER transmitted (D-08). `packetDownloaded` drives
+  // the honest terminal confirmation (no order number / receipt / payment — D-09).
+  const [finish, setFinish] = useState<OrderFinish>('trimmed');
+  const [shipTo, setShipTo] = useState<OrderPacketShipTo>({
+    name: '',
+    addressLine1: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
+  });
+  const [packetDownloaded, setPacketDownloaded] = useState(false);
+
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
   // Default ON — auto-substitute low-count colors unless the user opted out.
@@ -1382,6 +1404,91 @@ export function App() {
     quote: orderQuote,
   };
 
+  // ORDER-01: the auto-filled LOCKED spec size, derived ONCE from the committed
+  // match grid via the single density source (gridToInches, 2.5mm/dot) so the
+  // spec label, the packet's canvasSpec, and the canvas cost can never desync.
+  const { widthIn: orderWidthIn, heightIn: orderHeightIn } = gridToInches(matchCols, matchRows);
+  const orderSizeLabel = `${formatInches(orderWidthIn)} × ${formatInches(orderHeightIn)} in`;
+  const orderGridLabel = `${matchCols}×${matchRows}`;
+
+  // ORDER-01: editing the finish or ship-to invalidates the just-downloaded packet,
+  // so re-surface the CTA (clear the honest terminal state) — the user can download
+  // an updated file. Never a silent no-op after an edit.
+  const handleFinishChange = (next: OrderFinish) => {
+    setFinish(next);
+    setPacketDownloaded(false);
+  };
+  const handleShipToChange = (patch: Partial<OrderPacketShipTo>) => {
+    setShipTo(prev => ({ ...prev, ...patch }));
+    setPacketDownloaded(false);
+  };
+
+  // ORDER-02 (D-08/D-09): complete the flow by DOWNLOADING a versioned,
+  // self-contained JSON packet — the honest client-side handoff. The CSPRNG id
+  // (generateUUID, never Math.random) + timestamp are generated HERE and injected
+  // into the PURE buildOrderPacket serializer. The packet is written to an
+  // application/json Blob and downloaded via the export.ts anchor + createObjectURL
+  // + deferred-revoke idiom (export.ts:260-288). Ship-to is embedded in the Blob
+  // ONLY — there is NO fetch/network call (D-08). On failure the shared actionError
+  // banner surfaces (never a silent throw); on success the honest terminal state.
+  const handleDownloadOrderPacket = () => {
+    if (!matchResult) return;
+    setActionError(null);
+    try {
+      const packetId = generateUUID();
+      const colorNames = Object.fromEntries(sortedMatches.map(m => [m.code, m.name]));
+      const packet = buildOrderPacket({
+        packetId,
+        createdAt: new Date().toISOString(),
+        design: {
+          cols: matchCols,
+          rows: matchRows,
+          grid: matchResult.matches,
+          drillShape: drillStyle,
+          drillType,
+        },
+        finish,
+        vendor: selectedVendor,
+        supplyPlan: orderPlan,
+        colorNames,
+        quote: orderQuote,
+        shipTo,
+      });
+
+      const blob = new Blob([JSON.stringify(packet, null, 2)], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `gempixel-order-${packetId.slice(0, 8)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      // Defer revocation so the download thread has started (export.ts idiom).
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+
+      setPacketDownloaded(true);
+    } catch (err) {
+      console.error('Failed to build the order packet:', err);
+      setActionError('Couldn’t build the order packet. Please try again.');
+    }
+  };
+
+  // ORDER-01/02 (D-01/D-07): the pure Order screen reads the LOCKED spec, the finish
+  // selection, the client-only ship-to, and the SAME single-source orderQuote that
+  // Supplies renders (so Supplies total === Order total by construction, D-07).
+  const orderProps: OrderScreenProps = {
+    product: LOCKED_CANVAS_PRODUCT,
+    sizeLabel: orderSizeLabel,
+    gridLabel: orderGridLabel,
+    finish,
+    onFinishChange: handleFinishChange,
+    shipTo,
+    onShipToChange: handleShipToChange,
+    quote: orderQuote,
+    onDownloadPacket: handleDownloadOrderPacket,
+    packetDownloaded,
+  };
+
   return (
     <AtelierShell
       step={wizard.step}
@@ -1664,7 +1771,7 @@ export function App() {
 
         <div data-step-panel="4" className={wizard.step === 4 ? 'contents' : 'hidden'}>
           {USE_NEW_ORDER ? (
-            <OrderScreen />
+            <OrderScreen {...orderProps} />
           ) : (
           <Step4Export
             cols={cols}
