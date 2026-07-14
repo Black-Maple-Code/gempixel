@@ -33,7 +33,7 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 ### Supplies
 
 - [ ] **SUPPLIES-01**: The Supplies screen shows the chart legend / supply table (symbol · swatch · DMC code + name · drills incl. +10% safety · bags) computed from the shared `planOrderSupply` engine, plus the dye-lot "why these bags?" explanation.
-- [ ] **SUPPLIES-02**: An inline order-summary panel shows the itemized quote (total drills, bags, canvas print + size, shipping, tax estimate, total) sourced from the single-source quote selector so it can never diverge from the Order screen.
+- [x] **SUPPLIES-02**: An inline order-summary panel shows the itemized quote (total drills, bags, canvas print + size, shipping, tax estimate, total) sourced from the single-source quote selector so it can never diverge from the Order screen.
 
 ### Accurate Quoting
 
@@ -108,7 +108,7 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | REFINE-04 | Phase 23 | Complete |
 | REFINE-05 | Phase 23 | Pending |
 | SUPPLIES-01 | Phase 23 | Pending |
-| SUPPLIES-02 | Phase 23 | Pending |
+| SUPPLIES-02 | Phase 23 | Complete |
 | ORDER-01 | Phase 23 | Pending |
 | ORDER-02 | Phase 23 | Pending |
 | MOBILE-01 | Phase 24 | Pending |
