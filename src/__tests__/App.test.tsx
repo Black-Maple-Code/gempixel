@@ -257,14 +257,22 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     // Select 'ab' drill type
     drillTypeSelect.value = 'ab';
     drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
 
     // Single-plan UI (D-11): the per-bag-size price grid is the sole cost control.
-    // Switching to 'ab' loads the AB preset, so the 200-qty price input becomes 0.70.
+    // Switching to 'ab' loads the AB preset via the drillType effect (App.tsx ~L618),
+    // which is a two-phase async update: setDrillType -> re-render -> effect ->
+    // setPriceDb -> re-render. Poll for the 200-qty input to reflect the AB preset
+    // rather than assuming a fixed settle time — a fixed 10ms wait was intermittently
+    // too short under load and read the pre-effect standard default ('0.6').
     const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+    let price200Input = step3.querySelectorAll('input[type="number"]')[2] as HTMLInputElement;
+    for (let i = 0; i < 50 && price200Input?.value !== '0.7'; i++) {
+      await new Promise(r => setTimeout(r, 10));
+      price200Input = step3.querySelectorAll('input[type="number"]')[2] as HTMLInputElement;
+    }
+
     const inputs = step3.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
-    const price200Input = inputs[2] as HTMLInputElement;
     expect(price200Input.value).toBe('0.7'); // AB 200-qty preset
   });
 
