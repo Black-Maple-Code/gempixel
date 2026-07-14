@@ -129,6 +129,15 @@ export function App() {
   const [cols, setCols] = useState(80);
   const [rows, setRows] = useState(53);
 
+  // D-13 soft-invalidate: the COMMITTED match inputs the worker actually consumes.
+  // Live image/cols/rows drive the editing UI; these advance only on an intentional
+  // commit (fresh upload, project load, reset, or the "Recompute match" CTA). Editing
+  // size/image after a match therefore diverges live-vs-committed → "stale" WITHOUT a
+  // silent worker re-fire (the expensive/abort-race-prone match runs once, on click).
+  const [matchInputs, setMatchInputs] = useState<{ image: HTMLImageElement | null; cols: number; rows: number }>(
+    { image: null, cols: 80, rows: 53 }
+  );
+
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string>('');
   const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => projectStore.list());
@@ -290,6 +299,9 @@ export function App() {
     setSaveProjectName(project.name || '');
     setCols(project.dimensions.cols);
     setRows(project.dimensions.rows);
+    // D-13: a project load is a complete-state commit (its match is restored below),
+    // so align the committed match inputs with the restored dims — never "stale" on load.
+    setMatchInputs({ image: null, cols: project.dimensions.cols, rows: project.dimensions.rows });
     setDrillStyle(project.drillStyle);
     setSelectedBaseKit(project.selectedBaseKit || 'all');
     // WR-01: only arm the preset-skip when the load actually CHANGES drillType,
@@ -348,6 +360,8 @@ export function App() {
     setImageName('');
     setCols(80);
     setRows(53);
+    // D-13: reset clears the committed match inputs too (no residual stale state).
+    setMatchInputs({ image: null, cols: 80, rows: 53 });
     setUnit('grid');
     setWidthInput('80');
     setHeightInput('53');
@@ -461,9 +475,11 @@ export function App() {
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
   const { matchResult, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
-    image,
-    cols,
-    rows,
+    // D-13: the worker consumes the COMMITTED inputs, not the live ones — so an
+    // upstream edit (size/image) after a match does not silently re-fire the worker.
+    image: matchInputs.image,
+    cols: matchInputs.cols,
+    rows: matchInputs.rows,
     activeCandidates,
     enableSubstitution,
     substitutionThreshold,
@@ -476,6 +492,41 @@ export function App() {
     hasMatch: !!matchResult,
     isTestEnv,
   });
+
+  // D-13 soft-invalidate signal. When a match already exists but the live upstream
+  // inputs (image / canvas size, both Step 1 "Upload" inputs) have diverged from the
+  // committed inputs that produced it, downstream steps are out of date. The match
+  // feeds every step from Refine (2) onward, so the earliest out-of-date step is 2.
+  // The last-good match/supplies stay on screen (no data loss); the user recomputes
+  // via the one banner CTA.
+  const isStale =
+    !!matchResult &&
+    (matchInputs.image !== image || matchInputs.cols !== cols || matchInputs.rows !== rows);
+  const staleFromStep: number | null = isStale ? 2 : null;
+
+  // The dimensions the on-screen (last-good) match actually corresponds to. While
+  // stale these lag the live cols/rows, so the canvas/exports keep rendering the
+  // committed grid faithfully instead of mismatching the new (not-yet-applied) size.
+  const matchCols = matchInputs.cols;
+  const matchRows = matchInputs.rows;
+
+  // "Recompute match" CTA: commit the current live inputs. This makes matchInputs ==
+  // live (clearing staleFromStep immediately) and, because the hook keys on these
+  // committed inputs, fires the EXISTING match effect exactly once — no new worker
+  // path, no B2 abort-race re-entry. The last-good match stays until the fresh one lands.
+  const handleRecomputeMatch = () => {
+    setActionError(null);
+    setMatchInputs({ image, cols, rows });
+  };
+
+  // Block advancing PAST a stale step: forward navigation into steps at/after the
+  // stale index is refused until recompute; backward nav to completed steps is fine.
+  // This never touches useWizard.canEnter (engine indices stay frozen, D-04).
+  const guardedGoTo = (target: number) => {
+    if (staleFromStep !== null && target > wizard.step && target >= staleFromStep) return;
+    wizard.goTo(target);
+  };
+  const nextBlockedByStale = staleFromStep !== null && wizard.step + 1 >= staleFromStep;
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
     // The printable/exported legend is a KEY for the grid, so it must list only
@@ -541,7 +592,9 @@ export function App() {
     if (viewerRef.current && matchResult && activeCandidates.length > 0) {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
-      viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
+      // D-13: draw the grid at the COMMITTED match dimensions so a stale (edited-but-
+      // not-yet-recomputed) size keeps rendering the last-good grid coherently.
+      viewerRef.current.setData(matchCols, matchRows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
       viewerRef.current.setDrillType(drillType);
@@ -555,7 +608,7 @@ export function App() {
         lastFitProjectRef.current = activeProjectId;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode, symbolMap]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, matchCols, matchRows, drillType, activeProjectId, viewportMode, symbolMap]);
 
   // Push CSS-var canvas tokens into the viewer (canvas can't read CSS vars itself).
   // The real theme->canvas mechanism: :root now always resolves to Atelier light.
@@ -845,6 +898,12 @@ export function App() {
         setRows(newRows);
         setImage(img);
         setImageSourceOpen(false);
+        // D-13: the FIRST upload commits (a match computes); a re-upload after a
+        // match already exists stays uncommitted → stale, so the worker never
+        // silently re-fires — the user applies it via the "Recompute match" CTA.
+        if (!matchResult) {
+          setMatchInputs({ image: img, cols, rows: newRows });
+        }
 
         // Add to recent images history (limit to 5)
         setRecentImages(prev => {
@@ -892,6 +951,10 @@ export function App() {
       setRows(newRows);
       setImage(img);
       setImageSourceOpen(false);
+      // D-13: same fresh-vs-stale commit rule as a file upload (see loadImageFile).
+      if (!matchResult) {
+        setMatchInputs({ image: img, cols, rows: newRows });
+      }
     };
     img.src = entry.dataUrl;
   };
@@ -935,8 +998,8 @@ export function App() {
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
       
       const canvas = drawCanvasOnly({
-        cols,
-        rows,
+        cols: matchCols,
+        rows: matchRows,
         gridData: matchResult.matches,
         colorMap,
         symbolMap,
@@ -959,8 +1022,8 @@ export function App() {
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
       
       const canvas = drawCombinedCanvasSheet({
-        cols,
-        rows,
+        cols: matchCols,
+        rows: matchRows,
         gridData: matchResult.matches,
         colorMap,
         symbolMap,
@@ -1178,13 +1241,36 @@ export function App() {
     <AtelierShell
       step={wizard.step}
       canEnter={wizard.canEnter}
-      goTo={wizard.goTo}
+      goTo={guardedGoTo}
+      stale={staleFromStep}
       onSave={() => {
         setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
         setSaveModalOpen(true);
       }}
       canSave={!!matchResult}
     >
+    {/* D-13 soft-invalidate banner — one page-level "Recompute match" CTA following
+        the existing non-throwing banner convention (amber/warn, dismiss-free: it
+        clears itself the moment the match is recomputed). Kept out of print. */}
+    {staleFromStep !== null && (
+      <div
+        role="status"
+        className="no-print flex items-center justify-between gap-4 px-4 py-2.5 border-b border-warn text-warn shrink-0"
+        style={{ backgroundColor: '#F7EFD8' }}
+      >
+        <div className="flex flex-col">
+          <span className="font-display text-sm font-semibold leading-tight">This step is out of date</span>
+          <span className="text-[11px] text-muted">Your upstream changes aren't in the match yet — recompute to apply them.</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleRecomputeMatch}
+          className="shrink-0 bg-warn text-on-accent rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide hover:brightness-110 transition-all cursor-pointer"
+        >
+          Recompute match
+        </button>
+      </div>
+    )}
     <div className="flex flex-1 min-h-0 w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
       {/* Left Sidebar Control Panel */}
       <aside
@@ -1475,8 +1561,8 @@ export function App() {
           {wizard.step < 4 ? (
             <button
               id="wizard-next-btn"
-              onClick={wizard.next}
-              disabled={!wizard.canEnter(wizard.step + 1)}
+              onClick={() => { if (!nextBlockedByStale) wizard.next(); }}
+              disabled={!wizard.canEnter(wizard.step + 1) || nextBlockedByStale}
               className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
             >
               Next Step →
