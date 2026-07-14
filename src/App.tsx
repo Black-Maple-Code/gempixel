@@ -4,6 +4,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
+import { buildOrderQuote } from './engine/quote';
 import { gridToInches, formatInches } from './engine/density';
 import { hasVariantMapping } from './engine/variants';
 import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
@@ -20,7 +21,7 @@ import { Step4Export } from './features/wizard/steps/Step4Export';
 import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
 import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
-import { SuppliesScreen } from './features/screens/SuppliesScreen';
+import { SuppliesScreen, type SuppliesScreenProps } from './features/screens/SuppliesScreen';
 import { OrderScreen } from './features/screens/OrderScreen';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
 import type { Codec } from './hooks/usePersistentState';
@@ -1108,6 +1109,17 @@ export function App() {
   // here in the component.
   const orderPlan = planOrderSupply(matchResult?.counts || {}, drillStyle, priceDb);
 
+  // D-07 SINGLE-SOURCE QUOTE: derive the ONE itemized customer quote from the same
+  // reconciled orderPlan + curated canvas base + vendor shipping. Supplies (this
+  // phase) and Order (wave 5) both render THIS object verbatim, so their totals can
+  // never diverge. The legacy inline `totalCostSafetyCents` (below) is deliberately
+  // left untouched — it still feeds the legacy Step3/Step4 bodies until Phase 25 (SC5).
+  const orderQuote = buildOrderQuote({
+    supplyPlan: orderPlan,
+    canvasBaseCost,
+    vendor: selectedVendor,
+  });
+
   // Calculate sorted legend table rows
   const sortedMatches = orderPlan.rows
     .map(row => {
@@ -1358,6 +1370,16 @@ export function App() {
     onRecompute: handleRecomputeMatch,
   };
 
+  // SUPPLIES-01/02 (D-07): the pure Supplies screen reads the already-joined supply
+  // rows (sortedMatches) + symbolMap + the static dye-lot sentence + the SINGLE-SOURCE
+  // orderQuote. No cents math or table assembly leaks into the screen (props-only).
+  const suppliesProps: SuppliesScreenProps = {
+    rows: sortedMatches,
+    symbolMap,
+    dyeLotWhy: DYE_LOT_WHY_SENTENCE,
+    quote: orderQuote,
+  };
+
   return (
     <AtelierShell
       step={wizard.step}
@@ -1605,7 +1627,7 @@ export function App() {
 
         <div data-step-panel="3" className={wizard.step === 3 ? 'contents' : 'hidden'}>
           {USE_NEW_SUPPLIES ? (
-            <SuppliesScreen />
+            <SuppliesScreen {...suppliesProps} />
           ) : (
           <Step3Canvas
             selectedVendor={selectedVendor}
