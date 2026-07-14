@@ -152,6 +152,25 @@ export const VENDOR_REGISTRY: Record<CanvasVendor, VendorConfig> = {
 };
 
 /**
+ * Curated flat drills-shipping estimate (dollars), summed with the canvas vendor's
+ * {@link VendorConfig.baseShipping} into ONE combined "Shipping (est.)" line in
+ * `quote.ts` (D-08). Diamond Drills USA genuinely charges $5 flat (free over $30),
+ * so treating drills shipping as free would read more favorably than reality —
+ * this honest $5 is the deliberate choice. Lives here beside {@link VENDOR_REGISTRY}
+ * (the same curated cost layer); v5.0 live vendor rate APIs replace it.
+ */
+export const DRILLS_BASE_SHIPPING = 5.0;
+
+/**
+ * The "rates as of" provenance date (ISO `YYYY-MM-DD`) for the curated shipping +
+ * canvas rates (QUOTE-03). Dated to the newer of the two curated shipping inputs.
+ * Every estimate line in `quote.ts` carries a `rates as of ${RATES_AS_OF}` note so
+ * no figure reads as a finalized charge. Flipping to live rates later (v5.0) is a
+ * one-constant change here.
+ */
+export const RATES_AS_OF = '2026-07-14';
+
+/**
  * Normalizes a persisted/restored/tampered vendor value to a valid {@link CanvasVendor}.
  * Returns `raw` when it is exactly `'lumaprints'` or `'finerworks'`; every other value
  * (a legacy removed-vendor key, `undefined`, or any tampered string) maps to
