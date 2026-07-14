@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 20-atelier-design-system-canvas-first-shell
 source: [20-01-SUMMARY.md, 20-02-SUMMARY.md, 20-03-SUMMARY.md, 20-04-SUMMARY.md, 20-05-SUMMARY.md]
 started: 2026-07-14T04:46:51Z
-updated: 2026-07-14T05:05:00Z
+updated: 2026-07-14T06:04:01Z
 ---
 
 ## Current Test
@@ -38,10 +38,12 @@ evidence: "set gempixel_theme=dark → reload → key removed (null), no [data-t
 
 ### 4. Atelier top-bar chrome + shell (20-03 D4 / 20-04 D5)
 expected: Top bar shows the green 3x3 pixel-tile mark + a single "GemPixel" Newsreader wordmark + the 4-step StepBar (Upload/Refine/Supplies/Order) + a dark "Save" pill. No duplicate wordmark. StepBar is the only navigator (no dot-nav / hamburger / sidebar).
-result: issue
-reported: "Duplicate GemPixel wordmark (top-bar span 21/600 at y=21 + legacy Step1 <h1> 23/700 at y=79). Separately: excessive spacing from the top bar means you must scroll to see the photo/canvas (canvas top=855px, below the 800px fold; page 2249px tall)."
+result: pass
+source: automated-browser
+resolved_by: 20-06-PLAN.md
+resolution: "Both gaps closed by 20-06 gap-closure plan and re-verified in the live dev server (localhost:5174, 1280x800). GAP 1: legacy sidebar brand cluster removed → visible GemPixel wordmark count = 1 (top-bar header span.font-display), both in empty and match-loaded states. GAP 2: AtelierShell root swapped min-h-screen → h-dvh overflow-hidden → with a real match loaded (4,679 drills / 48 bags / ~200 DMC rows) the page does NOT scroll beyond the viewport (scrollHeight 800 = clientHeight 800, overflowPx 0), the canvas sits above the fold (top 131 / bottom 733), and the left control panel (1441px content) + supply aside scroll on their own inner scrollbars. Save pill and D-13 soft-invalidate/recompute confirmed unregressed (width edit → stale banner + 'Recompute match' CTA)."
+prior_report: "Duplicate GemPixel wordmark (top-bar span 21/600 at y=21 + legacy Step1 <h1> 23/700 at y=79). Separately: excessive spacing from the top bar means you must scroll to see the photo/canvas (canvas top=855px, below the 800px fold; page 2249px tall)."
 severity: major
-evidence: "StepBar OK (4 steps Upload/Refine/Supplies/Order in order, aria-current on step 1, 3 locked aria-disabled, green accent circle); Save pill bg #1B1A17 / text #F4F1E9 OK; light theme OK. wordmarkCount=3 (2 visible GemPixel + 1 print-only report title). main is flex-column; canvas vertically centered in a column stretched to the tall supply-list sidebar → canvas floats below fold."
 
 ### 5. Soft-invalidate + recompute stale behavior (20-05 D-13)
 expected: After a match, editing an upstream step (re-upload / change size) marks downstream steps out-of-date (amber marker), keeps the last-good canvas on screen, blocks advancing past the stale step, and shows one "This step is out of date" / "Recompute match" banner that re-runs the match on click and clears the stale state.
@@ -119,8 +121,8 @@ coverage_id: 20-05-tests
 ## Summary
 
 total: 5
-passed: 4
-issues: 1
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -132,8 +134,9 @@ auto_covered: 13
      on checkpoint 4; both confirmed by the user, who asked to fix now. -->
 
 - truth: "The Atelier top bar shows exactly one 'GemPixel' wordmark (Newsreader 21/600 beside the pixel tile); no duplicate wordmark elsewhere on the Upload screen."
-  status: failed
-  reason: "User-confirmed: a second visible 'GemPixel' heading (legacy Step1 <h1>, Newsreader 23/700 at y=79) renders directly below the top-bar wordmark. UI-SPEC copywriting contract specifies a single wordmark; 20-04 SUMMARY flagged this as a known transient duplicate."
+  status: resolved
+  resolved_by: 20-06-PLAN.md
+  reason: "User-confirmed: a second visible 'GemPixel' heading (legacy Step1 <h1>, Newsreader 23/700 at y=79) renders directly below the top-bar wordmark. UI-SPEC copywriting contract specifies a single wordmark; 20-04 SUMMARY flagged this as a known transient duplicate. FIXED in 20-06: legacy sidebar brand cluster removed; browser re-verify shows exactly 1 visible GemPixel wordmark (header span.font-display)."
   severity: major
   test: 4
   root_cause: "The legacy left-sidebar control-panel header still renders its own brand cluster (gem-logo tile + <h1>GemPixel</h1> + 'Diamond Painting Planner' tagline). Phase 20 added the new AtelierShell top-bar wordmark but kept the always-mounted legacy body, so both wordmarks render simultaneously. The AtelierShell <span> is the intended one; the legacy sidebar <h1> is redundant."
@@ -150,8 +153,9 @@ auto_covered: 13
   debug_session: .planning/debug/duplicate-gempixel-wordmark.md
 
 - truth: "On a desktop viewport the photo/canvas is visible within the shell without scrolling (canvas-first shell — the canvas is the primary above-the-fold surface)."
-  status: failed
-  reason: "User-confirmed: 'so much spacing from the top bar you must scroll to see the photo.' Measured at 1280x800: header ends at 63px but canvas starts at y=855 (below the 800px fold); page scrollHeight 2249px. <main> is flex-column; the center canvas column stretches to the tall supply-list sidebar and vertically-centers the canvas, floating it below the fold."
+  status: resolved
+  resolved_by: 20-06-PLAN.md
+  reason: "User-confirmed: 'so much spacing from the top bar you must scroll to see the photo.' Measured at 1280x800: header ends at 63px but canvas starts at y=855 (below the 800px fold); page scrollHeight 2249px. <main> is flex-column; the center canvas column stretches to the tall supply-list sidebar and vertically-centers the canvas, floating it below the fold. FIXED in 20-06: AtelierShell root min-h-screen -> h-dvh overflow-hidden; browser re-verify with a real match loaded shows canvas top=131/bottom=733 (above the 800 fold), page overflowPx=0 (no scroll beyond viewport), sidebars scroll internally."
   severity: major
   test: 4
   root_cause: "min-h-screen vs h-screen flexbox gotcha. The shell root (AtelierShell.tsx:52) and body (index.css:120) use min-h-screen (min-height only = indefinite height). The flex-1 row wrapper's 0% basis then resolves against content, so the shell grows to the tallest child — the always-mounted 183-207 row DMC Supply List <aside> (~2249px). The row's min-h-0 + overflow-hidden and the sidebars' inner overflow-y-auto (already authored for viewport-capped internal scroll) never engage because nothing forces a definite height. <main> inherits the ballooned height and the center column (items-center) vertically-centers the canvas at ~y=855, below the fold. items-center is a symptom amplifier, not the cause."

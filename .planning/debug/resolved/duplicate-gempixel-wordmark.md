@@ -1,8 +1,10 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 20 UAT Test 4 — TWO visible 'GemPixel' wordmarks on the Upload screen; top-bar span (21/600) at y=21 + legacy sidebar <h1> (23/700) at y=79. UI-SPEC specifies a single wordmark. Diagnose root cause only (no fix)."
 created: 2026-07-14
-updated: 2026-07-14
+updated: 2026-07-14T06:04:01Z
+resolved_by: 20-06-PLAN.md
+resolution: "Legacy left-sidebar brand cluster (gem-logo tile + <h1>GemPixel</h1> + tagline) removed from src/App.tsx; header row set to justify-end so the collapse button stays right-aligned. Browser re-verify: exactly 1 visible GemPixel wordmark (header span.font-display)."
 ---
 
 ## Current Focus

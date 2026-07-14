@@ -1,8 +1,10 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Canvas-first shell (Phase 20): on desktop you must scroll to see the photo/canvas. Header ends at y=63 but canvas starts at y=855 (below the 800px fold); page scrollHeight 2249px at 1280x800. Diagnose root cause only — do NOT fix."
 created: 2026-07-14T05:03:00Z
-updated: 2026-07-14T05:03:00Z
+updated: 2026-07-14T06:04:01Z
+resolved_by: 20-06-PLAN.md
+resolution: "AtelierShell root (src/features/wizard/AtelierShell.tsx:52) swapped min-h-screen -> h-dvh overflow-hidden, giving the flex chain a definite viewport height. Browser re-verify with a real match loaded: page overflowPx=0 (no scroll beyond viewport), canvas top=131/bottom=733 (above the 800 fold), left control panel + supply aside scroll internally."
 ---
 
 ## Current Focus
