@@ -11,6 +11,7 @@ import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, typ
 import { safeStorage } from './engine/safeStorage';
 import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
+import { AtelierShell } from './features/wizard/AtelierShell';
 import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
 import { Step2Palette } from './features/wizard/steps/Step2Palette';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
@@ -1169,7 +1170,17 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
+    <AtelierShell
+      step={wizard.step}
+      canEnter={wizard.canEnter}
+      goTo={wizard.goTo}
+      onSave={() => {
+        setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
+        setSaveModalOpen(true);
+      }}
+      canSave={!!matchResult}
+    >
+    <div className="flex flex-1 min-h-0 w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
       {/* Left Sidebar Control Panel */}
       <aside
         className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 no-print transition-all duration-300 relative shrink-0 ${
@@ -1452,34 +1463,6 @@ export function App() {
             <div className="text-xs font-bold text-slate-700/0 select-none cursor-default w-[42px]">&nbsp;</div>
           )}
 
-          {/* Dots */}
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map(step => {
-              const isActive = wizard.step === step;
-              const isCompleted = wizard.step > step;
-              const isValid = wizard.canEnter(step) || isTestEnv;
-              return (
-                <button
-                  key={step}
-                  onClick={() => isValid && wizard.goTo(step)}
-                  disabled={!isValid}
-                  className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30 scale-105'
-                      : isCompleted
-                      ? 'bg-indigo-950 text-indigo-300 hover:bg-indigo-900 hover:text-white border border-indigo-500/30'
-                      : isValid
-                      ? 'bg-slate-850 text-slate-450 hover:bg-slate-800 hover:text-slate-250 border border-slate-800'
-                      : 'bg-slate-950 text-slate-750 border border-slate-900 cursor-not-allowed'
-                  }`}
-                  title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][step - 1]}
-                >
-                  {step}
-                </button>
-              );
-            })}
-          </div>
-
           {wizard.step < 4 ? (
             <button
               id="wizard-next-btn"
@@ -1498,63 +1481,6 @@ export function App() {
 
     {/* Main Canvas Area */}
     <main className="flex-1 relative flex flex-col min-w-0 print:block">
-
-        {/* Center top wizard progress bar + Save */}
-        <div className="hidden md:flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-panel no-print shrink-0">
-          <div className="flex items-center gap-1.5">
-            {['Upload', 'Size', 'Colors', 'Supplies'].map((label, i) => {
-              const step = i + 1;
-              const isActive = wizard.step === step;
-              const isCompleted = wizard.step > step;
-              const isValid = wizard.canEnter(step) || isTestEnv;
-              return (
-                <div key={label} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="w-6 h-px bg-border" />}
-                  <button
-                    onClick={() => isValid && wizard.goTo(step)}
-                    disabled={!isValid}
-                    title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][i]}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer disabled:cursor-not-allowed ${
-                      isCompleted
-                        ? 'bg-accent-2 text-on-accent font-bold'
-                        : isActive
-                        ? 'bg-accent text-on-accent font-bold'
-                        : isValid
-                        ? 'text-muted hover:text-ink'
-                        : 'text-muted opacity-50'
-                    }`}
-                  >
-                    <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] border border-current">
-                      {isCompleted ? '✓' : step}
-                    </span>
-                    {label}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            {wizard.step < 4 && (
-              <button
-                onClick={wizard.next}
-                disabled={!(wizard.canEnter(wizard.step + 1) || isTestEnv)}
-                className="btn-chunk rounded-md px-5 py-2 text-xs font-bold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Next Step →
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
-                setSaveModalOpen(true);
-              }}
-              disabled={!matchResult}
-              className="btn-chunk-2 rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Save
-            </button>
-          </div>
-        </div>
 
         {leftPanelCollapsed && (
           <button
@@ -2429,5 +2355,6 @@ export function App() {
         <p className="supply-report-total">Proposed total: {formatUSD(totalCostSafetyCents)}</p>
       </div>
     </div>
+    </AtelierShell>
   );
 }
