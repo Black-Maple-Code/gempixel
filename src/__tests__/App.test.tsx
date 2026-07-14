@@ -1218,3 +1218,142 @@ describe('BAG-02 / SC2 — the total bag count is user-visibly rendered from pla
     expect(container.textContent).toMatch(re);
   });
 });
+
+describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step after a match)', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'test-project-d13';
+
+  // A project with gridData so App rebuilds a matchResult on load (no worker run,
+  // MatcherClient.match is a no-op) — the "computed match" starting state for D-13.
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'D13 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const data = {
+      id: projectId,
+      name: 'D13 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 80, rows: 53 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+      gridData: [0, 1, 2, 3],
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const loadProject = async () => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+    const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
+    toggleBtn?.click();
+    await new Promise(r => setTimeout(r, 10));
+    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
+    expect(rowBtn).toBeTruthy();
+    rowBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  // Poll-for-value helper (deflake): re-check a predicate across short ticks rather
+  // than assuming a fixed settle time for async re-render.
+  const pollFor = async (predicate: () => boolean, tries = 50) => {
+    for (let i = 0; i < tries && !predicate(); i++) {
+      await new Promise(r => setTimeout(r, 10));
+    }
+  };
+
+  const nextBtn = () => container.querySelector('#wizard-next-btn') as HTMLButtonElement;
+
+  // Edits the canvas WIDTH on the Step 1 sizing controls (an upstream input).
+  const editWidth = async (value: string) => {
+    const step1 = container.querySelector('[data-step-panel="1"]') as HTMLElement;
+    const sizeTab = Array.from(step1.querySelectorAll('button')).find(
+      b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size'
+    ) as HTMLButtonElement | undefined;
+    sizeTab?.click();
+    await new Promise(r => setTimeout(r, 10));
+    const widthInput = step1.querySelectorAll('input[type="number"]')[0] as HTMLInputElement;
+    expect(widthInput).toBeTruthy();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(widthInput, value);
+    widthInput.dispatchEvent(new Event('input', { bubbles: true }));
+    widthInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  it('marks downstream stale, keeps last-good match, blocks advancing, and Recompute clears it', async () => {
+    seedProject();
+    await loadProject();
+
+    // Starting state: a match exists, nothing is stale — the banner is absent and
+    // forward navigation is allowed.
+    expect(container.querySelector('canvas')).toBeTruthy();
+    expect(container.textContent).not.toContain('This step is out of date');
+    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
+    expect(nextBtn()).toBeTruthy();
+    expect(nextBtn().disabled).toBe(false);
+
+    // Edit a completed upstream step (change the canvas size).
+    await editWidth('60');
+
+    // (1) The soft-invalidate banner + CTA appear.
+    await pollFor(() => container.textContent!.includes('This step is out of date'));
+    expect(container.textContent).toContain('This step is out of date');
+    const recomputeBtn = Array.from(container.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Recompute match'
+    ) as HTMLButtonElement;
+    expect(recomputeBtn).toBeTruthy();
+
+    // (1b) The StepBar shows the out-of-date marker on downstream steps.
+    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeTruthy();
+
+    // (2) The last-good match is retained on screen (no data loss / no silent
+    //     worker re-fire): the canvas is still mounted.
+    expect(container.querySelector('canvas')).toBeTruthy();
+
+    // (3) Advancing past the stale step is blocked.
+    expect(nextBtn().disabled).toBe(true);
+
+    // (4) Recompute runs the match once and clears the stale state.
+    recomputeBtn.click();
+    await pollFor(() => !container.textContent!.includes('This step is out of date'));
+    expect(container.textContent).not.toContain('This step is out of date');
+    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
+    expect(nextBtn().disabled).toBe(false);
+    // The match is still on screen after recomputing.
+    expect(container.querySelector('canvas')).toBeTruthy();
+  });
+
+  it('does not enter the stale state on a fresh linear load (no false positives)', async () => {
+    seedProject();
+    await loadProject();
+
+    // A freshly loaded project is coherent: no stale banner, no marker, Next works.
+    expect(container.textContent).not.toContain('This step is out of date');
+    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
+    expect(nextBtn().disabled).toBe(false);
+
+    // Linear forward navigation is unaffected by the D-13 gating.
+    nextBtn().click();
+    await new Promise(r => setTimeout(r, 10));
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    expect(step2.className).toContain('contents');
+  });
+});
