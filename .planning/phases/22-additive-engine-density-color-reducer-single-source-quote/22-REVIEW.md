@@ -20,7 +20,17 @@ findings:
   warning: 2
   info: 2
   total: 5
-status: issues_found
+status: resolved
+resolution:
+  resolved_commit: fc5a2bf
+  resolved: 2026-07-14
+  notes: >
+    CR-01 fixed — reducer now bounds each merge by the whole cluster's original→destination
+    CIEDE2000 distance (no chain can displace an original cell past the guard); the bound test
+    was replaced with a genuine chaining fixture that fails without the fix. WR-01 (normalizeVendor
+    on the shipping line), WR-02 (finite-guard on the tax base), and IN-01 (formatInches non-finite
+    guard) applied. IN-02 accepted as-is (compareDmcCode is a valid total order over the real DMC
+    catalog; no partial-numeric codes exist). Full suite 325 green, tsc 0.
 ---
 
 # Phase 22: Code Review Report
@@ -28,7 +38,7 @@ status: issues_found
 **Reviewed:** 2026-07-14
 **Depth:** standard
 **Files Reviewed:** 11
-**Status:** issues_found
+**Status:** resolved (fixes in commit fc5a2bf — CR-01 + WR-01/WR-02/IN-01; IN-02 accepted)
 
 ## Summary
 
