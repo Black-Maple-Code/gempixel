@@ -16,6 +16,11 @@ import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
 import { Step2Palette } from './features/wizard/steps/Step2Palette';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
 import { Step4Export } from './features/wizard/steps/Step4Export';
+import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from './features/screens/flags';
+import { UploadScreen } from './features/screens/UploadScreen';
+import { RefineScreen } from './features/screens/RefineScreen';
+import { SuppliesScreen } from './features/screens/SuppliesScreen';
+import { OrderScreen } from './features/screens/OrderScreen';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
 import type { Codec } from './hooks/usePersistentState';
 
@@ -1404,6 +1409,9 @@ export function App() {
             display:none. Nothing here unmounts on a step change, so the single
             <CanvasViewer> in <main> never remounts. */}
         <div data-step-panel="1" className={wizard.step === 1 ? 'contents' : 'hidden'}>
+          {USE_NEW_UPLOAD ? (
+            <UploadScreen />
+          ) : (
           <Step1Ingest
             image={image}
             imageName={imageName}
@@ -1444,9 +1452,13 @@ export function App() {
             handleWidthChange={handleWidthChange}
             handleHeightChange={handleHeightChange}
           />
+          )}
         </div>
 
         <div data-step-panel="2" className={wizard.step === 2 ? 'contents' : 'hidden'}>
+          {USE_NEW_REFINE ? (
+            <RefineScreen />
+          ) : (
           <Step2Palette
             selectedBaseKit={selectedBaseKit}
             setSelectedBaseKit={setSelectedBaseKit}
@@ -1472,9 +1484,13 @@ export function App() {
             highlightedColor={highlightedColor}
             handleRowClick={handleRowClick}
           />
+          )}
         </div>
 
         <div data-step-panel="3" className={wizard.step === 3 ? 'contents' : 'hidden'}>
+          {USE_NEW_SUPPLIES ? (
+            <SuppliesScreen />
+          ) : (
           <Step3Canvas
             selectedVendor={selectedVendor}
             setSelectedVendor={setSelectedVendor}
@@ -1503,9 +1519,13 @@ export function App() {
             printLegendSheetOnly={printLegendSheetOnly}
             printReport={printReport}
           />
+          )}
         </div>
 
         <div data-step-panel="4" className={wizard.step === 4 ? 'contents' : 'hidden'}>
+          {USE_NEW_ORDER ? (
+            <OrderScreen />
+          ) : (
           <Step4Export
             cols={cols}
             rows={rows}
@@ -1523,6 +1543,7 @@ export function App() {
             showSaveSuccess={showSaveSuccess}
             resetWorkspace={resetWorkspace}
           />
+          )}
         </div>
 
 
