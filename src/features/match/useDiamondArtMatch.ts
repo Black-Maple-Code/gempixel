@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'preact/hooks';
-import { substituteLowCountColors } from '../../engine/color';
+import { substituteLowCountColors, reduceToColorCount } from '../../engine/color';
 import { smoothMatches } from '../../engine/smoothing';
 import { MatcherClient } from '../../engine/worker-client';
 import { generateSymbolAllocation, ColorSymbolMap } from '../../engine/symbols';
@@ -32,10 +32,29 @@ export interface MatchInputs {
   enableSmoothing: boolean;
   /** Smoothing aggressiveness 1 (light) .. 3 (strong); ignored when disabled. */
   smoothingStrength: number;
+  /**
+   * Target-N color reduction, OFF by default (optional). Phase 23's REFINE-04
+   * color-count slider flips this on; while falsy the reduce step is never invoked
+   * and matchResult is byte-identical to the pre-reducer hook (SC5, D-05).
+   */
+  enableReduce?: boolean;
+  /**
+   * The color-count slider target (optional). Ignored unless `enableReduce` is true
+   * and it is a finite number below the current distinct count — `reduceToColorCount`
+   * treats it as a ceiling and no-ops when already at/under it (D-05).
+   */
+  targetColorCount?: number;
 }
 
 export interface MatchState {
   matchResult: RawMatch | null;
+  /**
+   * Distinct DMC codes in the RAW matched grid, measured BEFORE smoothing/reduction
+   * (`Object.keys(rawMatchResult.counts).length`, 0 with no match). Recomputes ONLY on a
+   * worker re-run (image / size / palette change) — never on a post-process slider tick — so
+   * it is the stable Refine color-count slider max Phase 23 wires into (D-04). 0 when unmatched.
+   */
+  detectedColorCount: number;
   symbolMap: ColorSymbolMap;
   loading: boolean;
   progress: number;
@@ -94,6 +113,8 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
     substitutionThreshold,
     enableSmoothing,
     smoothingStrength,
+    enableReduce,
+    targetColorCount,
   } = inputs;
 
   const [rawMatchResult, setRawMatchResult] = useState<RawMatch | null>(null);
@@ -214,6 +235,14 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image, cols, rows, candidatesKey]);
 
+  // detectedColorCount is keyed ONLY on rawMatchResult (Pitfall 5 / D-04): the distinct DMC
+  // codes straight out of matchPixelGrid, invariant under smoothing/reduce post-process. Never
+  // derive this off matchResult or the Phase 23 slider max would jump under the user.
+  const detectedColorCount = useMemo(
+    () => Object.keys(rawMatchResult?.counts ?? {}).length,
+    [rawMatchResult]
+  );
+
   const matchResult = useMemo<RawMatch | null>(() => {
     if (!rawMatchResult) return null;
 
@@ -235,6 +264,16 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
       counts = sm.counts;
     }
 
+    // 3. Target-N color reduction (D-05: reduction LAST so its distinct count is the single
+    //    authoritative merged number all consumers see). Gated to a no-op default (Pitfall 6):
+    //    only runs when Phase 23's REFINE-04 slider passes enableReduce + a finite target, so
+    //    App's current matchResult stays byte-identical (reduceToColorCount is not even called).
+    if (enableReduce && typeof targetColorCount === 'number' && Number.isFinite(targetColorCount)) {
+      const reduced = reduceToColorCount(matches, counts, activeCandidates, targetColorCount);
+      matches = reduced.codes;
+      counts = reduced.counts;
+    }
+
     if (matches === rawMatchResult.matches) return rawMatchResult;
     return { matches, counts };
   }, [
@@ -244,6 +283,8 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
     activeCandidates,
     enableSmoothing,
     smoothingStrength,
+    enableReduce,
+    targetColorCount,
     cols,
     rows,
   ]);
@@ -255,5 +296,5 @@ export function useDiamondArtMatch(inputs: MatchInputs): MatchState {
 
   const restore = useCallback((raw: RawMatch | null) => setRawMatchResult(raw), []);
 
-  return { matchResult, symbolMap, loading, progress, loadingPhase, error, restore };
+  return { matchResult, detectedColorCount, symbolMap, loading, progress, loadingPhase, error, restore };
 }
