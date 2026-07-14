@@ -171,7 +171,29 @@ Plans:
   4. **Supplies** — the legend/supply table (symbol · swatch · DMC code + name · drills incl. +10% · bags + "why these bags?") and an inline itemized order-summary both read from the single-source quote, so Supplies and Order can never diverge.
   5. **Order** — an auto-filled, **locked** spec (Rolled Canvas, size from grid, finish) + finish selection + ship-to + the itemized quote, completed by downloading a versioned, self-contained order packet — no implied payment and no fake receipt.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 23-01-PLAN.md — Strangler foundation: flags.ts (4 booleans, all off) + four pure screen shells + App data-step-panel ternaries; suite green, zero behavior change (D-01, D-02) [Wave 1]
+
+**Wave 2** *(blocked on 23-01)*
+
+- [ ] 23-02-PLAN.md — Upload: dropzone + browse + inline recent-projects list (loadProject rehydrate); size removed from Upload; flip USE_NEW_UPLOAD (UPLOAD-01, D-10) [Wave 2]
+
+**Wave 3** *(blocked on 23-02 — keystone)*
+
+- [ ] 23-03-PLAN.md — Refine keystone: SizeCards + custom size (worker tier via soft-invalidate/Recompute) + live edge-cleanup + color slider (post-process, max=detectedColorCount) + Advanced disclosure; flip USE_NEW_REFINE (REFINE-01..05, D-03/04/05/06) [Wave 3]
+
+**Wave 4** *(blocked on 23-03)*
+
+- [ ] 23-04-PLAN.md — Supplies: legend/supply table + "why these bags?" + inline order-summary from single-source buildOrderQuote; honest est./unavailable; flip USE_NEW_SUPPLIES (SUPPLIES-01/02, D-07) [Wave 4]
+
+**Wave 5** *(blocked on 23-04)*
+
+- [ ] 23-05-PLAN.md — Order: locked spec + finish + ship-to + itemized quote + versioned self-contained packet download; honest terminal (no payment/receipt); flip USE_NEW_ORDER (ORDER-01/02, D-08/09) [Wave 5]
+
 **UI hint**: yes
 
 ### Phase 24: Mobile Responsive + Touch Pass
@@ -220,7 +242,7 @@ Plans:
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
-| 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
+| 23. The Four Screens in Flow Order | v4.0 | 0/5 | Planned | — |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 
