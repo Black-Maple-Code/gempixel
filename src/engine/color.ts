@@ -242,10 +242,13 @@ export function compareDmcCode(a: string, b: string): number {
  * ties break on the lowest DMC code; nearest ties break on EXACT distance equality (no
  * epsilon) then lowest DMC code. Counts are never used as a tie-break (they mutate).
  *
- * Guard (D-03): `guard` is an absolute veto. A rare color whose nearest surviving neighbor is
- * beyond `guard` is SKIPPED and the next-rarest is tried; the loop stops only when every
- * surviving color is blocked. `targetN` is therefore a CEILING — `mergedCount` may legitimately
- * EXCEED `targetN` when the guard blocks the remainder (this is correct, not a bug).
+ * Guard (D-03): `guard` is an absolute veto that bounds every original cell's ORIGINAL→final
+ * CIEDE2000 shift (not merely the per-merge hop). A merge is allowed only when the rare color AND
+ * every original color already folded into it (its cluster) are all within `guard` of the
+ * absorbing shade; otherwise the rare color is SKIPPED and the next-rarest is tried. This makes a
+ * chain (A→B→C) safe: A is re-checked against C before B folds into C. The loop stops only when
+ * every surviving color is blocked. `targetN` is therefore a CEILING — `mergedCount` may
+ * legitimately EXCEED `targetN` when the guard blocks the remainder (this is correct, not a bug).
  *
  * Degrade-not-crash: an empty grid / empty counts never throws; grid codes missing from
  * `activeCandidates` cannot be distance-computed and are treated as permanently surviving.
@@ -291,6 +294,13 @@ export function reduceToColorCount(
   // nearest-neighbor distance, so a blocked color can never become mergeable later.
   const blocked = new Set<string>();
   const mergeMap = new Map<string, string>();
+
+  // Cluster membership (CR-01): each surviving code → the ORIGINAL codes currently resolving to
+  // it. Grows as merges fold clusters together. Used to bound EVERY original color's total shift
+  // to its absorbing shade by `guard`, so a chain (A→B→C) can never displace an original cell
+  // beyond the guard — the per-hop check alone did not guarantee this.
+  const cluster = new Map<string, string[]>();
+  initialSurviving.forEach(code => cluster.set(code, [code]));
 
   // 3. Iterative-recompute loop.
   // eslint-disable-next-line no-constant-condition
@@ -340,14 +350,32 @@ export function reduceToColorCount(
         continue;
       }
 
-      // d. Guard veto: nearest is beyond the guard → skip-and-continue (D-03, absolute veto).
-      if (bestDist > guard) {
+      // d. Guard veto (absolute, D-03) — bounds the ORIGINAL→final per-cell shift, not merely the
+      //    per-hop shift (CR-01). Every original color already folded into `rare` (its cluster),
+      //    plus `rare` itself, must be within `guard` of the absorbing shade; otherwise a chain
+      //    A→rare→bestCode would displace A beyond the guard. Nearest-first already covers `rare`
+      //    via bestDist; the cluster members are the extra, chain-safe check. If any member is
+      //    beyond the guard, skip-and-continue (a farther target can only be worse).
+      const rareCluster = cluster.get(rare) ?? [rare];
+      const bestColor = codeToColor.get(bestCode) as DmcColor;
+      const withinGuard =
+        bestDist <= guard &&
+        rareCluster.every(member => {
+          const memberColor = codeToColor.get(member);
+          return memberColor ? getColorDistance(memberColor.lab, bestColor.lab) <= guard : false;
+        });
+      if (!withinGuard) {
         blocked.add(rare);
         continue;
       }
 
-      // e. Merge rare → nearest: fold rare's count into the absorbing shade, drop rare.
+      // e. Merge rare's whole cluster → nearest: fold rare's count into the absorbing shade, drop
+      //    rare, and relocate its cluster membership so a LATER merge of `bestCode` re-checks these
+      //    original colors' guard against the new destination (keeps the original→final bound).
       mergeMap.set(rare, bestCode);
+      const destCluster = cluster.get(bestCode) ?? [bestCode];
+      cluster.set(bestCode, destCluster.concat(rareCluster));
+      cluster.delete(rare);
       workingCounts[bestCode] = (workingCounts[bestCode] || 0) + workingCounts[rare];
       delete workingCounts[rare];
       mergedThisPass = true;

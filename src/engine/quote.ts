@@ -21,7 +21,7 @@
  */
 import { toCents, sumCents } from './money';
 import type { OrderSupplyPlan } from './bagPlanner';
-import { type CanvasVendor, VENDOR_REGISTRY, DRILLS_BASE_SHIPPING, RATES_AS_OF } from './checkout';
+import { type CanvasVendor, VENDOR_REGISTRY, normalizeVendor, DRILLS_BASE_SHIPPING, RATES_AS_OF } from './checkout';
 
 /**
  * The single tax-rate knob (D-07). Held at 0: GemPixel is not the merchant of
@@ -86,16 +86,23 @@ export function buildOrderQuote(input: {
   const canvasCents = canvasPriced ? toCents(input.canvasBaseCost as number) : 0;
 
   // Shipping: ONE combined line = canvas vendor baseShipping + curated flat drills
-  // shipping, summed in dollars then to integer cents (D-08).
+  // shipping, summed in dollars then to integer cents (D-08). Normalize the vendor
+  // first (WR-01) so a tampered/legacy value fails soft to a real vendor's rate —
+  // consistent with calculateCanvasCost/normalizeVendor — instead of a TypeError on
+  // an undefined registry entry.
   const shippingCents = toCents(
-    VENDOR_REGISTRY[input.vendor].baseShipping + DRILLS_BASE_SHIPPING
+    VENDOR_REGISTRY[normalizeVendor(input.vendor)].baseShipping + DRILLS_BASE_SHIPPING
   );
 
   // Tax: routed through money.ts so QUOTE-02 line-sum equality holds; = 0 while
   // TAX_RATE_ESTIMATE = 0 (D-07). The single knob keeps a future live rate one line.
-  const taxCents = toCents(
-    ((drillsCents + canvasCents + shippingCents) / 100) * TAX_RATE_ESTIMATE
-  );
+  // Guard the taxable base (WR-02): a non-finite drills total would make
+  // `base * rate` NaN and throw in toCents — degrade to 0 tax rather than crash the
+  // render path (defense-in-depth; dormant while TAX_RATE_ESTIMATE = 0).
+  const taxableBase = drillsCents + canvasCents + shippingCents;
+  const taxCents = Number.isFinite(taxableBase)
+    ? toCents((taxableBase / 100) * TAX_RATE_ESTIMATE)
+    : 0;
 
   const lineItems: QuoteLineItem[] = [
     { key: 'drills', label: 'Drills', cents: drillsCents, estimate: false },

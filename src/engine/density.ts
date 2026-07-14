@@ -50,7 +50,12 @@ export function gridToInches(
  * `Math.round`), matching App.tsx's existing `fmt` precedent:
  * `formatInches(12) === "12"`, `formatInches(15.44) === "15.4"`,
  * `formatInches(15.45) === "15.5"`.
+ *
+ * A non-finite input formats as `"0"` (IN-01) so the display path stays fail-soft
+ * end-to-end — matching `gridToInches`'s own non-finite guard rather than emitting
+ * `"NaN"`/`"Infinity"` into a label.
  */
 export function formatInches(inches: number): string {
+  if (!Number.isFinite(inches)) return '0';
   return (Math.round(inches * 10) / 10).toString();
 }

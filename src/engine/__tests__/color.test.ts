@@ -398,6 +398,36 @@ describe('Color Engine Math & Matching', () => {
       expect(maxShift).toBeLessThanOrEqual(MERGE_GUARD_DELTA_E);
     });
 
+    it('bounds original→final shift across a MERGE CHAIN, not just per hop (CR-01 regression)', () => {
+      // Three shades on a lightness line. Each ADJACENT hop is within the guard, but the two
+      // ENDPOINTS are ~15.8 ΔE apart (> guard). Merge order is rarest-first: '150'→'310', then an
+      // attempted '310'→'840'. A per-hop-only guard would let '150' chain all the way to '840'
+      // (15.8 ΔE > guard) — a visible shift the "no visible change" contract forbids. The cluster
+      // guard must re-check '150' (already folded into '310') against '840' and veto that hop.
+      const chainCandidates: DmcColor[] = [
+        c('150', { l: 40, a: 10, b: 10 }), // A — rarest (count 1); ~15.8 ΔE from '840'
+        c('310', { l: 48, a: 10, b: 10 }), // B — middle; within guard of both A and C
+        c('840', { l: 56, a: 10, b: 10 })  // C — endpoint
+      ];
+      // Fixture sanity: the geometry is genuinely chain-prone (endpoints exceed the guard,
+      // adjacent hops do not) — otherwise this test could pass without exercising the bug.
+      expect(getColorDistance(chainCandidates[0].lab, chainCandidates[2].lab)).toBeGreaterThan(MERGE_GUARD_DELTA_E);
+      expect(getColorDistance(chainCandidates[0].lab, chainCandidates[1].lab)).toBeLessThanOrEqual(MERGE_GUARD_DELTA_E);
+      expect(getColorDistance(chainCandidates[1].lab, chainCandidates[2].lab)).toBeLessThanOrEqual(MERGE_GUARD_DELTA_E);
+
+      const grid = ['840', '840', '840', '310', '310', '150'];
+      const counts = { '840': 3, '310': 2, '150': 1 };
+      const result = reduceToColorCount(grid, counts, chainCandidates, 1);
+
+      let maxShift = 0;
+      for (let i = 0; i < grid.length; i++) {
+        const shift = getColorDistance(labOf(chainCandidates, grid[i]), labOf(chainCandidates, result.codes[i]));
+        maxShift = Math.max(maxShift, shift);
+      }
+      // With the cluster guard, no original cell drifts past the guard despite the chain.
+      expect(maxShift).toBeLessThanOrEqual(MERGE_GUARD_DELTA_E);
+    });
+
     it('is pure: preserves grid length, invents no new codes, and does not mutate inputs', () => {
       const grid = ['310', '310', '310', '150', '150', '999'];
       const counts = { '310': 3, '150': 2, '999': 1 };
