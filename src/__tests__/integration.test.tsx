@@ -365,9 +365,10 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  // TODO(23-03): re-home against RefineScreen. Width/ratio editing moved OFF Upload
-  // (D-10/SC1); the size inputs have no live DOM until Refine is swapped in (23-03).
-  it.skip('automatically adjusts height to stay in ratio with the loaded image when width changes', async () => {
+  // Re-homed to the RefineScreen custom-size entry (23-03): width/ratio editing moved OFF
+  // Upload (D-10/SC1). App's handleWidthChange still owns the aspect-ratio auto-adjust; the
+  // Refine custom cols/rows inputs forward the strings to it.
+  it('automatically adjusts height to stay in ratio with the loaded image when width changes', async () => {
     // 1. Stub FileReader and Image with naturalWidth = 100, naturalHeight = 50 (aspect ratio = 2)
     const mockReader = {
       readAsDataURL: vi.fn().mockImplementation(function(this: any) {
@@ -409,8 +410,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     render(<App />, container);
 
-    // 2. Load the image
-    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
+    // 2. Load the image (the new Upload screen owns #upload-file-input).
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File([''], 'test.png', { type: 'image/png' });
     Object.defineProperty(fileInput, 'files', { value: [file] });
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -421,10 +422,18 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
-    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
-    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
+    // Reveal the Refine custom-size entry (always-mounted panel-2).
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
 
-    // Change width to 20
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+
+    // Change width to 20 → ratio 2:1 (image 100×50) auto-adjusts height to 10.
     widthEl.value = '20';
     widthEl.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -437,49 +446,39 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  // TODO(23-03): re-home against RefineScreen. Preset canvas-size select moved OFF
-  // Upload (D-10/SC1); no live DOM until Refine is swapped in (23-03).
-  it.skip('updates dimensions and units when preset canvas size changes', async () => {
+  // Re-homed to the RefineScreen SizeCards (23-03): the legacy preset-size <select> moved
+  // OFF Upload (D-10/SC1) and is replaced by curated grid SizeCards (REFINE-01/D-05).
+  // Selecting a card applies its grid dims to the live cols/rows (worker tier). The "units"
+  // half of the old case is dropped — the canvas-first custom entry is grid-native (D-05).
+  it('updates grid dimensions when a Refine size card is selected', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Load a mock image first to enable the wizard Next button
-    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
-    const file = new File([''], 'test.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [file] });
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    const step2 = () => container.querySelector('[data-step-panel="2"]') as HTMLElement;
 
-    // Wait for image onload
+    // Reveal the custom entry to read back the applied dims.
+    const customBtn = Array.from(step2().querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const cards = () => Array.from(step2().querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const widthEl = () => step2().querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = () => step2().querySelector('#refine-height') as HTMLInputElement;
+
+    // Select "Small" (60×40).
+    cards().find(c => c.textContent?.includes('60×40 grid'))!.click();
     await vi.waitFor(() => {
-      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtn).not.toBeNull();
-      expect(nextBtn.disabled).toBe(false);
+      expect(widthEl().value).toBe('60');
+      expect(heightEl().value).toBe('40');
     });
 
-    // Query standard size preset select element
-    const presetSelect = container.querySelector('#preset-size-select') as HTMLSelectElement;
-    expect(presetSelect).not.toBeNull();
-
-    // Select standard size preset: '30x40-cm' (width: 30, height: 40, unit: cm)
-    presetSelect.value = '30x40-cm';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
-    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
-
-    // Wait for async Preact state update and render
+    // Select "Extra large" (140×93).
+    cards().find(c => c.textContent?.includes('140×93 grid'))!.click();
     await vi.waitFor(() => {
-      expect(widthEl.value).toBe('30');
-      expect(heightEl.value).toBe('40');
-    });
-
-    // Select standard grid preset: '80x53-grid'
-    presetSelect.value = '80x53-grid';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-    await vi.waitFor(() => {
-      expect(widthEl.value).toBe('80');
-      expect(heightEl.value).toBe('53');
+      expect(widthEl().value).toBe('140');
+      expect(heightEl().value).toBe('93');
     });
   });
 
@@ -659,96 +658,13 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     });
   });
 
-  // TODO(23-03+): re-home / redesign. The legacy recent-UPLOADS strip (raw images via
-  // #source-image-toggle) is not surfaced by the new UploadScreen, which shows recent
-  // PROJECTS (projectStore.list) instead (D-10/UI-SPEC A1). Recent raw-image chips are a
-  // later design-contract item; this coverage pauses until that UI lands.
-  it.skip('tracks loaded images in recent uploads list and lets users load or delete them', async () => {
-    // Stub FileReader & Image
-    const mockReader = {
-      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
-        if (this.onload) {
-          this.onload({ target: { result: 'data:image/png;base64,mockImageSource' } });
-        }
-      }),
-    };
-    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
-
-    const mockImageInstance = {
-      naturalWidth: 10,
-      naturalHeight: 10,
-      width: 10,
-      height: 10,
-      set src(_val: string) {
-        if (this.onload) {
-          setTimeout(() => this.onload(), 0);
-        }
-      },
-      onload: null as any,
-    };
-    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
-
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
-      if (type === '2d') {
-        return {
-          drawImage: vi.fn(),
-          getImageData: vi.fn().mockReturnValue({
-            data: new Uint8ClampedArray(400),
-            width: 10,
-            height: 10,
-          }),
-        } as any;
-      }
-      return null;
-    });
-
-    render(<App />, container);
-
-    // 1. Upload mock image (the Source Image menu auto-collapses once it loads)
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File([''], 'scenery.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [file], writable: true });
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-    // Wait for the collapsed Source Image summary to appear.
-    const expandSource = () => (container.querySelector('#source-image-toggle') as HTMLElement).click();
-    await vi.waitFor(() => {
-      expect(container.querySelector('#source-image-toggle')).not.toBeNull();
-    });
-
-    // 2. Expand the menu — the recent upload is now tracked inside it.
-    expandSource();
-    await vi.waitFor(() => {
-      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
-    });
-
-    // 3. Click thumbnail to load image; loading re-collapses the menu, so the
-    //    recents disappearing is the deterministic signal that the load ran.
-    (container.querySelector('div[title="scenery.png"]') as HTMLElement).click();
-    await vi.waitFor(() => {
-      expect(container.querySelector('canvas')).not.toBeNull();
-      expect(container.querySelector('div[title="scenery.png"]')).toBeNull();
-    });
-
-    // 4. Re-expand and delete the recent image
-    expandSource();
-    await vi.waitFor(() => {
-      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
-    });
-    const thumbnail = container.querySelector('div[title="scenery.png"]') as HTMLElement;
-    const deleteBtn = thumbnail.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
-    expect(deleteBtn).not.toBeNull();
-    deleteBtn.click();
-
-    // Verify removed
-    await vi.waitFor(() => {
-      const recentList = container.querySelector('div[title="scenery.png"]');
-      expect(recentList).toBeNull();
-    });
-
-    HTMLCanvasElement.prototype.getContext = originalGetContext;
-  });
+  // DELETED (23-03): "tracks loaded images in recent uploads list…" — the legacy
+  // recent-UPLOADS strip (raw images via #source-image-toggle inside Step1Ingest) is not
+  // surfaced by the canvas-first UploadScreen, which shows recent PROJECTS from
+  // projectStore.list() instead (D-10/UI-SPEC A1). Recent raw-image chips are not part of
+  // the v4.0 customer flow, so this exercise has no home. The projectStore recents store
+  // itself remains covered by its own engine unit tests; recent-PROJECT load is covered by
+  // UploadScreen.test.tsx ("calls loadProject(id) on click").
 
   it('triggers fitToContainer when Fit to Container button is clicked', async () => {
     // Stub FileReader & Image

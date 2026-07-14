@@ -134,70 +134,47 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(fileInput).toBeTruthy();
   });
 
-  // TODO(23-03): re-home against RefineScreen. Canvas-size editing moved OFF Upload
-  // (D-10/SC1); the size inputs have no live DOM until Refine is swapped in (23-03).
-  it.skip('allows changing width and height input values in grid mode', async () => {
+  // Re-homed from the legacy Upload "Size" tab (23-03): canvas-size editing now lives
+  // in the RefineScreen custom-size entry (D-10/SC1). Panel-2 is always-mounted, so the
+  // custom cols/rows inputs are driven directly without wizard navigation.
+  it('allows changing width and height in the Refine custom-size entry (grid mode)', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Switch to Size tab first
-    const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
-    sizeTab?.click();
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    // Reveal the custom cols/rows entry (accent "Custom size" toggle).
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    expect(customBtn).toBeTruthy();
+    customBtn.click();
     await new Promise(r => setTimeout(r, 10));
 
-    const inputs = container.querySelectorAll('input[type="number"]');
-    const widthInput = inputs[0] as HTMLInputElement;
-    const heightInput = inputs[1] as HTMLInputElement;
-
+    const widthInput = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightInput = step2.querySelector('#refine-height') as HTMLInputElement;
+    expect(widthInput).toBeTruthy();
+    expect(heightInput).toBeTruthy();
     expect(widthInput.value).toBe('80');
     expect(heightInput.value).toBe('53');
 
-    // Change width using prototype setter
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
 
     valueSetter?.call(widthInput, '60');
     widthInput.dispatchEvent(new Event('input', { bubbles: true }));
-    widthInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10)); // wait a bit for render and effect
+    await new Promise(r => setTimeout(r, 10));
     expect(widthInput.value).toBe('60');
 
-    // Change height
     valueSetter?.call(heightInput, '45');
     heightInput.dispatchEvent(new Event('input', { bubbles: true }));
-    heightInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10)); // wait a bit for render and effect
+    await new Promise(r => setTimeout(r, 10));
     expect(heightInput.value).toBe('45');
   });
 
-  // TODO(23-03): re-home against RefineScreen. Sizing-units control moved OFF Upload
-  // (D-10/SC1); no live DOM until Refine is swapped in (23-03).
-  it.skip('allows changing physical sizing units', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
-
-    // Switch to Size tab first
-    const buttons = container.querySelectorAll('button');
-    const sizeTab = Array.from(buttons).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
-    sizeTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    // Click 'cm' mode button
-    const sizingButtons = container.querySelectorAll('button');
-    const cmButton = Array.from(sizingButtons).find(b => b.textContent?.toLowerCase() === 'cm');
-    expect(cmButton).toBeTruthy();
-
-    cmButton?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    const inputs = container.querySelectorAll('input[type="number"]');
-    const widthInput = inputs[0] as HTMLInputElement;
-    const heightInput = inputs[1] as HTMLInputElement;
-
-    // Default 80x53 in cm should be 80/4 = 20cm and 53/4 = 13.25cm
-    expect(widthInput.value).toBe('20');
-    expect(heightInput.value).toBe('13.25');
-  });
+  // DELETED (23-03): "allows changing physical sizing units" — the cm/inch/grid unit
+  // switcher was a legacy Upload/Step control. The canvas-first RefineScreen custom-size
+  // entry is grid-native (D-05: cols/rows), so the unit switcher has no home in the new
+  // UI and the case no longer applies. Grid ↔ inch derivation is covered by density.ts
+  // unit tests (gridToInches/formatInches) and the SizeCard inch-string assertions.
 
   it('calculates supply costing commission quotes correctly in quote tab', async () => {
     render(<App />, container);
@@ -258,7 +235,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(asides[1].className).toContain('w-0');
   });
 
-  it('updates the per-bag-size price presets when drill type changes', async () => {
+  // TODO(25): the legacy drill-TYPE select (standard/ab/glow/crystal) lived in
+  // Step2Palette; flipping USE_NEW_REFINE (23-03) swaps in RefineScreen, whose Advanced
+  // disclosure holds kit / color-exclude / drill-SHAPE (REFINE-05) — not drill type.
+  // drill type has no canvas-first home yet (a Supplies/Order pricing concern deferred to
+  // the Phase 25 strangler cleanup). The underlying priceDb-preset effect still runs; only
+  // its UI driver moved out of panel-2. Un-skip when drill type gets a new home / is retired.
+  it.skip('updates the per-bag-size price presets when drill type changes', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -643,7 +626,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(viewerConstructions.count).toBe(constructionsAtMount);
     });
 
-    it('supports auto-substitution UI toggles and threshold settings in Step 4', async () => {
+    // TODO(25): the auto-substitution checkbox + threshold slider lived in Step2Palette;
+    // flipping USE_NEW_REFINE (23-03) swaps in RefineScreen, whose color-count slider
+    // (REFINE-04) is the canvas-first color-merge control. The legacy substitution UI has
+    // no panel-2 home (its enableSubstitution/substitutionThreshold state still defaults ON
+    // and runs in the pipeline). Un-skip when/if a substitution control is re-homed, or
+    // retire with the legacy Step bodies in the Phase 25 strangler cleanup.
+    it.skip('supports auto-substitution UI toggles and threshold settings in Step 4', async () => {
       const mockProjectSummary = {
         id: 'test-project-sub',
         name: 'Substitution Project',
@@ -949,65 +938,46 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtnAfterReset.disabled).toBe(true);
     });
 
-    // TODO(23-03): re-home against RefineScreen. Recommended-canvas-sizes UI moved OFF
-    // Upload with the rest of canvas-size selection (D-10/SC1); no live DOM until 23-03.
-    it.skip('displays Recommended PrintKK Sizes in Step 2 and allows selecting them', async () => {
-      // Stub FileReader and Image
-      const mockReader = {
-        readAsDataURL: vi.fn().mockImplementation(function(this: any) {
-          if (this.onload) {
-            this.onload({ target: { result: 'data:image/png;base64,mock' } });
-          }
-        }),
-      };
-      vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
-
-      const mockImageInstance = {
-        naturalWidth: 300,
-        naturalHeight: 400,
-        width: 300,
-        height: 400,
-        set src(_val: string) {
-          if (this.onload) {
-            setTimeout(() => this.onload(), 0);
-          }
-        },
-        onload: null as any,
-      };
-      vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
-
+    // Re-homed from the legacy aspect-ratio "Recommended Canvas Sizes" recs (23-03):
+    // canvas-size preset selection is now the RefineScreen SizeCards (curated grid dims,
+    // REFINE-01/D-05), not aspect-ratio recommendations. Panel-2 is always-mounted, so the
+    // cards + selection are asserted directly. Selecting a card sets live cols/rows (worker
+    // tier); the applied dims are read back through the custom-size inputs.
+    it('renders Refine SizeCards and applies grid dims on select (REFINE-01)', async () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
-      // Upload mock image to unlock wizard progression
-      const file = new File([''], 'scenery.jpg', { type: 'image/jpeg' });
-      const uploadInput = container.querySelector('#file-upload') as HTMLInputElement;
-      Object.defineProperty(uploadInput, 'files', { value: [file] });
-      uploadInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 15));
+      const step2 = () => container.querySelector('[data-step-panel="2"]') as HTMLElement;
 
-      // Check that Recommended Canvas Sizes heading exists
-      expect(container.textContent).toContain('Recommended Canvas Sizes');
+      // Four curated presets render as selectable SizeCards (aria-pressed buttons).
+      const cards = () => Array.from(step2().querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+      expect(cards().length).toBe(4);
 
-      // Top recommendation should be "30 x 40 cm" with "100% Match"
-      expect(container.textContent).toContain('30 x 40 cm');
-      expect(container.textContent).toContain('100% Match');
+      // Cards show true derived inches + a live drill count (never a mock label).
+      const mediumCard = cards().find(c => c.textContent?.includes('80×53 grid'))!;
+      expect(mediumCard).toBeTruthy();
+      expect(mediumCard.textContent).toContain('8 × 5.3 in'); // gridToInches(80,53) → /10
+      expect(mediumCard.textContent).toContain('4240'); // 80 × 53 drills
+      // Medium (80×53) is the default selection.
+      expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
 
-      // Click the "30 x 40 cm" recommendation button
-      const recBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('30 x 40 cm')) as HTMLButtonElement;
-      expect(recBtn).toBeTruthy();
-      recBtn.click();
+      // Reveal the custom entry to read back the applied dims.
+      const customBtn = Array.from(step2().querySelectorAll('button')).find(
+        b => b.textContent?.trim() === 'Custom size'
+      ) as HTMLButtonElement;
+      customBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Verify dimensions are applied
-      const numberInputs = container.querySelectorAll('input[type="number"]');
-      const widthInput = numberInputs[0] as HTMLInputElement;
-      const heightInput = numberInputs[1] as HTMLInputElement;
-      expect(widthInput.value).toBe('30');
-      expect(heightInput.value).toBe('40');
+      // Select the "Large" (110×73) card → live cols/rows update; Medium deselects.
+      const largeCard = cards().find(c => c.textContent?.includes('110×73 grid'))!;
+      expect(largeCard).toBeTruthy();
+      largeCard.click();
+      await new Promise(r => setTimeout(r, 10));
 
-      // Cleanup globals
-      vi.unstubAllGlobals();
+      expect(largeCard.getAttribute('aria-pressed')).toBe('true');
+      expect(cards().find(c => c.textContent?.includes('80×53 grid'))!.getAttribute('aria-pressed')).toBe('false');
+      expect((step2().querySelector('#refine-width') as HTMLInputElement).value).toBe('110');
+      expect((step2().querySelector('#refine-height') as HTMLInputElement).value).toBe('73');
     });
   });
 
@@ -1292,28 +1262,24 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
 
   const nextBtn = () => container.querySelector('#wizard-next-btn') as HTMLButtonElement;
 
-  // Edits the canvas WIDTH on the Step 1 sizing controls (an upstream input).
-  const editWidth = async (value: string) => {
-    const step1 = container.querySelector('[data-step-panel="1"]') as HTMLElement;
-    const sizeTab = Array.from(step1.querySelectorAll('button')).find(
-      b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size'
-    ) as HTMLButtonElement | undefined;
-    sizeTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-    const widthInput = step1.querySelectorAll('input[type="number"]')[0] as HTMLInputElement;
-    expect(widthInput).toBeTruthy();
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    setter?.call(widthInput, value);
-    widthInput.dispatchEvent(new Event('input', { bubbles: true }));
-    widthInput.dispatchEvent(new Event('change', { bubbles: true }));
+  // Changes the canvas size via a RefineScreen SizeCard (the worker-tier control that
+  // now owns size, D-03/D-10). Selecting a card sets live cols/rows in App; divergence
+  // from the committed matchInputs drives the soft-invalidate. The seed is 80×53, so the
+  // "Large" (110×73) card is a genuine size change.
+  const changeSize = async () => {
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const large = cards.find(c => c.textContent?.includes('110×73 grid')) as HTMLButtonElement;
+    expect(large).toBeTruthy();
+    large.click();
     await new Promise(r => setTimeout(r, 10));
   };
 
-  // TODO(23-03): re-home against RefineScreen. This exercise edits the canvas WIDTH
-  // (an upstream size control) to trigger soft-invalidate; size editing moved OFF
-  // Upload (D-10/SC1) and has no live DOM until Refine is swapped in (23-03). The
-  // sibling "no false positives on fresh load" case below needs no size edit and stays live.
-  it.skip('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
+  // Re-homed from the legacy Upload width edit (23-03): size selection now lives on the
+  // RefineScreen SizeCards (D-10/SC1). The soft-invalidate/Recompute machinery (Phase 20
+  // D-13) is unchanged — a size change diverges live cols/rows from the committed
+  // matchInputs → stale banner + Recompute CTA, no per-click worker re-fire (D-04).
+  it('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
     seedProject();
     await loadProject();
 
@@ -1325,8 +1291,8 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     expect(nextBtn()).toBeTruthy();
     expect(nextBtn().disabled).toBe(false);
 
-    // Edit a completed upstream step (change the canvas size).
-    await editWidth('60');
+    // Edit a completed upstream step (change the canvas size via a Refine SizeCard).
+    await changeSize();
 
     // (1) The soft-invalidate banner + CTA appear.
     await pollFor(() => container.textContent!.includes('This step is out of date'));

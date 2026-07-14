@@ -14,6 +14,6 @@
  * (there is no feature-flag system in the repo, and none should be introduced).
  */
 export const USE_NEW_UPLOAD = true;
-export const USE_NEW_REFINE = false;
+export const USE_NEW_REFINE = true;
 export const USE_NEW_SUPPLIES = false;
 export const USE_NEW_ORDER = false;
