@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 21
 current_phase_name: Shared UI Primitives
-status: verifying
-stopped_at: Phase 21 context gathered
-last_updated: "2026-07-14T16:08:18.920Z"
+status: executing
+stopped_at: Phase 21 UI-SPEC approved
+last_updated: "2026-07-14T16:48:59.540Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 20 complete, transitioned to Phase 21
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 21 — Shared UI Primitives
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-14 — Phase 20 complete, transitioned to Phase 21
 
 Progress: [░░░░░░░░░░] 0%
@@ -139,9 +139,9 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T16:08:18.910Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-shared-ui-primitives/21-CONTEXT.md
+Last session: 2026-07-14T16:15:51.635Z
+Stopped at: Phase 21 UI-SPEC approved
+Resume file: .planning/phases/21-shared-ui-primitives/21-UI-SPEC.md
 
 ## Decisions
 
