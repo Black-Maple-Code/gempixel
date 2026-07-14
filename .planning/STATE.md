@@ -6,14 +6,14 @@ current_phase: 23
 current_phase_name: the-four-screens-in-flow-order
 status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-14T21:00:46.052Z"
+last_updated: "2026-07-14T21:28:00.933Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 50
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-14 — Phase 23 execution started
 
@@ -101,6 +101,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 23 P01 | 6min | 3 tasks | 7 files |
 | Phase 23 P02 | 16min | 3 tasks | 7 files |
 | Phase 23 P03 | 34min | 3 tasks | 7 files |
+| Phase 23 P04 | 40min | 3 tasks | 8 files |
 
 ## Risk & Health
 
@@ -148,7 +149,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T20:59:37.870Z
+Last session: 2026-07-14T21:26:57.527Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -181,6 +182,8 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: 23-03: Refine size selection is worker-tier only — sets live cols/rows via the existing soft-invalidate/Recompute, never a per-click worker re-fire (D-04)
 - [Phase ?]: 23-03: color slider max pinned to detectedColorCount (raw-keyed, stable under drag); enableReduce defaults off so the reducer is a byte-identical no-op until lowered (SC5)
 - [Phase ?]: 23-03: legacy drill-type + auto-substitution UI displaced by the RefineScreen flip → skipped TODO(25), not silently dropped; no canvas-first home yet
+- [Phase ?]: 23-04: Single-source quote (D-07) — App derives ONE buildOrderQuote(orderPlan, canvasBaseCost, vendor); Supplies renders quote.lineItems/totalCents verbatim (no cents .reduce); Order (wave 5) consumes the same object
+- [Phase ?]: 23-04: Supplies order-summary panel is a <div> not <aside> so it never shifts the App layout aside indices the workspace/legend tests key off
 
 ## Operator Next Steps
 

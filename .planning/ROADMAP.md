@@ -171,7 +171,7 @@ Plans:
   4. **Supplies** — the legend/supply table (symbol · swatch · DMC code + name · drills incl. +10% · bags + "why these bags?") and an inline itemized order-summary both read from the single-source quote, so Supplies and Order can never diverge.
   5. **Order** — an auto-filled, **locked** spec (Rolled Canvas, size from grid, finish) + finish selection + ship-to + the itemized quote, completed by downloading a versioned, self-contained order packet — no implied payment and no fake receipt.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 **Wave 1**
@@ -188,7 +188,7 @@ Plans:
 
 **Wave 4** *(blocked on 23-03)*
 
-- [ ] 23-04-PLAN.md — Supplies: legend/supply table + "why these bags?" + inline order-summary from single-source buildOrderQuote; honest est./unavailable; flip USE_NEW_SUPPLIES (SUPPLIES-01/02, D-07) [Wave 4]
+- [x] 23-04-PLAN.md — Supplies: legend/supply table + "why these bags?" + inline order-summary from single-source buildOrderQuote; honest est./unavailable; flip USE_NEW_SUPPLIES (SUPPLIES-01/02, D-07) [Wave 4]
 
 **Wave 5** *(blocked on 23-04)*
 
@@ -242,7 +242,7 @@ Plans:
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
-| 23. The Four Screens in Flow Order | v4.0 | 3/5 | In Progress|  |
+| 23. The Four Screens in Flow Order | v4.0 | 4/5 | In Progress|  |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 
