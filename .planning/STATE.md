@@ -6,14 +6,14 @@ current_phase: 22
 current_phase_name: Additive Engine — Density, Color Reducer & Single-Source Quote
 status: executing
 stopped_at: Phase 22 context gathered
-last_updated: "2026-07-14T18:37:48.453Z"
+last_updated: "2026-07-14T18:44:21.249Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 22 (Additive Engine — Density, Color Reducer & Single-Source Quote) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-14 — Phase 22 execution started
 
@@ -94,6 +94,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 20 P05 | 35 min | 3 tasks | 4 files |
 | Phase 20 P06 | 6m | 2 tasks | 3 files |
 | Phase 22 P01 | 6min | 3 tasks | 4 files |
+| Phase 22 P02 | 4min | 3 tasks | 3 files |
 
 ## Risk & Health
 
@@ -141,7 +142,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T18:37:03.008Z
+Last session: 2026-07-14T18:43:39.821Z
 Stopped at: Phase 22 context gathered
 Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-source-quote/22-CONTEXT.md
 
@@ -165,6 +166,8 @@ Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-so
 - [Phase 20]: 20-05: D-13 soft-invalidate via committed match inputs (worker consumes committed image/cols/rows; live edits diverge = stale, no silent re-fire). staleFromStep + Recompute banner + guarded forward-nav block; StepBar renders amber marker. tsc 0; vitest 255.
 - [Phase ?]: Phase 20 GAP closure: h-dvh on AtelierShell root engages internal sidebar scroll; justify-end keeps lone collapse button right-aligned
 - [Phase ?]: Density lives in one engine/density.ts helper at DOTS_PER_INCH=10 (not 10.16), reconciled with calculateCanvasCost /10 — single density source, no second constant (QUOTE-01)
+- [Phase ?]: quote.ts: totalCents IS sumCents(lineItems) by construction — Supplies + Order can never diverge (QUOTE-02)
+- [Phase ?]: TAX_RATE_ESTIMATE=0 labeled 'calculated at vendor checkout' (D-07); combined 'Shipping (est.)' = vendor baseShipping + DRILLS_BASE_SHIPPING with RATES_AS_OF provenance (D-08)
 
 ## Operator Next Steps
 
