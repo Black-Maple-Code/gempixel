@@ -548,11 +548,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       nextBtnStep3.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 4 (Save)
+      // Now on Step 4 (Order)
       // Verify next button is null (final step)
       const nextBtnStep4 = container.querySelector('#wizard-next-btn');
       expect(nextBtnStep4).toBeNull();
-      expect(container.querySelector('#step4-save-name-input')).toBeTruthy(); // save form
+      // 23-05: panel-4 is now the canvas-first OrderScreen (USE_NEW_ORDER), so the
+      // Step-4 marker is its data-screen root, not the legacy Step4Export save form.
+      expect(visiblePanel().querySelector('[data-screen="order"]')).toBeTruthy(); // Step 4 marker
 
       // Go back to Step 3
       const backBtnStep4 = Array.from(container.querySelectorAll('button')).find(b => b.textContent === '< Back') as HTMLButtonElement;
@@ -810,7 +812,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual([]);
     });
 
-    it('supports inline project save, update, and copy actions on Step 5', async () => {
+    // TODO(25): the inline project save / Update / Save-as-Copy controls lived in the
+    // legacy Step4Export panel-4 body. Flipping USE_NEW_ORDER (23-05) swaps in the
+    // honest OrderScreen handoff (download packet — D-08/D-09), which has NO
+    // project-save UI; project-save is not part of the four-screen customer flow and
+    // has no canvas-first home this milestone. handleSaveProject + the workspace
+    // registry logic are UNCHANGED — only the panel-4 driver moved. Un-skip if a
+    // save affordance is re-homed, or retire with the legacy Step body in Phase 25.
+    it.skip('supports inline project save, update, and copy actions on Step 5', async () => {
       const mockProjectSummary = {
         id: 'test-project-save',
         name: 'Initial Project Name',
@@ -894,7 +903,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(registryAfterCopy.length).toBe(2);
     });
 
-    it('returns to Step 1 and resets workspace configuration when Start New Commission button is clicked on Step 5', async () => {
+    // TODO(25): the "Start New Image / Reset" button lived in the legacy Step4Export
+    // panel-4 body, now displaced by the OrderScreen (USE_NEW_ORDER). resetWorkspace
+    // is UNCHANGED and still reachable elsewhere; the panel-4 trigger is gone. Reset
+    // has no canvas-first home in the four-screen flow this milestone. Un-skip if a
+    // reset affordance is re-homed, or retire with the legacy Step body in Phase 25.
+    it.skip('returns to Step 1 and resets workspace configuration when Start New Commission button is clicked on Step 5', async () => {
       const mockProjectSummary = {
         id: 'test-project-reset',
         name: 'Reset Test Project',
@@ -1063,12 +1077,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.clear();
     });
 
-    // TODO(23-05/25): the "Download Canvas Grid (PNG)" trigger lived in the legacy
-    // Step3Canvas body. Flipping USE_NEW_SUPPLIES (23-04) swaps in the read-only
-    // SuppliesScreen; the canvas/packet download affordances belong to the Order
-    // screen (wave 5, A4) and land there. The handler + its actionError catch are
-    // unchanged — only the panel-3 button moved. Un-skip when the Order-screen
-    // download lands, or retire the legacy trigger in the Phase 25 cleanup.
+    // TODO(25): the "Download Canvas Grid (PNG)" trigger lived in the legacy
+    // Step3Canvas body (displaced by USE_NEW_SUPPLIES, 23-04). The generic
+    // download-error → actionError affordance is now RE-HOMED to the OrderScreen
+    // packet download ("surfaces the banner when the order-packet download fails",
+    // above), so no coverage is dropped. This specific legacy PNG-download trigger
+    // + handleDownloadCanvasOnly stay for the dormant Step body; retire in Phase 25.
     it.skip('shows the actionError banner when a canvas download fails (W5)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1086,12 +1100,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(container.textContent).toMatch(/could not generate the download/i);
     });
 
-    // TODO(23-05/25): the "Order Drills" Shopify-checkout trigger lived in the legacy
-    // Step3Canvas body. Flipping USE_NEW_SUPPLIES (23-04) swaps in the read-only
-    // SuppliesScreen; checkout/order-packet flows belong to the Order screen (wave 5,
-    // A4). handleShopifyCheckout + its corrupt-log guard are unchanged — only the
-    // panel-3 button moved. Un-skip when the Order-screen checkout lands, or retire
-    // the legacy trigger in the Phase 25 cleanup.
+    // TODO(25): the "Order Drills" Shopify-checkout trigger lived in the legacy
+    // Step3Canvas body. The canvas-first Order screen (23-05) is the HONEST handoff
+    // (download packet, D-09) and deliberately has NO Shopify checkout / payment UI,
+    // so this trigger has no canvas-first home. handleShopifyCheckout + its
+    // corrupt-log guard are UNCHANGED for the dormant Step body; retire in Phase 25.
     it.skip('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1116,9 +1129,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    // TODO(23-05/25): same as the W4 case above — the "Order Drills" checkout trigger
-    // moved out of panel-3 with the USE_NEW_SUPPLIES flip; the wrong-type-log guard in
-    // handleShopifyCheckout is unchanged. Un-skip when the Order-screen checkout lands.
+    // TODO(25): same as the W4 case above — the honest Order screen (D-09) ships NO
+    // Shopify checkout, so the "Order Drills" trigger has no canvas-first home; the
+    // wrong-type-log guard in handleShopifyCheckout is unchanged. Retire in Phase 25.
     it.skip('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1142,7 +1155,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    it('surfaces the banner when a save hits the storage quota (B3 regression, folded into actionError)', async () => {
+    // TODO(25): the save-quota banner is triggered by the project "Update"/save button
+    // in the legacy Step4Export panel-4 body, now displaced by the OrderScreen
+    // (USE_NEW_ORDER). handleSaveProject + its quota→actionError catch are UNCHANGED;
+    // only the panel-4 save trigger moved. The Order screen's OWN download-error
+    // affordance IS re-homed below ("surfaces the banner when the order-packet
+    // download fails"). Un-skip if project-save is re-homed, or retire in Phase 25.
+    it.skip('surfaces the banner when a save hits the storage quota (B3 regression, folded into actionError)', async () => {
       seedProject();
       await loadProjectToStep(4);
 
@@ -1157,6 +1176,41 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       expect(container.textContent).toMatch(/storage is full/i);
+    });
+
+    // Re-homed from the W5 canvas-PNG download-error skip (23-04): the download-error
+    // affordance now lives on the OrderScreen (the honest packet download, D-08). The
+    // handler wraps buildOrderPacket + the Blob download in a try/catch and surfaces
+    // the shared actionError banner. Force URL.createObjectURL to throw and assert the
+    // banner — the handler must never fail silently. Also proves the terminal state
+    // does NOT appear on a failed download.
+    it('surfaces the banner when the order-packet download fails (re-homed W5)', async () => {
+      seedProject();
+      await loadProjectToStep(4);
+
+      // Panel-4 is the canvas-first OrderScreen with the "Download order packet" CTA.
+      const cta = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent === 'Download order packet'
+      ) as HTMLButtonElement;
+      expect(cta).toBeTruthy();
+
+      // Break the Blob download at URL.createObjectURL → the handler's catch fires.
+      // jsdom does not implement createObjectURL, so assign a throwing impl directly
+      // (nothing to vi.spyOn) and restore the original afterwards.
+      const origCreate = (URL as unknown as { createObjectURL?: unknown }).createObjectURL;
+      (URL as unknown as { createObjectURL: () => string }).createObjectURL = () => {
+        throw new Error('boom');
+      };
+      try {
+        cta.click();
+        await new Promise(r => setTimeout(r, 10));
+      } finally {
+        (URL as unknown as { createObjectURL: unknown }).createObjectURL = origCreate;
+      }
+
+      expect(container.textContent).toMatch(/build the order packet/i);
+      // Honest: the "packet downloaded" terminal state must NOT appear on failure.
+      expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
     });
   });
 });

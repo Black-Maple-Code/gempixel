@@ -16,4 +16,4 @@
 export const USE_NEW_UPLOAD = true;
 export const USE_NEW_REFINE = true;
 export const USE_NEW_SUPPLIES = true;
-export const USE_NEW_ORDER = false;
+export const USE_NEW_ORDER = true;
