@@ -118,12 +118,12 @@ Plans:
   3. The primitives are built from browser-native elements + Tailwind only — no new UI/slider/util dependency enters `package.json`.
   4. The 240+ Vitest suite stays green with the new primitives covered by unit/render tests.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 21-01-PLAN.md — `cn()` helper + Button (primary/save/ghost) + Pill (neutral/ok/tag) variant-map primitives + tests (D-01, D-02, D-03) [Wave 1]
+- [x] 21-01-PLAN.md — `cn()` helper + Button (primary/save/ghost) + Pill (neutral/ok/tag) variant-map primitives + tests (D-01, D-02, D-03) [Wave 1]
 
 **Wave 2** *(blocked on Wave 1 — imports `cn`)*
 
@@ -207,7 +207,7 @@ Plans:
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
-| 21. Shared UI Primitives | v4.0 | 0/3 | Planned | — |
+| 21. Shared UI Primitives | v4.0 | 1/3 | In Progress|  |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
