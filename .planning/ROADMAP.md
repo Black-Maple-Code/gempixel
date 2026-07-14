@@ -83,7 +83,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
   4. The flow is validation-gated — Refine is unreachable without an uploaded image and Supplies without a computed match — and the canvas viewer is mounted once and never remounts on step changes.
   5. The existing viewer/legend/supply UI still functions inside the new shell and the full 240+ Vitest suite stays green.
 
-**Plans**: 5/5 plans complete
+**Plans**: 6 plans (5 shipped; 1 gap-closure pending UAT re-verify)
 
 Plans:
 **Wave 1**
@@ -99,6 +99,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 20-05-PLAN.md — Soft-invalidate + "Recompute match" banner (SHELL-02) [Wave 3]
+
+**Wave 4 — Gap closure** *(UAT Test 4 defects; run via `/gsd-execute-phase 20 --gaps-only`)*
+
+- [ ] 20-06-PLAN.md — Fix duplicate GemPixel wordmark (remove legacy sidebar brand cluster + retarget tests) & canvas-below-fold (definite viewport height on shell root) (SHELL-01, SHELL-02) [Wave 4]
 
 **UI hint**: yes
 
