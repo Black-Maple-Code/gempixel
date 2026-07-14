@@ -37,7 +37,7 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 ### Accurate Quoting
 
-- [ ] **QUOTE-01**: Every physical-size and inch figure shown anywhere in the app is derived from grid dimensions through one density helper (2.5mm/dot) — no hard-coded inch labels from the mock.
+- [x] **QUOTE-01**: Every physical-size and inch figure shown anywhere in the app is derived from grid dimensions through one density helper (2.5mm/dot) — no hard-coded inch labels from the mock.
 - [ ] **QUOTE-02**: The customer quote is computed in exactly one place in integer cents (drills + canvas + shipping + tax estimate) via `money.ts`, and the Supplies "Est. total", the Order total, and the sum of the itemized line items are always exactly equal.
 - [ ] **QUOTE-03**: Tax and any curated vendor/shipping rate are clearly labeled as **estimates** with a dated "rates as of" provenance; no figure is presented as a finalized charge.
 
@@ -98,7 +98,7 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | DESIGN-02 | Phase 20 | Complete |
 | SHELL-01 | Phase 20 | Complete |
 | SHELL-02 | Phase 20 | Complete |
-| QUOTE-01 | Phase 22 | Pending |
+| QUOTE-01 | Phase 22 | Complete |
 | QUOTE-02 | Phase 22 | Pending |
 | QUOTE-03 | Phase 22 | Pending |
 | UPLOAD-01 | Phase 23 | Pending |

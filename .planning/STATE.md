@@ -6,14 +6,14 @@ current_phase: 22
 current_phase_name: Additive Engine — Density, Color Reducer & Single-Source Quote
 status: executing
 stopped_at: Phase 22 context gathered
-last_updated: "2026-07-14T18:32:06.830Z"
+last_updated: "2026-07-14T18:37:48.453Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 33
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 22 (Additive Engine — Density, Color Reducer & Single-Source Quote) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 22
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-14 — Phase 22 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -93,6 +93,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 20 P04 | 32min | 3 tasks | 3 files |
 | Phase 20 P05 | 35 min | 3 tasks | 4 files |
 | Phase 20 P06 | 6m | 2 tasks | 3 files |
+| Phase 22 P01 | 6min | 3 tasks | 4 files |
 
 ## Risk & Health
 
@@ -140,7 +141,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T17:58:06.834Z
+Last session: 2026-07-14T18:37:03.008Z
 Stopped at: Phase 22 context gathered
 Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-source-quote/22-CONTEXT.md
 
@@ -163,6 +164,7 @@ Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-so
 - [Phase 20]: [Phase 20]: 20-04: AtelierShell is the single navigator (both legacy desktop nav surfaces deleted); four step panels are always-mounted CSS-toggled siblings (visible=display:contents, hidden=display:none) so the single CanvasViewer never remounts on step change (SC4/D-14). Preserved #wizard-next-btn exactly with no isTestEnv bypass (locked-Next tests require Next disabled with no image — corrects plan text). Sanitized money-typed project loads at the state boundary so eagerly-mounted Step3Canvas never hits .toFixed on a tampered string (CR-01). tsc 0; vitest 253.
 - [Phase 20]: 20-05: D-13 soft-invalidate via committed match inputs (worker consumes committed image/cols/rows; live edits diverge = stale, no silent re-fire). staleFromStep + Recompute banner + guarded forward-nav block; StepBar renders amber marker. tsc 0; vitest 255.
 - [Phase ?]: Phase 20 GAP closure: h-dvh on AtelierShell root engages internal sidebar scroll; justify-end keeps lone collapse button right-aligned
+- [Phase ?]: Density lives in one engine/density.ts helper at DOTS_PER_INCH=10 (not 10.16), reconciled with calculateCanvasCost /10 — single density source, no second constant (QUOTE-01)
 
 ## Operator Next Steps
 
