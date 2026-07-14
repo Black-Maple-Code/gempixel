@@ -61,7 +61,7 @@ Full success criteria for all five phases preserved in `milestones/v3.0-ROADMAP.
 
 Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state owner, screen children stay pure/props-only, `engine/*` signatures change only inside the isolated engine phase (never in a UI phase), and the 240+ Vitest baseline stays green at every commit — the app ships green at every phase.
 
-- [ ] **Phase 20: Atelier Design System & Canvas-First Shell** - Light-only tokens + self-hosted fonts, dark mode fully retired, and a strangler shell where the horizontal 4-step bar is the only navigator (viewer mounted once).
+- [x] **Phase 20: Atelier Design System & Canvas-First Shell** - Light-only tokens + self-hosted fonts, dark mode fully retired, and a strangler shell where the horizontal 4-step bar is the only navigator (viewer mounted once). (completed 2026-07-14)
 - [ ] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes.
 - [ ] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits.
 - [ ] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag.
@@ -83,7 +83,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
   4. The flow is validation-gated — Refine is unreachable without an uploaded image and Supplies without a computed match — and the canvas viewer is mounted once and never remounts on step changes.
   5. The existing viewer/legend/supply UI still functions inside the new shell and the full 240+ Vitest suite stays green.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -98,7 +98,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 20-05-PLAN.md — Soft-invalidate + "Recompute match" banner (SHELL-02) [Wave 3]
+- [x] 20-05-PLAN.md — Soft-invalidate + "Recompute match" banner (SHELL-02) [Wave 3]
 
 **UI hint**: yes
 
@@ -191,7 +191,7 @@ Plans:
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Deferred (force-close gap) | — |
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
-| 20. Atelier Design System & Canvas-First Shell | v4.0 | 4/5 | In Progress|  |
+| 20. Atelier Design System & Canvas-First Shell | v4.0 | 5/5 | Complete   | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | TBD | Not started | — |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
