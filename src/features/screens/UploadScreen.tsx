@@ -1,6 +1,6 @@
 import { RefObject } from 'preact';
 import { useState } from 'preact/hooks';
-import type { ProjectSummary, RecentImage } from '../../engine/projectStore';
+import type { ProjectSummary } from '../../engine/projectStore';
 import { Button } from '../../ui/Button';
 import { cn } from '../../ui/cn';
 
@@ -9,7 +9,7 @@ import { cn } from '../../ui/cn';
  *
  * PURE / props-only (D-01): App.tsx stays the sole state owner. This component
  * owns NO domain state and imports NO engine *value* (only the `ProjectSummary`
- * / `RecentImage` types). It composes the existing ingest surface (drag/drop +
+ * type). It composes the existing ingest surface (drag/drop +
  * browse) plus an inline recent-projects list sourced from `projectStore.list()`
  * (surfaced by App as `projectsRegistry`); selecting a chip calls `loadProject`
  * to rehydrate state and advance into the flow — no modal picker, no worker run.
@@ -23,19 +23,12 @@ import { cn } from '../../ui/cn';
  * this file uses NO `dangerouslySetInnerHTML`.
  */
 export interface UploadScreenProps {
-  image: HTMLImageElement | null;
-  imageName: string;
   dropZoneRef: RefObject<HTMLDivElement>;
   isDragOver: boolean;
   handleFileChange: (e: Event) => void;
   handleDragOver: (e: DragEvent) => void;
   handleDragLeave: (e: DragEvent) => void;
   handleDrop: (e: DragEvent) => void;
-  imageFitMode: 'cover' | 'contain';
-  setImageFitMode: (v: 'cover' | 'contain') => void;
-  recentImages: RecentImage[];
-  loadRecentImage: (entry: RecentImage) => void;
-  deleteRecentImage: (id: string, e: Event) => void;
   /** Saved projects (`projectStore.list()`); has thumbnails — the D-10 list. */
   projectsRegistry: ProjectSummary[];
   /** Rehydrate ALL state from a saved project + advance into the flow. */

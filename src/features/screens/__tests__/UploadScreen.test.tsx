@@ -32,19 +32,12 @@ describe('UploadScreen — render contract (UPLOAD-01 / D-10)', () => {
     projectsRegistry: ProjectSummary[],
     overrides: Partial<UploadScreenProps> = {},
   ): UploadScreenProps => ({
-    image: null,
-    imageName: '',
     dropZoneRef: { current: null },
     isDragOver: false,
     handleFileChange: vi.fn(),
     handleDragOver: vi.fn(),
     handleDragLeave: vi.fn(),
     handleDrop: vi.fn(),
-    imageFitMode: 'cover',
-    setImageFitMode: vi.fn(),
-    recentImages: [],
-    loadRecentImage: vi.fn(),
-    deleteRecentImage: vi.fn(),
     projectsRegistry,
     loadProject: vi.fn(),
     onDeleteProject: vi.fn(),
@@ -104,7 +97,6 @@ describe('UploadScreen — render contract (UPLOAD-01 / D-10)', () => {
     yes!.click();
 
     expect(props.onDeleteProject).toHaveBeenCalledWith('p1');
-    expect(props.deleteRecentImage).not.toHaveBeenCalled();
   });
 
   it('omits the RECENT label when the projects registry is empty', () => {
