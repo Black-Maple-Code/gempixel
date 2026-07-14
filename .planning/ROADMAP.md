@@ -195,7 +195,7 @@ Plans:
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Deferred (force-close gap) | — |
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
-| 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete   | 2026-07-14 |
+| 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | TBD | Not started | — |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
