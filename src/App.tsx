@@ -1294,18 +1294,7 @@ export function App() {
           leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
         }`}
       >
-        <div className="flex justify-between items-center border-b border-slate-800/60 pb-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="gem-logo w-[38px] h-[38px] shrink-0" aria-hidden="true">
-              {['--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink'].map((c, i) => (
-                <span key={i} style={{ backgroundColor: `var(${c})` }} />
-              ))}
-            </div>
-            <div>
-              <h1 className="font-display text-[23px] font-bold text-ink leading-none">GemPixel</h1>
-              <p className="text-[10px] text-muted mt-1 font-medium tracking-wide">Diamond Painting Planner</p>
-            </div>
-          </div>
+        <div className="flex justify-end items-center border-b border-slate-800/60 pb-3 shrink-0">
           <button
             onClick={() => setLeftPanelCollapsed(true)}
             className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center border border-transparent hover:border-slate-700/30"

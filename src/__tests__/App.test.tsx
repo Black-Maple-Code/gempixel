@@ -96,19 +96,32 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
     expect(() => render(<App />, container)).not.toThrow();
 
-    const heading = container.querySelector('h1');
-    expect(heading).toBeTruthy();
-    expect(heading?.textContent).toBe('GemPixel');
+    const wordmark = container.querySelector('header span.font-display');
+    expect(wordmark).toBeTruthy();
+    expect(wordmark?.textContent).toBe('GemPixel');
+
+    // Regression guard: no <h1> in the DOM is the exact wordmark (the sidebar
+    // brand cluster was removed; the surviving print-only <h1> is the report title).
+    const wordmarkHeadings = Array.from(container.querySelectorAll('h1')).filter(
+      (h) => h.textContent === 'GemPixel',
+    );
+    expect(wordmarkHeadings.length).toBe(0);
   });
 
   it('renders dashboard shell elements', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Verify application header exists
-    const heading = container.querySelector('h1');
-    expect(heading).toBeTruthy();
-    expect(heading?.textContent).toBe('GemPixel');
+    // Verify application header wordmark exists (top-bar Newsreader span)
+    const wordmark = container.querySelector('header span.font-display');
+    expect(wordmark).toBeTruthy();
+    expect(wordmark?.textContent).toBe('GemPixel');
+
+    // Regression guard: no <h1> in the DOM is the exact wordmark.
+    const wordmarkHeadings = Array.from(container.querySelectorAll('h1')).filter(
+      (h) => h.textContent === 'GemPixel',
+    );
+    expect(wordmarkHeadings.length).toBe(0);
 
     // Verify input fields for sizing exist in Step 1.
     // D-14: the four step panels are now always-mounted CSS-toggled siblings, so
