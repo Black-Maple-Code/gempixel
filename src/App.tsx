@@ -303,8 +303,13 @@ export function App() {
     setDrillType(loadedDrillType);
     setExcludedColors(new Set(project.excludedDmcCodes || []));
     setHighlightedColor(null);
-    setCanvasBaseCost(project.kitBaseCost ?? 15.0);
-    setDrillPacketCost(project.drillPacketCost ?? 0.25);
+    // Sanitize money-typed loads to a finite, non-negative NUMBER at the state
+    // boundary. `??` only guards null/undefined, so a tampered/imported value
+    // (e.g. the string '1e999') would otherwise reach the always-mounted
+    // Step3Canvas panel (D-14) and throw on `.toFixed()` (CR-01). Clamping here
+    // keeps the eagerly-rendered panel robust without touching the Step body.
+    setCanvasBaseCost(sanitizeMoney(project.kitBaseCost ?? 15.0));
+    setDrillPacketCost(sanitizeMoney(project.drillPacketCost ?? 0.25));
     setCanvasTemplate(project.canvasTemplate || '');
     setAffiliateTag(project.affiliateTag || '');
     setAffiliateApp(project.affiliateApp || 'ref');
@@ -1302,8 +1307,12 @@ export function App() {
           )}
         </div>
 
-        {/* Wizard Step Contents */}
-        {wizard.step === 1 && (
+        {/* Wizard Step Contents — always-mounted, CSS-toggled siblings (D-14/SC4).
+            The visible panel uses display:contents so it is layout-transparent
+            (behaves exactly as an unwrapped direct child); the others are
+            display:none. Nothing here unmounts on a step change, so the single
+            <CanvasViewer> in <main> never remounts. */}
+        <div data-step-panel="1" className={wizard.step === 1 ? 'contents' : 'hidden'}>
           <Step1Ingest
             image={image}
             imageName={imageName}
@@ -1344,9 +1353,9 @@ export function App() {
             handleWidthChange={handleWidthChange}
             handleHeightChange={handleHeightChange}
           />
-        )}
+        </div>
 
-        {wizard.step === 2 && (
+        <div data-step-panel="2" className={wizard.step === 2 ? 'contents' : 'hidden'}>
           <Step2Palette
             selectedBaseKit={selectedBaseKit}
             setSelectedBaseKit={setSelectedBaseKit}
@@ -1372,9 +1381,9 @@ export function App() {
             highlightedColor={highlightedColor}
             handleRowClick={handleRowClick}
           />
-        )}
+        </div>
 
-        {wizard.step === 3 && (
+        <div data-step-panel="3" className={wizard.step === 3 ? 'contents' : 'hidden'}>
           <Step3Canvas
             selectedVendor={selectedVendor}
             setSelectedVendor={setSelectedVendor}
@@ -1403,9 +1412,9 @@ export function App() {
             printLegendSheetOnly={printLegendSheetOnly}
             printReport={printReport}
           />
-        )}
+        </div>
 
-        {wizard.step === 4 && (
+        <div data-step-panel="4" className={wizard.step === 4 ? 'contents' : 'hidden'}>
           <Step4Export
             cols={cols}
             rows={rows}
@@ -1423,7 +1432,7 @@ export function App() {
             showSaveSuccess={showSaveSuccess}
             resetWorkspace={resetWorkspace}
           />
-        )}
+        </div>
 
 
         {/* Sidebar Footer Actions */}
