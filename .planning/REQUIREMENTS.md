@@ -25,8 +25,8 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 ### Refine (the keystone screen)
 
 - [x] **REFINE-01**: The user picks a canvas size from cards that each show the grid dimensions, the **true physical inches derived from the 2.5mm/dot (10 dots/inch) density** (never a hard-coded mock label), and a live drill count; changing size re-renders the preview and updates counts live.
-- [ ] **REFINE-02**: Preset sizes are presented as recommendations, and the user can order a **custom canvas size** (cols/inches, with sane clamps) when a preset doesn't fit — since printed legends may require a varying canvas size.
-- [ ] **REFINE-03**: An edge-cleanup control (Off / Light / Med / Strong → smoothing strength 0–3) re-renders the chart live to smooth ragged edges.
+- [x] **REFINE-02**: Preset sizes are presented as recommendations, and the user can order a **custom canvas size** (cols/inches, with sane clamps) when a preset doesn't fit — since printed legends may require a varying canvas size.
+- [x] **REFINE-03**: An edge-cleanup control (Off / Light / Med / Strong → smoothing strength 0–3) re-renders the chart live to smooth ragged edges.
 - [x] **REFINE-04**: A color-count slider whose **maximum equals the real detected color count** lets the user reduce colors; lowering it deterministically merges rare one-off drills into the CIEDE2000-nearest already-used shade, keeping the legend, cart, and quote in sync with no visible change to the picture (post-process, no worker re-run per tick).
 - [x] **REFINE-05**: Advanced controls — color kit (100 / 200 / all), color exclusion, and drill shape (square / round) — default sensibly (kit = all, shape = square) and are available under an "Advanced" disclosure in Refine rather than as their own step.
 
@@ -103,8 +103,8 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | QUOTE-03 | Phase 22 | Complete |
 | UPLOAD-01 | Phase 23 | Complete |
 | REFINE-01 | Phase 23 | Complete |
-| REFINE-02 | Phase 23 | Pending |
-| REFINE-03 | Phase 23 | Pending |
+| REFINE-02 | Phase 23 | Complete |
+| REFINE-03 | Phase 23 | Complete |
 | REFINE-04 | Phase 23 | Complete |
 | REFINE-05 | Phase 23 | Complete |
 | SUPPLIES-01 | Phase 23 | Complete |
