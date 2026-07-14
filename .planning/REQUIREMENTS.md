@@ -44,7 +44,7 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 ### Order (confirm & client-side handoff)
 
 - [x] **ORDER-01**: The Order screen presents an auto-filled, **locked** print spec (Rolled Canvas fixed, size from grid, finish) plus a finish selection and a ship-to address and the itemized quote — nothing GemPixel already resolved has to be re-entered.
-- [ ] **ORDER-02**: The user completes the flow via an honest client-side handoff — reviewing the summary and **downloading a versioned, self-contained order packet** (design/chart, canvas spec, optimized gem-bag list, integer-cents quote snapshot; schema forward-compatible with the future v5.0 backend) — with no implied payment and no fake receipt (real payment + lab submission are v5.0).
+- [x] **ORDER-02**: The user completes the flow via an honest client-side handoff — reviewing the summary and **downloading a versioned, self-contained order packet** (design/chart, canvas spec, optimized gem-bag list, integer-cents quote snapshot; schema forward-compatible with the future v5.0 backend) — with no implied payment and no fake receipt (real payment + lab submission are v5.0).
 
 ### Mobile & Touch
 
@@ -110,7 +110,7 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | SUPPLIES-01 | Phase 23 | Complete |
 | SUPPLIES-02 | Phase 23 | Complete |
 | ORDER-01 | Phase 23 | Complete |
-| ORDER-02 | Phase 23 | Pending |
+| ORDER-02 | Phase 23 | Complete |
 | MOBILE-01 | Phase 24 | Pending |
 | MOBILE-02 | Phase 24 | Pending |
 

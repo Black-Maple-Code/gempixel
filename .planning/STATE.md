@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 23
 current_phase_name: the-four-screens-in-flow-order
-status: executing
+status: verifying
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-14T21:28:00.933Z"
+last_updated: "2026-07-14T21:47:40.320Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 23 execution started
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-14 — Phase 23 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -102,6 +102,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 23 P02 | 16min | 3 tasks | 7 files |
 | Phase 23 P03 | 34min | 3 tasks | 7 files |
 | Phase 23 P04 | 40min | 3 tasks | 8 files |
+| Phase 23 P05 | 30min | 3 tasks | 8 files |
 
 ## Risk & Health
 
@@ -149,7 +150,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T21:26:57.527Z
+Last session: 2026-07-14T21:47:33.258Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -184,6 +185,8 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: 23-03: legacy drill-type + auto-substitution UI displaced by the RefineScreen flip → skipped TODO(25), not silently dropped; no canvas-first home yet
 - [Phase ?]: 23-04: Single-source quote (D-07) — App derives ONE buildOrderQuote(orderPlan, canvasBaseCost, vendor); Supplies renders quote.lineItems/totalCents verbatim (no cents .reduce); Order (wave 5) consumes the same object
 - [Phase ?]: 23-04: Supplies order-summary panel is a <div> not <aside> so it never shifts the App layout aside indices the workspace/legend tests key off
+- [Phase ?]: 23-05: Order packet is a pure deterministic serializer (buildOrderPacket) with packetId+createdAt INJECTED — generateUUID/Date live in the App handler, keeping the module side-effect free and unit-testable
+- [Phase ?]: 23-05: The honest handoff replaces Shopify checkout — Order ships a client-side JSON packet download + honest terminal state (no order#/receipt/payment, D-09); legacy handleShopifyCheckout stays dormant for Phase 25
 
 ## Operator Next Steps
 
