@@ -44,9 +44,14 @@ vi.mock('../engine/worker-client', () => {
   };
 });
 
+// SC4/D-14 single-mount identity: count CanvasViewer constructions so a test can
+// assert the viewer is instantiated once and never re-instantiated on a step change.
+const viewerConstructions = vi.hoisted(() => ({ count: 0 }));
+
 vi.mock('../engine/viewer', () => {
   return {
     CanvasViewer: class MockCanvasViewer {
+      constructor() { viewerConstructions.count++; }
       setData = vi.fn();
       setDrillStyle = vi.fn();
       setHighlightedColor = vi.fn();
@@ -105,8 +110,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(heading).toBeTruthy();
     expect(heading?.textContent).toBe('GemPixel');
 
-    // Verify input fields for sizing exist in Step 1
-    const numberInputs = container.querySelectorAll('input[type="number"]');
+    // Verify input fields for sizing exist in Step 1.
+    // D-14: the four step panels are now always-mounted CSS-toggled siblings, so
+    // scope the count to the VISIBLE panel (the one not display:none-d) — the
+    // hidden panels' inputs are still in the DOM.
+    const numberInputs = container.querySelectorAll('[data-step-panel]:not(.hidden) input[type="number"]');
     expect(numberInputs.length).toBe(2);
 
     // Verify file input exists in Step 1
@@ -179,16 +187,15 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Click 'Cost & Order' tab
-    const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
-    expect(quoteTab).toBeTruthy();
-    quoteTab?.click();
-    await new Promise(r => setTimeout(r, 10));
+    // D-14: the Supplies (step 3) panel is always mounted (CSS-toggled sibling),
+    // so its cost controls can be asserted directly by scoping to its panel —
+    // no navigation required (and the strict StepBar/Next stay locked with no image).
+    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+    expect(step3).toBeTruthy();
 
     // Single-plan UI (D-11): the per-bag-size price grid always renders, so there are
     // 6 number inputs — Canvas price, Est. Shipping, then the 200/500/1k/2k prices.
-    const inputs = container.querySelectorAll('input[type="number"]');
+    const inputs = step3.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
     const canvasCostInput = inputs[0] as HTMLInputElement;
     const shippingEstimateInput = inputs[1] as HTMLInputElement;
@@ -199,7 +206,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(price200Input.value).toBe('0.6'); // 200-qty default standard price
 
     // Canvas base cost: $15, shipping: $8, drills cost: $0 (no matchResult) -> Total Cost: $23.00
-    const quoteSections = container.querySelectorAll('span');
+    const quoteSections = step3.querySelectorAll('span');
     const exactQuoteSpan = Array.from(quoteSections).find(s => s.textContent?.includes('$23.00'));
     expect(exactQuoteSpan).toBeTruthy();
   });
@@ -239,15 +246,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Navigate to Palette & Optimize (Step 2) to find the drill type select dropdown.
-    const buttons = container.querySelectorAll('button');
-    const paletteTab = Array.from(buttons).find(b => b.title === 'Palette & Optimize' || b.textContent?.toLowerCase() === 'palette & optimize');
-    expect(paletteTab).toBeTruthy();
-    paletteTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    const selects = container.querySelectorAll('select');
-    const drillTypeSelect = selects[1] as HTMLSelectElement;
+    // D-14: both the Refine (step 2) and Supplies (step 3) panels are always
+    // mounted, so the drill-type select and the price grid are asserted directly
+    // by scoping to their panels — no navigation required.
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    expect(step2).toBeTruthy();
+    const drillTypeSelect = step2.querySelectorAll('select')[1] as HTMLSelectElement; // [0]=DMC kit, [1]=drill type
     expect(drillTypeSelect).toBeTruthy();
 
     // Select 'ab' drill type
@@ -255,14 +259,10 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
 
-    // Now switch to 'Cost & Order' tab (Step 3) to check the price grid presets
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
-    quoteTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
     // Single-plan UI (D-11): the per-bag-size price grid is the sole cost control.
     // Switching to 'ab' loads the AB preset, so the 200-qty price input becomes 0.70.
-    const inputs = container.querySelectorAll('input[type="number"]');
+    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+    const inputs = step3.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
     const price200Input = inputs[2] as HTMLInputElement;
     expect(price200Input.value).toBe('0.7'); // AB 200-qty preset
@@ -272,17 +272,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
-    // Click 'Cost & Order' tab
-    const buttons = container.querySelectorAll('button');
-    const quoteTab = Array.from(buttons).find(b => b.title === 'Cost & Order' || b.textContent?.toLowerCase() === 'cost & order');
-    expect(quoteTab).toBeTruthy();
-    quoteTab?.click();
-    await new Promise(r => setTimeout(r, 10));
+    // D-14: query the always-mounted Supplies (step 3) panel directly.
+    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+    expect(step3).toBeTruthy();
 
     // The optimized plan is the SOLE plan now (no toggle to flip): the per-bag-size
     // price grid always renders, so there are 6 number inputs unconditionally —
     // Canvas price, Est. Shipping, 200 qty, 500 qty, 1000 qty, and 2000 qty.
-    const inputs = container.querySelectorAll('input[type="number"]');
+    const inputs = step3.querySelectorAll('input[type="number"]');
     expect(inputs.length).toBe(6);
     // D-11: the "Optimize bag sizes" toggle no longer exists.
     expect(container.querySelector('#optimize-bags-checkbox')).toBeNull();
@@ -488,23 +485,29 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtn).toBeTruthy();
       expect(nextBtn.disabled).toBe(false);
 
+      // D-14: the step panels are now always-mounted CSS-toggled siblings, so
+      // "display isolation" means only the VISIBLE panel (not display:none-d)
+      // shows its content — the others are hidden in the tree, not unmounted.
+      // Scope every isolation assertion to the visible panel.
+      const visiblePanel = () => container.querySelector('[data-step-panel]:not(.hidden)') as HTMLElement;
+
       // Verify display isolation: Step 1 options are shown, but Step 2 (Palette & kit) is not
-      const selectElementsInitial = Array.from(container.querySelectorAll('select'));
+      const selectElementsInitial = Array.from(visiblePanel().querySelectorAll('select'));
       const initialPresetSelect = selectElementsInitial.find(s => s.value === 'custom');
       expect(initialPresetSelect).toBeTruthy(); // Sizing preset is in Step 1 now
-      expect(container.querySelector('input[id="file-upload"]')).toBeTruthy(); // Step 1 element
+      expect(visiblePanel().querySelector('input[id="file-upload"]')).toBeTruthy(); // Step 1 element
       const initialKitSelect = selectElementsInitial.find(s => s.value === '200');
-      expect(initialKitSelect).toBeUndefined(); // Step 2 kit select not rendered yet
+      expect(initialKitSelect).toBeUndefined(); // Step 2 kit select not in the visible panel
 
       // Progress to Step 2
       nextBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 2 (Palette & Optimize)
-      // Verify display isolation: Step 2 options should be rendered, but Step 1 (upload/sizing) is not
-      expect(container.querySelector('input[id="file-upload"]')).toBeNull(); // isolated
-      expect(container.querySelector('input[data-field="width"]')).toBeNull(); // isolated
-      const selectElementsStep2 = Array.from(container.querySelectorAll('select'));
+      // Now on Step 2 (Refine)
+      // Verify display isolation: the visible panel shows Step 2 options, not Step 1 (upload/sizing)
+      expect(visiblePanel().querySelector('input[id="file-upload"]')).toBeNull(); // isolated
+      expect(visiblePanel().querySelector('input[data-field="width"]')).toBeNull(); // isolated
+      const selectElementsStep2 = Array.from(visiblePanel().querySelectorAll('select'));
       const step2KitSelect = selectElementsStep2.find(s => s.value === '200'); // Loaded project selectedBaseKit is '200'
       expect(step2KitSelect).toBeTruthy();
 
@@ -517,10 +520,10 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       nextBtnStep2.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Now on Step 3 (Cost & Order)
-      // Verify display isolation: Step 3 options rendered, Step 2 (DMC kit select) hidden
-      expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeUndefined(); // isolated
-      expect(container.querySelector('#canvas-print-partner')).toBeTruthy(); // Step 3 marker (canvas vendor select)
+      // Now on Step 3 (Supplies)
+      // Verify display isolation: the visible panel shows Step 3 options, not Step 2 (DMC kit select)
+      expect(Array.from(visiblePanel().querySelectorAll('select')).find(s => s.value === '200')).toBeUndefined(); // isolated
+      expect(visiblePanel().querySelector('#canvas-print-partner')).toBeTruthy(); // Step 3 marker (canvas vendor select)
 
       // Progress to Step 4
       const nextBtnStep3 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
@@ -544,7 +547,83 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Should be back on Step 2
-      expect(Array.from(container.querySelectorAll('select')).find(s => s.value === '200')).toBeTruthy();
+      expect(Array.from(visiblePanel().querySelectorAll('select')).find(s => s.value === '200')).toBeTruthy();
+    });
+
+    it('renders exactly one step navigator — the StepBar (SC3/D-03)', async () => {
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // The StepBar's <nav aria-label="Progress"> is the ONE and only step navigator.
+      const navs = container.querySelectorAll('nav[aria-label="Progress"]');
+      expect(navs.length).toBe(1);
+
+      // Its buttons carry the single-source STEP_META labels (D-02).
+      const stepLabels = Array.from(navs[0].querySelectorAll('button')).map(b => b.textContent || '');
+      expect(stepLabels.some(t => t.includes('Upload'))).toBe(true);
+      expect(stepLabels.some(t => t.includes('Refine'))).toBe(true);
+      expect(stepLabels.some(t => t.includes('Supplies'))).toBe(true);
+      expect(stepLabels.some(t => t.includes('Order'))).toBe(true);
+
+      // The legacy desktop dot-nav is gone (D-03): it rendered step buttons whose
+      // entire text was just a bare step number (1/2/3/4). No such button remains —
+      // the StepBar tabs pair each number with a label, so only the single StepBar
+      // navigator is present.
+      const bareDotButtons = Array.from(container.querySelectorAll('button')).filter(
+        b => ['1', '2', '3', '4'].includes((b.textContent || '').trim())
+      );
+      expect(bareDotButtons.length).toBe(0);
+    });
+
+    it('keeps a single CanvasViewer mounted across step changes (SC4/D-14)', async () => {
+      const nowStr = new Date().toISOString();
+      const summary = { id: 'test-project-singlemount', name: 'Single Mount', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+      const data = {
+        id: 'test-project-singlemount',
+        name: 'Single Mount',
+        dateCreated: nowStr,
+        dateModified: nowStr,
+        imageName: 'project.json',
+        dimensions: { cols: 60, rows: 40 },
+        drillStyle: 'square',
+        selectedBaseKit: '200',
+        drillType: 'standard',
+        excludedDmcCodes: [],
+        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+        gridData: [1, 2, 3]
+      };
+      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+      localStorage.setItem('gempixel_project_test-project-singlemount', JSON.stringify(data));
+
+      render(<App />, container);
+      await new Promise(r => setTimeout(r, 10));
+
+      // Load the project so a match restores and the canvas host mounts.
+      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
+      toggleBtn?.click();
+      await new Promise(r => setTimeout(r, 10));
+      (container.querySelector('.group.relative') as HTMLDivElement).click();
+      await new Promise(r => setTimeout(r, 10));
+
+      // Let the async restore/match fully settle so any load-time viewer
+      // construction is done before we measure.
+      await new Promise(r => setTimeout(r, 50));
+
+      const canvasBefore = container.querySelector('canvas');
+      expect(canvasBefore).toBeTruthy();
+      expect(viewerConstructions.count).toBeGreaterThanOrEqual(1);
+      const constructionsAtMount = viewerConstructions.count;
+
+      // Advance a step — the four step panels are CSS-toggled siblings, so nothing
+      // around the single viewer unmounts.
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 50));
+
+      // Same canvas DOM node (never remounted) and no new CanvasViewer construction
+      // attributable to the step change (SC4/D-14).
+      const canvasAfter = container.querySelector('canvas');
+      expect(canvasAfter).toBe(canvasBefore);
+      expect(viewerConstructions.count).toBe(constructionsAtMount);
     });
 
     it('supports auto-substitution UI toggles and threshold settings in Step 4', async () => {
@@ -677,16 +756,19 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
       await new Promise(r => setTimeout(r, 10));
 
-      // Open the Settings expander
-      const summaryEl = container.querySelector('summary') as HTMLElement;
+      // Open the Settings expander. D-14: all panels are always mounted, so scope
+      // to the Supplies (step 3) panel — the first <summary> in the whole container
+      // is now Step 1's "Ingestion Settings".
+      const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+      const summaryEl = step3.querySelector('summary') as HTMLElement;
       expect(summaryEl.textContent).toContain('Affiliate & Partner Settings');
 
       // Assert logged colors are visible
-      expect(container.textContent).toContain('939');
-      expect(container.textContent).toContain('3843');
+      expect(step3.textContent).toContain('939');
+      expect(step3.textContent).toContain('3843');
 
       // Click Clear Log
-      const clearBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Clear Log') as HTMLButtonElement;
+      const clearBtn = Array.from(step3.querySelectorAll('button')).find(b => b.textContent === 'Clear Log') as HTMLButtonElement;
       expect(clearBtn).toBeTruthy();
       clearBtn.click();
       await new Promise(r => setTimeout(r, 10));

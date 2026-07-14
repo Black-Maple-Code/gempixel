@@ -167,8 +167,13 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Clear call history
     mockMatch.mockClear();
 
-    // Expand the collapsible section first
-    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
+    // Expand the collapsible section first. D-14: the step panels are now
+    // always-mounted CSS-toggled siblings, so Step2's palette checklist coexists
+    // in the DOM with the right-sidebar "Exclude Colors" checklist (which owns the
+    // candidate filter). Scope to the right <aside> so the first checkbox is the
+    // first color-exclusion checkbox, not Step2's substitute/smooth toggles.
+    const rightAside = container.querySelectorAll('aside')[1];
+    const excludeColorsBtn = Array.from(rightAside.querySelectorAll('button')).find(
       (btn) => btn.textContent?.includes('Exclude Colors')
     );
     expect(excludeColorsBtn).not.toBeUndefined();
@@ -177,7 +182,7 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Wait for animation/render and find check box of first color and toggle it (uncheck it)
     let checkboxes: NodeListOf<Element> = [] as any;
     await vi.waitFor(() => {
-      checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      checkboxes = rightAside.querySelectorAll('input[type="checkbox"]');
       expect(checkboxes.length).toBeGreaterThan(0);
     });
 
@@ -505,12 +510,17 @@ describe('Integration Match Triggering and Palette Toggles', () => {
   it('collapses and expands the DMC Supply List correctly on trigger clicks', async () => {
     render(<App />, container);
 
+    // D-14: the always-mounted step panels also render a DMC list, so scope the
+    // collapse assertions to the right sidebar (Color Legend), which owns the
+    // interactive/sortable DMC Supply List.
+    const rightAside = container.querySelectorAll('aside')[1];
+
     // Should start open
-    let table = container.querySelector('.no-print table');
+    let table = rightAside.querySelector('.no-print table');
     expect(table).not.toBeNull();
 
     // Click DMC Supply List header button to collapse
-    const supplyListToggle = Array.from(container.querySelectorAll('button')).find(
+    const supplyListToggle = Array.from(rightAside.querySelectorAll('button')).find(
       (btn) => btn.textContent?.includes('DMC Supply List')
     );
     expect(supplyListToggle).not.toBeUndefined();
@@ -518,14 +528,14 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     // Verify table is collapsed (not in DOM)
     await vi.waitFor(() => {
-      table = container.querySelector('.no-print table');
+      table = rightAside.querySelector('.no-print table');
       expect(table).toBeNull();
     });
 
     // Expand it again
     supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
     await vi.waitFor(() => {
-      table = container.querySelector('.no-print table');
+      table = rightAside.querySelector('.no-print table');
       expect(table).not.toBeNull();
     });
   });
@@ -800,8 +810,12 @@ describe('Integration Match Triggering and Palette Toggles', () => {
   it('supports sorting columns in the DMC Supply List on header clicks', async () => {
     render(<App />, container);
 
+    // D-14: scope to the right sidebar's sortable DMC Supply List — the
+    // always-mounted step panels also render a (non-sortable) DMC table.
+    const rightAside = container.querySelectorAll('aside')[1];
+
     // Click DMC header to sort by code
-    const dmcHeader = Array.from(container.querySelectorAll('.no-print th')).find(
+    const dmcHeader = Array.from(rightAside.querySelectorAll('.no-print th')).find(
       (th) => th.textContent?.includes('DMC')
     ) as HTMLElement;
     expect(dmcHeader).not.toBeUndefined();
