@@ -389,7 +389,6 @@ export class CanvasViewer {
             const isHighlighted = !this.highlightedColor || code === this.highlightedColor;
             this.ctx.globalAlpha = isHighlighted ? 1.0 : 0.2;
             this.ctx.fillStyle = getContrastColor(color);
-            // PHASE 22: remove theme param
             this.ctx.font = `bold ${symbolFontPx(baseSymbolPx, symbol)}px 'Archivo Variable', sans-serif`;
             const centerX = this.offsetX + (col + 0.5) * scaledCellSize;
             const centerY = this.offsetY + (row + 0.5) * scaledCellSize;
