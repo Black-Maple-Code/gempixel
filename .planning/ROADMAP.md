@@ -63,7 +63,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 
 - [x] **Phase 20: Atelier Design System & Canvas-First Shell** - Light-only tokens + self-hosted fonts, dark mode fully retired, and a strangler shell where the horizontal 4-step bar is the only navigator (viewer mounted once). (completed 2026-07-14)
 - [x] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes. (completed 2026-07-14)
-- [ ] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits.
+- [x] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits. (completed 2026-07-14)
 - [ ] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag.
 - [ ] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart.
 - [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Delete Step1..4, side asides, theme toggle, and dead sidebar/preset state after UAT — the strangler close.
@@ -145,7 +145,7 @@ Plans:
   4. `useDiamondArtMatch` exposes `detectedColorCount`, and a deterministic, Delta-E-guarded `reduceToColorCount` merges rare drills into the CIEDE2000-nearest already-used shade with a stable tie-break — feeding one merged count to viewer, legend, cart, and quote (this underpins REFINE-04, wired in Phase 23).
   5. `engine/*` signatures change ONLY in this phase's commits (never inside a UI phase) and the 240+ suite stays green, with new tests covering the reducer and the quote selector.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1** *(three file-disjoint, additive engine pieces — fully parallel)*
@@ -156,7 +156,7 @@ Plans:
 
 **Wave 2** *(blocked on 22-03 — imports reduceToColorCount)*
 
-- [ ] 22-04-PLAN.md — Expose detectedColorCount (raw-keyed, stable) + gated no-op reduce step in useDiamondArtMatch (raw → smooth → reduce) + hook coverage (REFINE-04 engine support, D-04/05, SC5 additive) [Wave 2]
+- [x] 22-04-PLAN.md — Expose detectedColorCount (raw-keyed, stable) + gated no-op reduce step in useDiamondArtMatch (raw → smooth → reduce) + hook coverage (REFINE-04 engine support, D-04/05, SC5 additive) [Wave 2]
 
 ### Phase 23: The Four Screens in Flow Order
 
@@ -219,7 +219,7 @@ Plans:
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
-| 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 3/4 | In Progress|  |
+| 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete   | 2026-07-14 |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |

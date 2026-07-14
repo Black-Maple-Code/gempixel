@@ -4,17 +4,17 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 22
 current_phase_name: Additive Engine — Density, Color Reducer & Single-Source Quote
-status: executing
+status: verifying
 stopped_at: Phase 22 context gathered
-last_updated: "2026-07-14T18:54:19.886Z"
+last_updated: "2026-07-14T19:00:06.188Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 33
+  completed_plans: 13
+  percent: 50
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 22 (Additive Engine — Density, Color Reducer & Single-Source Quote) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-14 — Phase 22 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -96,6 +96,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 22 P01 | 6min | 3 tasks | 4 files |
 | Phase 22 P02 | 4min | 3 tasks | 3 files |
 | Phase 22 P03 | 15m | 2 tasks | 2 files |
+| Phase 22 P04 | 8m | 2 tasks | 2 files |
 
 ## Risk & Health
 
@@ -143,7 +144,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T18:53:41.020Z
+Last session: 2026-07-14T18:59:29.463Z
 Stopped at: Phase 22 context gathered
 Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-source-quote/22-CONTEXT.md
 
@@ -169,6 +170,8 @@ Resume file: .planning/phases/22-additive-engine-density-color-reducer-single-so
 - [Phase ?]: Density lives in one engine/density.ts helper at DOTS_PER_INCH=10 (not 10.16), reconciled with calculateCanvasCost /10 — single density source, no second constant (QUOTE-01)
 - [Phase ?]: quote.ts: totalCents IS sumCents(lineItems) by construction — Supplies + Order can never diverge (QUOTE-02)
 - [Phase ?]: TAX_RATE_ESTIMATE=0 labeled 'calculated at vendor checkout' (D-07); combined 'Shipping (est.)' = vendor baseShipping + DRILLS_BASE_SHIPPING with RATES_AS_OF provenance (D-08)
+- [Phase ?]: detectedColorCount keyed only on rawMatchResult (D-04) — stable Phase 23 slider max under smoothing/reduce
+- [Phase ?]: Reduce step wired last (raw -> smooth -> reduce, D-05), gated no-op default so App matchResult stays byte-identical (SC5)
 
 ## Operator Next Steps
 
