@@ -213,18 +213,31 @@ export function RefineScreen(props: RefineScreenProps) {
         <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
           Color count · {currentColorCount} of {detectedColorCount} matched
         </span>
-        <Slider
-          value={colorTarget}
-          min={8}
-          max={detectedColorCount}
-          onChange={onColorTargetChange}
-          ariaLabel="Color count"
-          ariaValueText={`${currentColorCount} of ${detectedColorCount} matched`}
-        />
-        <p className="text-xs text-muted">
-          {detectedColorCount} colors matched. Lowering merges rare one-off drills into a
-          shade you already use.
-        </p>
+        {/* WR-02: the slider's floor is 8, so with fewer than 9 detected colors there is
+            nothing to reduce and `max < min` would make the native range degenerate
+            (it silently clamps max up to min, pinning the thumb). Only render the
+            control when detectedColorCount > 8; otherwise show an inert note. The
+            `Math.max(8, …)` guard keeps `min <= max` even in edge renders. */}
+        {detectedColorCount > 8 ? (
+          <>
+            <Slider
+              value={colorTarget}
+              min={8}
+              max={Math.max(8, detectedColorCount)}
+              onChange={onColorTargetChange}
+              ariaLabel="Color count"
+              ariaValueText={`${currentColorCount} of ${detectedColorCount} matched`}
+            />
+            <p className="text-xs text-muted">
+              {detectedColorCount} colors matched. Lowering merges rare one-off drills into a
+              shade you already use.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted">
+            {detectedColorCount} colors matched — already at the minimum palette, nothing to reduce.
+          </p>
+        )}
       </div>
 
       {/* ── Advanced (kit / color-exclusion / drill-shape) ─────────────── */}

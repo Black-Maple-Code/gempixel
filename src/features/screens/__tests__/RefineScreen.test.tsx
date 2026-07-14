@@ -115,6 +115,29 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     expect(typeof (props.onColorTargetChange as any).mock.calls[0][0]).toBe('number');
   });
 
+  it('hides the degenerate slider when detectedColorCount <= 8 (WR-02: never max < min)', () => {
+    // Fewer than 9 detected colors → nothing to reduce; the slider (min=8) would be
+    // degenerate, so it is replaced by an inert note.
+    setup({ detectedColorCount: 2, currentColorCount: 2, colorTarget: 2 });
+    expect(container.querySelector('input[type="range"]')).toBeNull();
+    expect(container.textContent).toContain('nothing to reduce');
+  });
+
+  it('renders a valid slider (min <= max) exactly at the 8-color boundary threshold (WR-02)', () => {
+    // At detectedColorCount === 8 there is still nothing to reduce (floor is 8) → no slider.
+    setup({ detectedColorCount: 8, currentColorCount: 8, colorTarget: 8 });
+    expect(container.querySelector('input[type="range"]')).toBeNull();
+
+    // At 9 the slider returns and its max (9) is strictly above the min (8).
+    render(null, container);
+    setup({ detectedColorCount: 9, currentColorCount: 9, colorTarget: 9 });
+    const slider = container.querySelector('input[type="range"]') as HTMLInputElement;
+    expect(slider).toBeTruthy();
+    expect(Number(slider.getAttribute('max'))).toBeGreaterThanOrEqual(Number(slider.getAttribute('min')));
+    expect(slider.getAttribute('max')).toBe('9');
+    expect(slider.getAttribute('min')).toBe('8');
+  });
+
   it('edge cleanup is a role="radiogroup" of four options; selecting one calls onEdgeCleanupChange', () => {
     const props = setup();
     const group = container.querySelector('[role="radiogroup"][aria-label="Edge cleanup"]') as HTMLElement;

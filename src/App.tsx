@@ -1392,6 +1392,10 @@ export function App() {
     currentColorCount,
     onColorTargetChange: (n: number) => {
       // Post-process tier (D-03/Pitfall 3): flip reduce on and clamp to [8, detected].
+      // WR-02: with <= 8 detected colors there is nothing to reduce; ignore the input
+      // so the clamp can never force targetColorCount = 8 above the detected count (a
+      // nonsensical reduce ceiling). The RefineScreen also hides the slider here.
+      if (detectedColorCount <= 8) return;
       setEnableReduce(true);
       setTargetColorCount(Math.max(8, Math.min(n, detectedColorCount)));
     },
