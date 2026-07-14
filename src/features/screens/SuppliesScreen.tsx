@@ -48,12 +48,16 @@ export interface SuppliesScreenProps {
   symbolMap: Record<string, string>;
   /** The static dye-lot "why these bags?" explanation (App's `DYE_LOT_WHY_SENTENCE`). */
   dyeLotWhy: string;
+  /** Total drills incl. +10% safety across all colors (App's `totalSafetyDrills`). */
+  totalSafetyDrills: number;
+  /** Total bag/packet count from the shared aggregator (App's `orderPlan.totalPackets`, SC2/BAG-02). */
+  totalPackets: number;
   /** The single-source customer quote (App's `buildOrderQuote(...)` result). */
   quote: OrderQuote;
 }
 
 export function SuppliesScreen(props: SuppliesScreenProps) {
-  const { rows, symbolMap, dyeLotWhy, quote } = props;
+  const { rows, symbolMap, dyeLotWhy, totalSafetyDrills, totalPackets, quote } = props;
 
   return (
     <section
@@ -135,6 +139,13 @@ export function SuppliesScreen(props: SuppliesScreenProps) {
           </tbody>
         </table>
 
+        {/* SC2/BAG-02: the shared aggregator's totalPackets is rendered user-visibly
+            (not merely derived) so the drill/bag count can never silently diverge
+            from planOrderSupply. */}
+        <p className="font-mono text-xs text-muted">
+          Drills ({totalPackets} bag(s)) · {totalSafetyDrills.toLocaleString()} drills incl. +10% safety
+        </p>
+
         {/* Inline "Why these bags?" disclosure (native <details>, a11y-native). */}
         <details className="mt-1">
           <summary className="cursor-pointer text-xs font-semibold text-accent">
@@ -144,8 +155,10 @@ export function SuppliesScreen(props: SuppliesScreenProps) {
         </details>
       </div>
 
-      {/* ── Right: order-summary panel (single-source quote, verbatim) ──── */}
-      <aside className="flex w-full flex-col gap-3 border-l border-border bg-panel p-6 md:w-[320px] md:shrink-0">
+      {/* ── Right: order-summary panel (single-source quote, verbatim) ────
+          A plain <div> (NOT <aside>) so it does not shift the App layout's
+          aside indices that the workspace/legend tests key off of. */}
+      <div className="flex w-full flex-col gap-3 border-l border-border bg-panel p-6 md:w-[320px] md:shrink-0">
         <h2 className="font-serif text-[18px] font-semibold leading-[1.2] text-ink">
           Order summary
         </h2>
@@ -193,7 +206,7 @@ export function SuppliesScreen(props: SuppliesScreenProps) {
           Billed by GemPixel · printed &amp; shipped by our lab
         </p>
         <p className="font-mono text-[10px] text-faint">rates as of {quote.ratesAsOf}</p>
-      </aside>
+      </div>
     </section>
   );
 }

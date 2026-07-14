@@ -176,7 +176,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   // UI and the case no longer applies. Grid ↔ inch derivation is covered by density.ts
   // unit tests (gridToInches/formatInches) and the SizeCard inch-string assertions.
 
-  it('calculates supply costing commission quotes correctly in quote tab', async () => {
+  // TODO(25): the editable pricing config grid (canvas cost, est. shipping, per-bag
+  // 200/500/1k/2k prices) lived in the legacy Step3Canvas body. Flipping
+  // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which is a
+  // read-only supply table + single-source order summary (D-07) — price EDITING has
+  // no canvas-first home yet (an Order/vendor concern). The underlying priceDb still
+  // feeds planOrderSupply/buildOrderQuote; only its input UI left panel-3. Un-skip
+  // when a price-config surface is re-homed, or retire in the Phase 25 cleanup.
+  it.skip('calculates supply costing commission quotes correctly in quote tab', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -275,7 +282,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(price200Input.value).toBe('0.7'); // AB 200-qty preset
   });
 
-  it('renders the 4 per-bag-size price inputs unconditionally (single-plan UI, D-11)', async () => {
+  // TODO(25): as above — the per-bag-size price grid was the legacy Step3Canvas
+  // price-config UI, which has no canvas-first home after the USE_NEW_SUPPLIES flip
+  // (SuppliesScreen is a read-only supply table + order summary). Un-skip on re-home
+  // or retire in the Phase 25 strangler cleanup.
+  it.skip('renders the 4 per-bag-size price inputs unconditionally (single-plan UI, D-11)', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -523,7 +534,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // Now on Step 3 (Supplies)
       // Verify display isolation: the visible panel shows Step 3 options, not Step 2 (DMC kit select)
       expect(Array.from(visiblePanel().querySelectorAll('select')).find(s => s.value === '200')).toBeUndefined(); // isolated
-      expect(visiblePanel().querySelector('#canvas-print-partner')).toBeTruthy(); // Step 3 marker (canvas vendor select)
+      // 23-04: panel-3 is now the canvas-first SuppliesScreen (USE_NEW_SUPPLIES), so
+      // the Step-3 marker is its data-screen root, not the legacy vendor select.
+      expect(visiblePanel().querySelector('[data-screen="supplies"]')).toBeTruthy(); // Step 3 marker
 
       // Progress to Step 4
       const nextBtnStep3 = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
@@ -709,7 +722,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(container.querySelector('input[type="range"][max="500"]')).toBeNull();
     });
 
-    it('renders logged unmapped colors lists and handles clear action in settings', async () => {
+    // TODO(25): the "Affiliate & Partner Settings" expander + unmapped-colors log +
+    // "Clear Log" control lived in the legacy Step3Canvas body. Flipping
+    // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which has no
+    // affiliate/unmapped-log surface (an Order/vendor + diagnostics concern). The
+    // underlying unmappedLog state + persistence still run; only their panel-3 UI
+    // driver left. Un-skip on re-home, or retire in the Phase 25 strangler cleanup.
+    it.skip('renders logged unmapped colors lists and handles clear action in settings', async () => {
       // Pre-seed local storage log & project
       localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(['939', '3843']));
       const mockProjectSummary = {
@@ -1039,7 +1058,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.clear();
     });
 
-    it('shows the actionError banner when a canvas download fails (W5)', async () => {
+    // TODO(23-05/25): the "Download Canvas Grid (PNG)" trigger lived in the legacy
+    // Step3Canvas body. Flipping USE_NEW_SUPPLIES (23-04) swaps in the read-only
+    // SuppliesScreen; the canvas/packet download affordances belong to the Order
+    // screen (wave 5, A4) and land there. The handler + its actionError catch are
+    // unchanged — only the panel-3 button moved. Un-skip when the Order-screen
+    // download lands, or retire the legacy trigger in the Phase 25 cleanup.
+    it.skip('shows the actionError banner when a canvas download fails (W5)', async () => {
       seedProject();
       await loadProjectToStep(3);
 
@@ -1056,7 +1081,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(container.textContent).toMatch(/could not generate the download/i);
     });
 
-    it('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
+    // TODO(23-05/25): the "Order Drills" Shopify-checkout trigger lived in the legacy
+    // Step3Canvas body. Flipping USE_NEW_SUPPLIES (23-04) swaps in the read-only
+    // SuppliesScreen; checkout/order-packet flows belong to the Order screen (wave 5,
+    // A4). handleShopifyCheckout + its corrupt-log guard are unchanged — only the
+    // panel-3 button moved. Un-skip when the Order-screen checkout lands, or retire
+    // the legacy trigger in the Phase 25 cleanup.
+    it.skip('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
       seedProject();
       await loadProjectToStep(3);
 
@@ -1080,7 +1111,10 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    it('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
+    // TODO(23-05/25): same as the W4 case above — the "Order Drills" checkout trigger
+    // moved out of panel-3 with the USE_NEW_SUPPLIES flip; the wrong-type-log guard in
+    // handleShopifyCheckout is unchanged. Un-skip when the Order-screen checkout lands.
+    it.skip('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
       seedProject();
       await loadProjectToStep(3);
 

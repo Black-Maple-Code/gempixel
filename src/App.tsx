@@ -1377,6 +1377,8 @@ export function App() {
     rows: sortedMatches,
     symbolMap,
     dyeLotWhy: DYE_LOT_WHY_SENTENCE,
+    totalSafetyDrills,
+    totalPackets,
     quote: orderQuote,
   };
 

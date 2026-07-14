@@ -277,8 +277,12 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     expect(CanvasViewer).toHaveBeenCalled();
 
-    // Find the legend table row for '310' (first row) and click it once
-    const tableRow = container.querySelector('tbody tr') as HTMLTableRowElement;
+    // Find the legend table row for '310' (first row) and click it once.
+    // D-14: the always-mounted Supplies (panel-3) screen now also renders a
+    // display-only supply table, so scope to the right sidebar (Color Legend),
+    // which owns the interactive legend rows wired to setHighlightedColor.
+    const rightAside = container.querySelectorAll('aside')[1];
+    const tableRow = rightAside.querySelector('tbody tr') as HTMLTableRowElement;
     expect(tableRow).toBeTruthy();
     expect(tableRow.textContent).toContain('310');
 
