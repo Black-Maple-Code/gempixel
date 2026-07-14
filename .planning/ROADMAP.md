@@ -83,7 +83,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
   4. The flow is validation-gated — Refine is unreachable without an uploaded image and Supplies without a computed match — and the canvas viewer is mounted once and never remounts on step changes.
   5. The existing viewer/legend/supply UI still functions inside the new shell and the full 240+ Vitest suite stays green.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 **Wave 1**
@@ -94,7 +94,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 20-04-PLAN.md — Wire shell into App: delete both legacy navs, single navigator, CSS-toggle single-mount viewer (SHELL-01, SHELL-02) [Wave 2]
+- [x] 20-04-PLAN.md — Wire shell into App: delete both legacy navs, single navigator, CSS-toggle single-mount viewer (SHELL-01, SHELL-02) [Wave 2]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -191,7 +191,7 @@ Plans:
 | 17. Service Fee & Customer Order Packet | v3.0 | — | Deferred (force-close gap) | — |
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
-| 20. Atelier Design System & Canvas-First Shell | v4.0 | 3/5 | In Progress|  |
+| 20. Atelier Design System & Canvas-First Shell | v4.0 | 4/5 | In Progress|  |
 | 21. Shared UI Primitives | v4.0 | TBD | Not started | — |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
