@@ -49,7 +49,7 @@ const GEM_LOGO_CELLS = [
 
 export function AtelierShell({ children, step, canEnter, goTo, stale, onSave, canSave }: AtelierShellProps) {
   return (
-    <div className="flex flex-col h-dvh overflow-hidden">
+    <div className="flex flex-col h-dvh overflow-hidden print:h-auto print:overflow-visible">
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-panel no-print shrink-0">
         {/* Left: pixel-logo tile + Newsreader wordmark (21/600) */}
         <div className="flex items-center gap-3">
