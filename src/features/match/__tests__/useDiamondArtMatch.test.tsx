@@ -189,3 +189,35 @@ describe('useDiamondArtMatch', () => {
     expect(instances[0].terminate).toHaveBeenCalled();
   });
 });
+
+describe('detectedColorCount (D-04)', () => {
+  it('equals the distinct raw DMC codes after a match settles', async () => {
+    // The mocked MatcherClient completes with counts { A: 2, B: 1 } => 2 distinct codes.
+    const h = mount(() => baseInputs({ image: fakeImage }));
+    await settle(h, () => h.state.detectedColorCount === 2);
+    expect(h.state.detectedColorCount).toBe(2);
+  });
+
+  it('is 0 before any match (no rawMatchResult)', () => {
+    const h = mount(() => baseInputs()); // image: null => worker never runs
+    expect(h.state.detectedColorCount).toBe(0);
+    expect(h.state.matchResult).toBeNull();
+  });
+
+  it('stays stable when a post-process input (smoothingStrength) changes — raw-keyed, not coupled', async () => {
+    // Mount with smoothing on; detectedColorCount is derived off the RAW match only, so it must
+    // NOT move when the edge-cleanup strength drags — the coupled-controls anti-pattern D-04 forbids.
+    let strength = 3;
+    const h = mount(() =>
+      baseInputs({ image: fakeImage, enableSmoothing: true, smoothingStrength: strength })
+    );
+    await settle(h, () => h.state.detectedColorCount === 2);
+    expect(h.state.detectedColorCount).toBe(2);
+
+    strength = 1; // change the post-process control only
+    h.rerender();
+    await new Promise(r => setTimeout(r, 0));
+    h.rerender();
+    expect(h.state.detectedColorCount).toBe(2); // unchanged: keyed on rawMatchResult, not matchResult
+  });
+});
