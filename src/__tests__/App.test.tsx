@@ -123,19 +123,20 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     );
     expect(wordmarkHeadings.length).toBe(0);
 
-    // Verify input fields for sizing exist in Step 1.
-    // D-14: the four step panels are now always-mounted CSS-toggled siblings, so
-    // scope the count to the VISIBLE panel (the one not display:none-d) — the
-    // hidden panels' inputs are still in the DOM.
+    // 23-02 (D-10/SC1): canvas-size selection moved OFF Upload to Refine (23-03),
+    // so the VISIBLE Upload panel now hosts NO sizing number inputs. (Size-input
+    // coverage returns in 23-03 against the RefineScreen.)
     const numberInputs = container.querySelectorAll('[data-step-panel]:not(.hidden) input[type="number"]');
-    expect(numberInputs.length).toBe(2);
+    expect(numberInputs.length).toBe(0);
 
-    // Verify file input exists in Step 1
-    const fileInput = container.querySelector('input[type="file"]');
+    // The Upload screen still owns the ingest file input.
+    const fileInput = container.querySelector('#upload-file-input');
     expect(fileInput).toBeTruthy();
   });
 
-  it('allows changing width and height input values in grid mode', async () => {
+  // TODO(23-03): re-home against RefineScreen. Canvas-size editing moved OFF Upload
+  // (D-10/SC1); the size inputs have no live DOM until Refine is swapped in (23-03).
+  it.skip('allows changing width and height input values in grid mode', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -169,7 +170,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(heightInput.value).toBe('45');
   });
 
-  it('allows changing physical sizing units', async () => {
+  // TODO(23-03): re-home against RefineScreen. Sizing-units control moved OFF Upload
+  // (D-10/SC1); no live DOM until Refine is swapped in (23-03).
+  it.skip('allows changing physical sizing units', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
 
@@ -384,16 +387,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       const canvasAfterLoad = container.querySelector('canvas');
       expect(canvasAfterLoad).toBeTruthy();
 
-      // Verify sizing inputs are restored
-      const sizeTab = Array.from(container.querySelectorAll('button')).find(b => b.title === 'Size' || b.textContent?.toLowerCase() === 'size');
-      sizeTab?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      const inputs = container.querySelectorAll('input[type="number"]');
-      const widthInput = inputs[0] as HTMLInputElement;
-      const heightInput = inputs[1] as HTMLInputElement;
-      expect(widthInput.value).toBe('40'); // cols
-      expect(heightInput.value).toBe('30'); // rows
+      // (Size-input restoration verification moved to 23-03: canvas-size controls
+      //  now live on Refine, not Upload — D-10/SC1. Project load still rehydrates
+      //  cols/rows state; that is asserted through Refine's tests in 23-03.)
 
       // Verify workspace reset to default config on reset/new action
       const newBtn = container.querySelector('#new-project-btn') as HTMLButtonElement;
@@ -514,9 +510,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       // Verify display isolation: Step 1 options are shown, but Step 2 (Palette & kit) is not
       const selectElementsInitial = Array.from(visiblePanel().querySelectorAll('select'));
-      const initialPresetSelect = selectElementsInitial.find(s => s.value === 'custom');
-      expect(initialPresetSelect).toBeTruthy(); // Sizing preset is in Step 1 now
-      expect(visiblePanel().querySelector('input[id="file-upload"]')).toBeTruthy(); // Step 1 element
+      // 23-02: the sizing preset select moved OFF Upload (D-10 → Refine, 23-03).
+      // Upload's own marker is now its ingest file input.
+      expect(visiblePanel().querySelector('#upload-file-input')).toBeTruthy(); // Step 1 (Upload) element
       const initialKitSelect = selectElementsInitial.find(s => s.value === '200');
       expect(initialKitSelect).toBeUndefined(); // Step 2 kit select not in the visible panel
 
@@ -526,7 +522,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       // Now on Step 2 (Refine)
       // Verify display isolation: the visible panel shows Step 2 options, not Step 1 (upload/sizing)
-      expect(visiblePanel().querySelector('input[id="file-upload"]')).toBeNull(); // isolated
+      expect(visiblePanel().querySelector('#upload-file-input')).toBeNull(); // isolated
       expect(visiblePanel().querySelector('input[data-field="width"]')).toBeNull(); // isolated
       const selectElementsStep2 = Array.from(visiblePanel().querySelectorAll('select'));
       const step2KitSelect = selectElementsStep2.find(s => s.value === '200'); // Loaded project selectedBaseKit is '200'
@@ -945,7 +941,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       await new Promise(r => setTimeout(r, 10));
 
       // Verify we are back on Step 1 (Upload element exists)
-      expect(container.querySelector('input[id="file-upload"]')).toBeTruthy();
+      expect(container.querySelector('#upload-file-input')).toBeTruthy();
 
       // Next button should be disabled because image and project ID are reset
       const nextBtnAfterReset = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
@@ -953,7 +949,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(nextBtnAfterReset.disabled).toBe(true);
     });
 
-    it('displays Recommended PrintKK Sizes in Step 2 and allows selecting them', async () => {
+    // TODO(23-03): re-home against RefineScreen. Recommended-canvas-sizes UI moved OFF
+    // Upload with the rest of canvas-size selection (D-10/SC1); no live DOM until 23-03.
+    it.skip('displays Recommended PrintKK Sizes in Step 2 and allows selecting them', async () => {
       // Stub FileReader and Image
       const mockReader = {
         readAsDataURL: vi.fn().mockImplementation(function(this: any) {
@@ -1311,7 +1309,11 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     await new Promise(r => setTimeout(r, 10));
   };
 
-  it('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
+  // TODO(23-03): re-home against RefineScreen. This exercise edits the canvas WIDTH
+  // (an upstream size control) to trigger soft-invalidate; size editing moved OFF
+  // Upload (D-10/SC1) and has no live DOM until Refine is swapped in (23-03). The
+  // sibling "no false positives on fresh load" case below needs no size edit and stays live.
+  it.skip('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
     seedProject();
     await loadProject();
 

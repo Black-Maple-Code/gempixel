@@ -13,7 +13,7 @@
  * booleans by design — no typed record, no env plumbing, no runtime input
  * (there is no feature-flag system in the repo, and none should be introduced).
  */
-export const USE_NEW_UPLOAD = false;
+export const USE_NEW_UPLOAD = true;
 export const USE_NEW_REFINE = false;
 export const USE_NEW_SUPPLIES = false;
 export const USE_NEW_ORDER = false;

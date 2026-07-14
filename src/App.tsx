@@ -1410,7 +1410,23 @@ export function App() {
             <CanvasViewer> in <main> never remounts. */}
         <div data-step-panel="1" className={wizard.step === 1 ? 'contents' : 'hidden'}>
           {USE_NEW_UPLOAD ? (
-            <UploadScreen />
+            <UploadScreen
+              image={image}
+              imageName={imageName}
+              dropZoneRef={dropZoneRef}
+              isDragOver={isDragOver}
+              handleFileChange={handleFileChange}
+              handleDragOver={handleDragOver}
+              handleDragLeave={handleDragLeave}
+              handleDrop={handleDrop}
+              imageFitMode={imageFitMode}
+              setImageFitMode={setImageFitMode}
+              recentImages={recentImages}
+              loadRecentImage={loadRecentImage}
+              deleteRecentImage={deleteRecentImage}
+              projectsRegistry={projectsRegistry}
+              loadProject={loadProject}
+            />
           ) : (
           <Step1Ingest
             image={image}
