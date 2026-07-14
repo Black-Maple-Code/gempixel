@@ -415,7 +415,12 @@ export function App() {
       dateCreated: projectSummary.dateCreated,
       dateModified: nowStr,
       imageName: imageName || (image ? 'Uploaded Image' : 'Imported Project'),
-      dimensions: { cols, rows },
+      // HI-01: gridData below comes from the COMMITTED matchResult, so the saved
+      // dimensions must be the committed dims (matchInputs), not the live cols/rows.
+      // Otherwise a Save during the D-13 stale window (resized but not yet recomputed)
+      // persists a grid whose size disagrees with its stored dimensions — it renders
+      // wrong on reload. With no match there is no grid to disagree with, so use live.
+      dimensions: matchResult ? { cols: matchInputs.cols, rows: matchInputs.rows } : { cols, rows },
       drillStyle,
       selectedBaseKit,
       safetyMargin: 10,
@@ -516,6 +521,13 @@ export function App() {
   // path, no B2 abort-race re-entry. The last-good match stays until the fresh one lands.
   const handleRecomputeMatch = () => {
     setActionError(null);
+    // ME-01: without a live source image there is nothing to recompute. Committing
+    // would clear the stale banner while the worker bails on the null image, silently
+    // stranding a mismatched grid. Keep the stale state and prompt a re-upload instead.
+    if (!image) {
+      setActionError('Re-upload the source image to recompute the match.');
+      return;
+    }
     setMatchInputs({ image, cols, rows });
   };
 
@@ -871,10 +883,7 @@ export function App() {
       const dataUrlStr = event.target?.result as string;
       const img = new Image();
       img.onload = () => {
-        // Reset exclusions when loading a new image
-        setExcludedColors(new Set());
         setHighlightedColor(null);
-        setSelectedPreset('custom');
         setActiveProjectId(null);
         setImageName(file.name || 'Uploaded Image');
 
@@ -901,7 +910,12 @@ export function App() {
         // D-13: the FIRST upload commits (a match computes); a re-upload after a
         // match already exists stays uncommitted → stale, so the worker never
         // silently re-fires — the user applies it via the "Recompute match" CTA.
+        // ME-02: excludedColors + selectedPreset feed candidatesKey, which the match
+        // hook keys on. Resetting them while stale would silently re-fire the worker on
+        // the OLD committed image, so reset them only on the committing (fresh) path.
         if (!matchResult) {
+          setExcludedColors(new Set());
+          setSelectedPreset('custom');
           setMatchInputs({ image: img, cols, rows: newRows });
         }
 
@@ -926,9 +940,7 @@ export function App() {
   const loadRecentImage = (entry: { name: string; dataUrl: string; width: number; height: number }) => {
     const img = new Image();
     img.onload = () => {
-      setExcludedColors(new Set());
       setHighlightedColor(null);
-      setSelectedPreset('custom');
       setActiveProjectId(null);
       setImageName(entry.name || 'Recent Image');
 
@@ -952,7 +964,11 @@ export function App() {
       setImage(img);
       setImageSourceOpen(false);
       // D-13: same fresh-vs-stale commit rule as a file upload (see loadImageFile).
+      // ME-02: reset the palette filters (exclusions + preset) only on the committing
+      // path, so re-selecting a recent image while stale doesn't re-fire the worker.
       if (!matchResult) {
+        setExcludedColors(new Set());
+        setSelectedPreset('custom');
         setMatchInputs({ image: img, cols, rows: newRows });
       }
     };

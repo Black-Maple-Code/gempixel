@@ -1298,7 +1298,7 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     await new Promise(r => setTimeout(r, 10));
   };
 
-  it('marks downstream stale, keeps last-good match, blocks advancing, and Recompute clears it', async () => {
+  it('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
     seedProject();
     await loadProject();
 
@@ -1331,13 +1331,18 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     // (3) Advancing past the stale step is blocked.
     expect(nextBtn().disabled).toBe(true);
 
-    // (4) Recompute runs the match once and clears the stale state.
+    // (4) This project was loaded from storage WITHOUT its source image (GemPixel never
+    //     persists the uploaded image), so the match cannot actually be recomputed.
+    //     Recompute must NOT silently clear the stale state — doing so would strand a
+    //     grid whose size no longer matches its data (ME-01). It keeps the banner,
+    //     prompts a re-upload, and leaves the last-good match on screen.
     recomputeBtn.click();
-    await pollFor(() => !container.textContent!.includes('This step is out of date'));
-    expect(container.textContent).not.toContain('This step is out of date');
-    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
-    expect(nextBtn().disabled).toBe(false);
-    // The match is still on screen after recomputing.
+    await pollFor(() => container.textContent!.includes('Re-upload the source image'));
+    expect(container.textContent).toContain('Re-upload the source image to recompute the match.');
+    expect(container.textContent).toContain('This step is out of date');
+    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeTruthy();
+    expect(nextBtn().disabled).toBe(true);
+    // The last-good match is retained (no data loss).
     expect(container.querySelector('canvas')).toBeTruthy();
   });
 
