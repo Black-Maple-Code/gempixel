@@ -6,7 +6,7 @@ current_phase: 23
 current_phase_name: the-four-screens-in-flow-order
 status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-14T20:22:33.018Z"
+last_updated: "2026-07-14T20:35:59.621Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 23 execution started
 progress:
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-14 — Phase 23 execution started
 
@@ -99,6 +99,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 22 P03 | 15m | 2 tasks | 2 files |
 | Phase 22 P04 | 8m | 2 tasks | 2 files |
 | Phase 23 P01 | 6min | 3 tasks | 7 files |
+| Phase 23 P02 | 16min | 3 tasks | 7 files |
 
 ## Risk & Health
 
@@ -146,7 +147,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T20:22:16.047Z
+Last session: 2026-07-14T20:35:52.795Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -175,6 +176,7 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: detectedColorCount keyed only on rawMatchResult (D-04) — stable Phase 23 slider max under smoothing/reduce
 - [Phase ?]: Reduce step wired last (raw -> smooth -> reduce, D-05), gated no-op default so App matchResult stays byte-identical (SC5)
 - [Phase ?]: [Phase 23]: 23-01: strangler foundation — flags.ts with four USE_NEW_* const booleans (all false, no typed record/env, D-02); four pure/props-only screen shells mirroring StepBar; App data-step-panel slots wrapped in USE_NEW_* ? <Screen /> : <legacy Step> ternaries. All flags off → byte-identical behavior; contents/hidden toggle + single CanvasViewer mount untouched (D-14). tsc 0; vitest 326.
+- [Phase ?]: 23-02: Upload swapped in (USE_NEW_UPLOAD=true); size UI removed from Upload per D-10 — 7 legacy size/preset/recent-uploads tests bridged (updated or skipped w/ TODO(23-03)) until Refine hosts size
 
 ## Operator Next Steps
 
