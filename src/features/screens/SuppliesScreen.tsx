@@ -167,7 +167,11 @@ export function SuppliesScreen(props: SuppliesScreenProps) {
           {quote.lineItems.map((li) => {
             const unavailable = li.key === 'canvas' && !quote.canvasPriced;
             return (
-              <div key={li.key} className="flex items-baseline justify-between gap-3">
+              <div
+                key={li.key}
+                data-line={li.key}
+                className="flex items-baseline justify-between gap-3"
+              >
                 <dt className="text-muted">{li.label}</dt>
                 <dd className="text-right text-ink">
                   {unavailable ? (

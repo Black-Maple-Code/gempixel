@@ -148,26 +148,31 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     ) as HTMLButtonElement;
     expect(customBtn).toBeTruthy();
     customBtn.click();
-    await new Promise(r => setTimeout(r, 10));
 
-    const widthInput = step2.querySelector('#refine-width') as HTMLInputElement;
-    const heightInput = step2.querySelector('#refine-height') as HTMLInputElement;
-    expect(widthInput).toBeTruthy();
-    expect(heightInput).toBeTruthy();
-    expect(widthInput.value).toBe('80');
-    expect(heightInput.value).toBe('53');
+    // Poll for the revealed custom entry rather than a fixed delay — under heavy
+    // parallel test load the App render/effect settle can exceed a fixed 10ms wait,
+    // which made the initial-value read intermittently flaky (the panel-3 SuppliesScreen
+    // table added to every always-mounted render). vi.waitFor is deterministic.
+    let widthInput!: HTMLInputElement;
+    let heightInput!: HTMLInputElement;
+    await vi.waitFor(() => {
+      widthInput = step2.querySelector('#refine-width') as HTMLInputElement;
+      heightInput = step2.querySelector('#refine-height') as HTMLInputElement;
+      expect(widthInput).toBeTruthy();
+      expect(heightInput).toBeTruthy();
+      expect(widthInput.value).toBe('80');
+      expect(heightInput.value).toBe('53');
+    });
 
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
 
     valueSetter?.call(widthInput, '60');
     widthInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-    expect(widthInput.value).toBe('60');
+    await vi.waitFor(() => expect(widthInput.value).toBe('60'));
 
     valueSetter?.call(heightInput, '45');
     heightInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-    expect(heightInput.value).toBe('45');
+    await vi.waitFor(() => expect(heightInput.value).toBe('45'));
   });
 
   // DELETED (23-03): "allows changing physical sizing units" — the cm/inch/grid unit
