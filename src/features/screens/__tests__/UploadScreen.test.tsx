@@ -47,6 +47,7 @@ describe('UploadScreen — render contract (UPLOAD-01 / D-10)', () => {
     deleteRecentImage: vi.fn(),
     projectsRegistry,
     loadProject: vi.fn(),
+    onDeleteProject: vi.fn(),
     ...overrides,
   });
 
@@ -84,6 +85,26 @@ describe('UploadScreen — render contract (UPLOAD-01 / D-10)', () => {
     expect(chip).toBeTruthy();
     chip!.click();
     expect(props.loadProject).toHaveBeenCalledWith('p2');
+  });
+
+  it('Remove → Yes calls onDeleteProject(id) — the saved-projects delete path (CR-01)', async () => {
+    const props = baseProps([project('p1', 'Sunset')]);
+    render(<UploadScreen {...props} />, container);
+
+    // Reveal the confirm affordance (Preact flushes the setState re-render on the
+    // next microtask, so await a tick before reading the confirm UI).
+    const remove = buttonByText('Remove');
+    expect(remove).toBeTruthy();
+    remove!.click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Confirm "Yes" must delete the SAVED PROJECT by its id — never the recents list.
+    const yes = buttonByText('Yes');
+    expect(yes).toBeTruthy();
+    yes!.click();
+
+    expect(props.onDeleteProject).toHaveBeenCalledWith('p1');
+    expect(props.deleteRecentImage).not.toHaveBeenCalled();
   });
 
   it('omits the RECENT label when the projects registry is empty', () => {

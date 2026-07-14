@@ -40,6 +40,13 @@ export interface UploadScreenProps {
   projectsRegistry: ProjectSummary[];
   /** Rehydrate ALL state from a saved project + advance into the flow. */
   loadProject: (id: string) => void;
+  /**
+   * Delete a saved project by its id (CR-01). App wires this to
+   * `projectStore.remove(id)` + registry refresh + active-project cleanup —
+   * the Remove chip must target the SAVED-PROJECTS list, never the unrelated
+   * recent-uploads list.
+   */
+  onDeleteProject: (id: string) => void;
 }
 
 export function UploadScreen(props: UploadScreenProps) {
@@ -162,8 +169,9 @@ export function UploadScreen(props: UploadScreenProps) {
                       <button
                         type="button"
                         onClick={(e) => {
+                          e.stopPropagation();
                           setConfirmingId(null);
-                          props.deleteRecentImage(project.id, e);
+                          props.onDeleteProject(project.id);
                         }}
                         className="font-semibold text-accent hover:underline"
                       >

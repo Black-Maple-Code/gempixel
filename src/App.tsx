@@ -1657,6 +1657,14 @@ export function App() {
               deleteRecentImage={deleteRecentImage}
               projectsRegistry={projectsRegistry}
               loadProject={loadProject}
+              onDeleteProject={(id) => {
+                projectStore.remove(id);
+                setProjectsRegistry(projectStore.list());
+                if (activeProjectId === id) {
+                  setActiveProjectId(null);
+                  restore(null);
+                }
+              }}
             />
           ) : (
           <Step1Ingest
