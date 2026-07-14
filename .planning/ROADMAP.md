@@ -62,7 +62,7 @@ Full success criteria for all five phases preserved in `milestones/v3.0-ROADMAP.
 Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state owner, screen children stay pure/props-only, `engine/*` signatures change only inside the isolated engine phase (never in a UI phase), and the 240+ Vitest baseline stays green at every commit — the app ships green at every phase.
 
 - [x] **Phase 20: Atelier Design System & Canvas-First Shell** - Light-only tokens + self-hosted fonts, dark mode fully retired, and a strangler shell where the horizontal 4-step bar is the only navigator (viewer mounted once). (completed 2026-07-14)
-- [ ] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes.
+- [x] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes. (completed 2026-07-14)
 - [ ] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits.
 - [ ] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag.
 - [ ] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart.
@@ -118,7 +118,7 @@ Plans:
   3. The primitives are built from browser-native elements + Tailwind only — no new UI/slider/util dependency enters `package.json`.
   4. The 240+ Vitest suite stays green with the new primitives covered by unit/render tests.
 
-**Plans**: 1/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -127,8 +127,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 — imports `cn`)*
 
-- [ ] 21-02-PLAN.md — SegmentedControl (WAI-ARIA radiogroup, roving tabindex, arrow/Home/End) + Slider (native range, `onInput`, aria-valuetext) + tests (D-02, D-03, D-04, SC2) [Wave 2]
-- [ ] 21-03-PLAN.md — SizeCard (dumb selectable card, no engine import) + zero-dependency/green-suite gate + tests (D-02, D-03, D-04, D-05, SC3, SC4) [Wave 2]
+- [x] 21-02-PLAN.md — SegmentedControl (WAI-ARIA radiogroup, roving tabindex, arrow/Home/End) + Slider (native range, `onInput`, aria-valuetext) + tests (D-02, D-03, D-04, SC2) [Wave 2]
+- [x] 21-03-PLAN.md — SizeCard (dumb selectable card, no engine import) + zero-dependency/green-suite gate + tests (D-02, D-03, D-04, D-05, SC3, SC4) [Wave 2]
 
 **UI hint**: yes
 
@@ -207,7 +207,7 @@ Plans:
 | 18. Viewport-Native Wizard | v3.0 | — | Deferred (force-close gap) | — |
 | 19. Two-Mode Split (Customer / Artist) | v3.0 | — | Deferred (force-close gap) | — |
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
-| 21. Shared UI Primitives | v4.0 | 1/3 | In Progress|  |
+| 21. Shared UI Primitives | v4.0 | 3/3 | Complete   | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | TBD | Not started | — |
 | 23. The Four Screens in Flow Order | v4.0 | TBD | Not started | — |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
