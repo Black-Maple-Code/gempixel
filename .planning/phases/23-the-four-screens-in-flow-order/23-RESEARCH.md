@@ -386,16 +386,16 @@ This is an additive UI-wiring phase (new components + two new App state vars + a
 | A3 | Edge-cleanup Off maps to `enableSmoothing=false` (vs strength 0) | Two-Tier Seam | Either produces an unsmoothed grid; pick one consistently. Trivial to change. |
 | A4 | "Recommended" preset size list for SizeCards derives from `STANDARD_SIZES` grid entries | REFINE-01/02 | The design contract (A2-refine.png) may specify a specific curated set of preset cards; verify against it. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **REFINE-01 "changing size re-renders preview live" vs D-04 "size change → stale + Recompute CTA".**
-   - What we know: Card drill counts + inches update live (pure). D-04 explicitly gates the worker re-match behind the Recompute CTA (abort-race safety, Phase 22 D-04); the stale/recompute machinery already exists.
-   - What's unclear: whether the size-change **preview** (canvas grid) is expected to update instantly, or only after Recompute (showing the last-good grid + stale banner meanwhile).
-   - Recommendation: follow D-04 (the explicit, more recent decision) — cards + counts are live, the full-grid preview updates on Recompute. Flag to the user in discuss/plan-review since it is load-bearing for the keystone's feel. If instant preview is required, a small grid re-match may be acceptable given typical grid sizes, but that reopens the abort-race concern D-04 closed.
+> All three resolved during the plan-phase pipeline (RESEARCH → UI-SPEC → plans). Resolutions are embedded in `23-UI-SPEC.md` and the plans; recorded inline here so the artifact matches the shipped decisions.
 
-2. **Where does the "recommended" SizeCard preset list come from?** `STANDARD_SIZES` (App.tsx:48-65) mixes cm/inch/grid units; SizeCards need cols×rows. The planner should define a curated preset list (grid dims) — verify count/labels against the A2-refine.png design contract.
+1. **REFINE-01 "changing size re-renders preview live" vs D-04 "size change → stale + Recompute CTA".** — **RESOLVED → follow D-04.** The locked two-tier model (CONTEXT D-03/D-04, UI-SPEC A2, plan `23-03`): SizeCard **drill counts + inches update live** (pure derivation, no worker) satisfying SC2's "counts live"; the **full-grid preview** updates via the existing Phase 20 D-13 soft-invalidate → single "Recompute match" CTA (abort-race-safe), NOT an auto worker re-fire per card click. SC2's "re-renders the preview … live" is read as "cards/counts live, preview on Recompute." No instant grid re-match (would reopen the abort-race D-04 closed).
+   - *What we know:* Card drill counts + inches update live (pure). D-04 explicitly gates the worker re-match behind the Recompute CTA (abort-race safety, Phase 22 D-04); the stale/recompute machinery already exists.
 
-3. **Finish options for Order (ORDER-01).** The set of finish choices (and whether finish affects the quote) is not in the engine. Assumed a fixed UI enum with no price impact (matches "locked spec"); confirm against the design contract.
+2. **Where does the "recommended" SizeCard preset list come from?** — **RESOLVED → curated grid-dim list in plan `23-03` Task 1**, defined against the A2-refine design render (not raw `STANDARD_SIZES`, which mixes cm/inch/grid units). Custom-size entry covers anything off the curated list (REFINE-02).
+
+3. **Finish options for Order (ORDER-01).** — **RESOLVED → fixed UI enum, no price impact** (UI-SPEC A4 + plan `23-05`: `'trimmed' | 'wrap'`). Matches the "locked spec" intent; finish does not affect the quote. Richer finish/canvas visualization is deferred to ORDER-03 (v4.x).
 
 ## Environment Availability
 
