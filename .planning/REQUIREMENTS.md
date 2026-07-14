@@ -20,19 +20,19 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 ### Upload
 
-- [ ] **UPLOAD-01**: The user starts a project by dragging/dropping or browsing for a photo, and can reopen a recent project from an inline list.
+- [x] **UPLOAD-01**: The user starts a project by dragging/dropping or browsing for a photo, and can reopen a recent project from an inline list.
 
 ### Refine (the keystone screen)
 
-- [ ] **REFINE-01**: The user picks a canvas size from cards that each show the grid dimensions, the **true physical inches derived from the 2.5mm/dot (10 dots/inch) density** (never a hard-coded mock label), and a live drill count; changing size re-renders the preview and updates counts live.
+- [x] **REFINE-01**: The user picks a canvas size from cards that each show the grid dimensions, the **true physical inches derived from the 2.5mm/dot (10 dots/inch) density** (never a hard-coded mock label), and a live drill count; changing size re-renders the preview and updates counts live.
 - [ ] **REFINE-02**: Preset sizes are presented as recommendations, and the user can order a **custom canvas size** (cols/inches, with sane clamps) when a preset doesn't fit — since printed legends may require a varying canvas size.
 - [ ] **REFINE-03**: An edge-cleanup control (Off / Light / Med / Strong → smoothing strength 0–3) re-renders the chart live to smooth ragged edges.
 - [x] **REFINE-04**: A color-count slider whose **maximum equals the real detected color count** lets the user reduce colors; lowering it deterministically merges rare one-off drills into the CIEDE2000-nearest already-used shade, keeping the legend, cart, and quote in sync with no visible change to the picture (post-process, no worker re-run per tick).
-- [ ] **REFINE-05**: Advanced controls — color kit (100 / 200 / all), color exclusion, and drill shape (square / round) — default sensibly (kit = all, shape = square) and are available under an "Advanced" disclosure in Refine rather than as their own step.
+- [x] **REFINE-05**: Advanced controls — color kit (100 / 200 / all), color exclusion, and drill shape (square / round) — default sensibly (kit = all, shape = square) and are available under an "Advanced" disclosure in Refine rather than as their own step.
 
 ### Supplies
 
-- [ ] **SUPPLIES-01**: The Supplies screen shows the chart legend / supply table (symbol · swatch · DMC code + name · drills incl. +10% safety · bags) computed from the shared `planOrderSupply` engine, plus the dye-lot "why these bags?" explanation.
+- [x] **SUPPLIES-01**: The Supplies screen shows the chart legend / supply table (symbol · swatch · DMC code + name · drills incl. +10% safety · bags) computed from the shared `planOrderSupply` engine, plus the dye-lot "why these bags?" explanation.
 - [x] **SUPPLIES-02**: An inline order-summary panel shows the itemized quote (total drills, bags, canvas print + size, shipping, tax estimate, total) sourced from the single-source quote selector so it can never diverge from the Order screen.
 
 ### Accurate Quoting
@@ -43,7 +43,7 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 ### Order (confirm & client-side handoff)
 
-- [ ] **ORDER-01**: The Order screen presents an auto-filled, **locked** print spec (Rolled Canvas fixed, size from grid, finish) plus a finish selection and a ship-to address and the itemized quote — nothing GemPixel already resolved has to be re-entered.
+- [x] **ORDER-01**: The Order screen presents an auto-filled, **locked** print spec (Rolled Canvas fixed, size from grid, finish) plus a finish selection and a ship-to address and the itemized quote — nothing GemPixel already resolved has to be re-entered.
 - [ ] **ORDER-02**: The user completes the flow via an honest client-side handoff — reviewing the summary and **downloading a versioned, self-contained order packet** (design/chart, canvas spec, optimized gem-bag list, integer-cents quote snapshot; schema forward-compatible with the future v5.0 backend) — with no implied payment and no fake receipt (real payment + lab submission are v5.0).
 
 ### Mobile & Touch
@@ -101,15 +101,15 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | QUOTE-01 | Phase 22 | Complete |
 | QUOTE-02 | Phase 22 | Complete |
 | QUOTE-03 | Phase 22 | Complete |
-| UPLOAD-01 | Phase 23 | Pending |
-| REFINE-01 | Phase 23 | Pending |
+| UPLOAD-01 | Phase 23 | Complete |
+| REFINE-01 | Phase 23 | Complete |
 | REFINE-02 | Phase 23 | Pending |
 | REFINE-03 | Phase 23 | Pending |
 | REFINE-04 | Phase 23 | Complete |
-| REFINE-05 | Phase 23 | Pending |
-| SUPPLIES-01 | Phase 23 | Pending |
+| REFINE-05 | Phase 23 | Complete |
+| SUPPLIES-01 | Phase 23 | Complete |
 | SUPPLIES-02 | Phase 23 | Complete |
-| ORDER-01 | Phase 23 | Pending |
+| ORDER-01 | Phase 23 | Complete |
 | ORDER-02 | Phase 23 | Pending |
 | MOBILE-01 | Phase 24 | Pending |
 | MOBILE-02 | Phase 24 | Pending |

@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 23
-current_phase_name: The Four Screens in Flow Order
+current_phase_name: the-four-screens-in-flow-order
 status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-14T20:14:39.995Z"
+last_updated: "2026-07-14T20:22:33.018Z"
 last_activity: 2026-07-14
-last_activity_desc: Phase 22 complete, transitioned to Phase 23
+last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 18
+  completed_plans: 14
   percent: 50
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 22 — Additive Engine — Density, Color Reducer & Single-Source Quote
+**Current focus:** Phase 23 — the-four-screens-in-flow-order
 
 ## Current Position
 
-Phase: 23 — The Four Screens in Flow Order
-Plan: Not started
+Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-07-14 — Phase 22 complete, transitioned to Phase 23
+Last activity: 2026-07-14 — Phase 23 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -98,6 +98,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 22 P02 | 4min | 3 tasks | 3 files |
 | Phase 22 P03 | 15m | 2 tasks | 2 files |
 | Phase 22 P04 | 8m | 2 tasks | 2 files |
+| Phase 23 P01 | 6min | 3 tasks | 7 files |
 
 ## Risk & Health
 
@@ -145,7 +146,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T19:52:42.169Z
+Last session: 2026-07-14T20:22:16.047Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -173,6 +174,7 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: TAX_RATE_ESTIMATE=0 labeled 'calculated at vendor checkout' (D-07); combined 'Shipping (est.)' = vendor baseShipping + DRILLS_BASE_SHIPPING with RATES_AS_OF provenance (D-08)
 - [Phase ?]: detectedColorCount keyed only on rawMatchResult (D-04) — stable Phase 23 slider max under smoothing/reduce
 - [Phase ?]: Reduce step wired last (raw -> smooth -> reduce, D-05), gated no-op default so App matchResult stays byte-identical (SC5)
+- [Phase ?]: [Phase 23]: 23-01: strangler foundation — flags.ts with four USE_NEW_* const booleans (all false, no typed record/env, D-02); four pure/props-only screen shells mirroring StepBar; App data-step-panel slots wrapped in USE_NEW_* ? <Screen /> : <legacy Step> ternaries. All flags off → byte-identical behavior; contents/hidden toggle + single CanvasViewer mount untouched (D-14). tsc 0; vitest 326.
 
 ## Operator Next Steps
 
