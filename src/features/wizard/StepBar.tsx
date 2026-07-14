@@ -23,19 +23,27 @@ export interface StepBarProps {
   /** Navigate to `target` (WizardApi.goTo). Never called for locked steps. */
   goTo: (step: number) => void;
   /**
-   * Reserved for Plan 05 (soft-invalidate / recompute, D-13). Accepted now so
-   * the cross-plan prop contract is stable; renders nothing yet.
+   * Soft-invalidate / recompute (D-13). The earliest step index that is out of
+   * date after an upstream edit, or null/undefined when nothing is stale. Steps
+   * at/after this index render a small amber "out of date" marker — visually
+   * distinct from the locked/upcoming state and without removing the step from
+   * the journey map. Forward navigation into a stale step is refused upstream in
+   * App's guarded `goTo`, so the marker is purely presentational here (D-01 pure).
    */
-  stale?: boolean;
+  stale?: number | null;
 }
 
-export function StepBar({ step, canEnter, goTo }: StepBarProps) {
+export function StepBar({ step, canEnter, goTo, stale }: StepBarProps) {
   return (
     <nav aria-label="Progress" className="flex items-center gap-1.5">
       {STEP_META.map((meta, i) => {
         const isCurrent = step === meta.index;
         const isCompleted = meta.index < step;
         const isLocked = !isCompleted && !isCurrent && !canEnter(meta.index);
+        // D-13: a step is stale when the soft-invalidate index is set and this
+        // step is at/after it. Locked steps take visual precedence (a not-yet-
+        // reachable step can't also be "out of date").
+        const isStale = stale != null && !isLocked && meta.index >= stale;
         // Connector leading INTO this step is "passed" (green) when the previous
         // step is completed, i.e. this step index is at most the current step.
         const connectorPassed = meta.index <= step;
@@ -61,6 +69,7 @@ export function StepBar({ step, canEnter, goTo }: StepBarProps) {
                 }}
                 aria-current={isCurrent ? 'step' : undefined}
                 aria-disabled={isLocked ? 'true' : undefined}
+                data-stale={isStale ? 'true' : undefined}
                 tabIndex={isLocked ? -1 : undefined}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all ${
                   isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
@@ -68,15 +77,24 @@ export function StepBar({ step, canEnter, goTo }: StepBarProps) {
               >
                 <span
                   aria-hidden="true"
-                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                  className={`relative w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
                     isCompleted || isCurrent
                       ? 'bg-accent text-on-accent'
                       : 'border border-faint text-faint'
                   }`}
                 >
                   {isCompleted ? '✓' : meta.index}
+                  {isStale && (
+                    // Small amber "out of date" dot, offset to the top-right of the
+                    // step circle. Token-based (bg-warn); distinct from locked/upcoming.
+                    <span
+                      className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-warn ring-1 ring-panel"
+                      title="This step is out of date"
+                    />
+                  )}
                 </span>
                 {meta.label}
+                {isStale && <span className="sr-only"> (out of date)</span>}
               </button>
 
               {tooltip && (
