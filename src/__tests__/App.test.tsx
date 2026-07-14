@@ -1215,6 +1215,124 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   });
 });
 
+describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does not leak across load/reset', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'wr01-project';
+
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'WR01 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const data = {
+      id: projectId,
+      name: 'WR01 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 80, rows: 53 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+      gridData: [0, 1, 2], // restores a matchResult so Step 4 (Order) is reachable
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const openDrawer = async () => {
+    const toggle = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images')) as HTMLButtonElement;
+    expect(toggle).toBeTruthy();
+    toggle.click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  const loadRow = async () => {
+    (container.querySelector('.group.relative') as HTMLDivElement).click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  // Fill ship-to PII on Step 4 and download the packet so packetDownloaded=true.
+  const fillShipToAndDownload = async () => {
+    for (let s = 1; s < 4; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+    const nameInput = container.querySelector('[data-shipto="name"]') as HTMLInputElement;
+    expect(nameInput).toBeTruthy();
+    nameInput.value = 'Alice Private';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+    expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('Alice Private');
+
+    // jsdom lacks a real object-URL impl; stub it so the download SUCCEEDS and the
+    // honest terminal state (packetDownloaded=true) is set.
+    const origCreate = (URL as unknown as { createObjectURL?: unknown }).createObjectURL;
+    const origRevoke = (URL as unknown as { revokeObjectURL?: unknown }).revokeObjectURL;
+    (URL as unknown as { createObjectURL: () => string }).createObjectURL = () => 'blob:wr01';
+    (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = () => {};
+    try {
+      (container.querySelector('[data-testid="order-download-cta"]') as HTMLButtonElement).click();
+      // Wait past the handler's deferred revokeObjectURL(…, 100) so it fires against
+      // the stub, not the restored (jsdom-absent) impl — otherwise it throws later.
+      await new Promise(r => setTimeout(r, 130));
+    } finally {
+      (URL as unknown as { createObjectURL: unknown }).createObjectURL = origCreate;
+      (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = origRevoke;
+    }
+    expect(container.querySelector('[data-testid="order-terminal"]')).toBeTruthy();
+  };
+
+  it('re-loading a project clears the previous ship-to PII and the downloaded terminal state', async () => {
+    seedProject();
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+
+    await openDrawer();
+    await loadRow();
+    await fillShipToAndDownload();
+
+    // Re-load the same project (drawer stays open) — loadProject must reset Order state.
+    await loadRow();
+
+    // Panel-4 (OrderScreen) is always-mounted: its ship-to input is cleared and the
+    // terminal state is gone (download CTA is back).
+    expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('');
+    expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-download-cta"]')).toBeTruthy();
+  });
+
+  it('resetWorkspace (New) clears ship-to PII and the downloaded terminal state', async () => {
+    seedProject();
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+
+    await openDrawer();
+    await loadRow();
+    await fillShipToAndDownload();
+
+    // "New" triggers resetWorkspace, which must clear per-workspace Order state.
+    (container.querySelector('#new-project-btn') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 10));
+
+    // The always-mounted OrderScreen panel reflects the cleared state even though the
+    // wizard is back on Step 1.
+    expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('');
+    expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
+  });
+});
+
 describe('BAG-02 / SC2 — the total bag count is user-visibly rendered from planOrderSupply.totalPackets', () => {
   let container: HTMLDivElement;
 

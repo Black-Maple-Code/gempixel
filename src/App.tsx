@@ -384,7 +384,15 @@ export function App() {
     setWidthInput(project.dimensions.cols.toString());
     setHeightInput(project.dimensions.rows.toString());
     setSelectedPreset('custom');
-    
+
+    // WR-01: Order state is per-workspace and must NOT leak across a project load.
+    // Reset the finish, the client-entered ship-to (PII — never carry one project's
+    // address into another's form), and the packet-downloaded terminal flag (a false
+    // "already downloaded" state for a project the user never downloaded).
+    setFinish('trimmed');
+    setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
+    setPacketDownloaded(false);
+
     if (project.pricesPerBagSize) {
       setPriceDb(project.pricesPerBagSize);
     }
@@ -432,6 +440,12 @@ export function App() {
       1000: 1.80,
       2000: 3.20
     });
+    // WR-01: clear per-workspace Order state on reset too (finish + client-entered
+    // ship-to PII + the packet-downloaded terminal flag) — a fresh workspace must
+    // never inherit the previous one's address or a stale "downloaded" state.
+    setFinish('trimmed');
+    setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
+    setPacketDownloaded(false);
     restore(null);
     wizard.reset();
   };
