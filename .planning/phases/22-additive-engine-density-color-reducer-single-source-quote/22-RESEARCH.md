@@ -370,17 +370,19 @@ Co-located `__tests__/` per the established convention (18 existing suites, e.g.
 | A2 | `RATES_AS_OF` should be dated to today's curated-rate review date (2026-07-14) unless the planner sets a specific review date. | Quote wiring | Wrong date misrepresents provenance freshness; trivially correctable, low risk. |
 | A3 | The numeric-then-lexical DMC comparator (App.tsx:1112-1118 style) is the intended meaning of "lowest DMC code." | Determinism / Pitfall 2 | If a different ordering is intended, tie-break outcomes shift (still deterministic). Low risk — any total order satisfies SC4; matching the UI's order is the least-surprising choice. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact `MERGE_GUARD_DELTA_E` value.**
+1. **RESOLVED — Exact `MERGE_GUARD_DELTA_E` value.**
    - What we know: mechanics locked (absolute veto, skip-continue, ceiling); value is fixed-conservative and tunable in REFINE-06.
    - What's unclear: the specific CIEDE2000 number that best balances "no visible change" vs "slider actually reduces."
    - Recommendation: ship a named constant (proposed 10), add the no-visible-change bound test, and let Phase 23 UAT / REFINE-06 tune it. Flag for a quick human sanity-check on one real image.
+   - **RESOLVED in planning:** Plan 22-03 ships `MERGE_GUARD_DELTA_E = 10` as a documented provisional constant plus the no-visible-change bound test; empirical tuning is explicitly deferred to Phase 23 UAT / v4.x REFINE-06 per D-03. The worst-case merge shift is capped at the guard by the bound test, so execution is unambiguous.
 
-2. **Does Phase 22 wire the reduce step into the hook at all, or only add the pure fn + `detectedColorCount`?**
+2. **RESOLVED — Does Phase 22 wire the reduce step into the hook at all, or only add the pure fn + `detectedColorCount`?**
    - What we know: SC4 says the hook exposes `detectedColorCount`; the phase boundary says "no UI wiring — that is Phase 23."
    - What's unclear: whether the reduce *step* enters the hook pipeline now (gated off) or is added entirely in Phase 23.
    - Recommendation: land the pure `reduceToColorCount` + tests + additive `detectedColorCount` in Phase 22; add the gated (no-op default) reduce step in the hook only if it keeps App behavior byte-identical and the suite green — otherwise defer the pipeline insertion to Phase 23. Planner to decide per the strangler-green constraint.
+   - **RESOLVED in planning:** Plan 22-04 lands `detectedColorCount` (raw-keyed) plus a gated no-op-default reduce step in `useDiamondArtMatch` in the canonical `raw → smooth → reduce` order, with new `MatchInputs` fields optional so App.tsx compiles byte-identical (strangler-green honored). Pipeline insertion is NOT deferred.
 
 ## Security Domain
 
