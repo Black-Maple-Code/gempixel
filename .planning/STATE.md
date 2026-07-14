@@ -6,14 +6,14 @@ current_phase: 20
 current_phase_name: atelier-design-system-canvas-first-shell
 status: verifying
 stopped_at: Completed 20-04-PLAN.md
-last_updated: "2026-07-14T00:54:17.181Z"
+last_updated: "2026-07-14T05:54:44.540Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
   percent: 17
 ---
 
@@ -90,6 +90,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 20 P03 | 8min | 3 tasks | 4 files |
 | Phase 20 P04 | 32min | 3 tasks | 3 files |
 | Phase 20 P05 | 35 min | 3 tasks | 4 files |
+| Phase 20 P06 | 6m | 2 tasks | 3 files |
 
 ## Risk & Health
 
@@ -137,7 +138,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T00:53:59.536Z
+Last session: 2026-07-14T05:54:04.300Z
 Stopped at: Completed 20-04-PLAN.md
 Resume file: None
 
@@ -159,6 +160,7 @@ Resume file: None
 - [Phase 20]: 20-03: STEP_META single-source label/order (D-02) + pure StepBar navigator enforcing full D-12 gating/a11y (aria-current, locked aria-disabled + out-of-tab-order + tooltip + no-op click); AtelierShell top-bar chrome (logo + Newsreader wordmark + dark Save pill). Both pure/props-only (no useWizard, App wiring is 20-04); stale? reserved for 20-05. tsc 0; vitest 251.
 - [Phase 20]: [Phase 20]: 20-04: AtelierShell is the single navigator (both legacy desktop nav surfaces deleted); four step panels are always-mounted CSS-toggled siblings (visible=display:contents, hidden=display:none) so the single CanvasViewer never remounts on step change (SC4/D-14). Preserved #wizard-next-btn exactly with no isTestEnv bypass (locked-Next tests require Next disabled with no image — corrects plan text). Sanitized money-typed project loads at the state boundary so eagerly-mounted Step3Canvas never hits .toFixed on a tampered string (CR-01). tsc 0; vitest 253.
 - [Phase 20]: 20-05: D-13 soft-invalidate via committed match inputs (worker consumes committed image/cols/rows; live edits diverge = stale, no silent re-fire). staleFromStep + Recompute banner + guarded forward-nav block; StepBar renders amber marker. tsc 0; vitest 255.
+- [Phase ?]: Phase 20 GAP closure: h-dvh on AtelierShell root engages internal sidebar scroll; justify-end keeps lone collapse button right-aligned
 
 ## Operator Next Steps
 
