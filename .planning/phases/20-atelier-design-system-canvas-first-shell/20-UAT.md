@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 20-atelier-design-system-canvas-first-shell
 source: [20-01-SUMMARY.md, 20-02-SUMMARY.md, 20-03-SUMMARY.md, 20-04-SUMMARY.md, 20-05-SUMMARY.md]
 started: 2026-07-14T04:46:51Z
@@ -136,17 +136,34 @@ auto_covered: 13
   reason: "User-confirmed: a second visible 'GemPixel' heading (legacy Step1 <h1>, Newsreader 23/700 at y=79) renders directly below the top-bar wordmark. UI-SPEC copywriting contract specifies a single wordmark; 20-04 SUMMARY flagged this as a known transient duplicate."
   severity: major
   test: 4
-  root_cause: ""     # Filled by diagnosis
-  artifacts: []      # Filled by diagnosis
-  missing: []        # Filled by diagnosis
-  debug_session: ""  # Filled by diagnosis
+  root_cause: "The legacy left-sidebar control-panel header still renders its own brand cluster (gem-logo tile + <h1>GemPixel</h1> + 'Diamond Painting Planner' tagline). Phase 20 added the new AtelierShell top-bar wordmark but kept the always-mounted legacy body, so both wordmarks render simultaneously. The AtelierShell <span> is the intended one; the legacy sidebar <h1> is redundant."
+  artifacts:
+    - path: "src/App.tsx"
+      issue: "Lines 1298-1308: legacy sidebar header brand cluster (h1 GemPixel at 1305-1306 + tagline at 1306) — the redundant duplicate to remove/hide. Keep the collapse button at 1309-1317."
+    - path: "src/features/wizard/AtelierShell.tsx"
+      issue: "Line 61: the intended top-bar wordmark <span> (Newsreader 21/600) — leave as-is."
+    - path: "src/__tests__/App.test.tsx"
+      issue: "Lines 99-101 and 109-111 assert container.querySelector('h1').textContent === 'GemPixel'; the first <h1> is currently the legacy sidebar h1. Removing it makes the first <h1> the print-only 'GemPixel Supply Plan Report' → both assertions fail unless retargeted to the AtelierShell wordmark."
+  missing:
+    - "Remove (or hide) the legacy sidebar header brand cluster in src/App.tsx (~1298-1308), preserving the collapse button and the sidebar itself — no full Step 1 deletion (that is Phase 23/25)."
+    - "Retarget the two App.test.tsx wordmark assertions (99-101, 109-111) to the top-bar AtelierShell wordmark (query span.font-display within <header>), rather than the first <h1>."
+  debug_session: .planning/debug/duplicate-gempixel-wordmark.md
 
 - truth: "On a desktop viewport the photo/canvas is visible within the shell without scrolling (canvas-first shell — the canvas is the primary above-the-fold surface)."
   status: failed
   reason: "User-confirmed: 'so much spacing from the top bar you must scroll to see the photo.' Measured at 1280x800: header ends at 63px but canvas starts at y=855 (below the 800px fold); page scrollHeight 2249px. <main> is flex-column; the center canvas column stretches to the tall supply-list sidebar and vertically-centers the canvas, floating it below the fold."
   severity: major
   test: 4
-  root_cause: ""     # Filled by diagnosis
-  artifacts: []      # Filled by diagnosis
-  missing: []        # Filled by diagnosis
-  debug_session: ""  # Filled by diagnosis
+  root_cause: "min-h-screen vs h-screen flexbox gotcha. The shell root (AtelierShell.tsx:52) and body (index.css:120) use min-h-screen (min-height only = indefinite height). The flex-1 row wrapper's 0% basis then resolves against content, so the shell grows to the tallest child — the always-mounted 183-207 row DMC Supply List <aside> (~2249px). The row's min-h-0 + overflow-hidden and the sidebars' inner overflow-y-auto (already authored for viewport-capped internal scroll) never engage because nothing forces a definite height. <main> inherits the ballooned height and the center column (items-center) vertically-centers the canvas at ~y=855, below the fold. items-center is a symptom amplifier, not the cause."
+  artifacts:
+    - path: "src/features/wizard/AtelierShell.tsx"
+      issue: "Line 52: shell root 'flex flex-col min-h-screen' — indefinite outer height (primary offender). Header is already shrink-0."
+    - path: "src/index.css"
+      issue: "Line 120: body { ... min-h-screen } — also indefinite, reinforces the chain."
+    - path: "src/App.tsx"
+      issue: "Line 1290 row wrapper (flex flex-1 min-h-0 overflow-hidden) + 1594 <main> + 1624 center column (flex items-center justify-center) + 1867 always-mounted supply-list <aside> — correctly authored for internal scroll but cannot cap under an indefinite parent."
+  missing:
+    - "Give the shell a definite viewport height: on AtelierShell.tsx:52 swap min-h-screen -> h-screen (prefer h-dvh/h-[100dvh] for mobile URL-bar correctness) and add overflow-hidden, so the existing flex-1 min-h-0 + inner overflow-y-auto engage and the page caps to the viewport."
+    - "Optional: top-align the canvas (items-start + top padding) instead of items-center if a fixed top anchor is preferred; not required to bring the canvas above the fold once height is definite."
+    - "Chrome/layout-only change — no Step body edits. Optional lightweight regression asserting the shell root carries a definite-height class (h-screen/h-dvh)."
+  debug_session: .planning/debug/canvas-below-fold.md
