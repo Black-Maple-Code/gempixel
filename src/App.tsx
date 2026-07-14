@@ -4,6 +4,7 @@ import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
 import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
+import { gridToInches, formatInches } from './engine/density';
 import { hasVariantMapping } from './engine/variants';
 import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
@@ -18,7 +19,7 @@ import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
 import { Step4Export } from './features/wizard/steps/Step4Export';
 import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
-import { RefineScreen } from './features/screens/RefineScreen';
+import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
 import { SuppliesScreen } from './features/screens/SuppliesScreen';
 import { OrderScreen } from './features/screens/OrderScreen';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
@@ -67,6 +68,21 @@ export const STANDARD_SIZES = [
   { name: '80 x 53 grid', value: '80x53-grid', width: 80, height: 53, unit: 'grid' },
   { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
   { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
+];
+
+/**
+ * Curated Refine SizeCard presets (REFINE-01, D-05). A small recommendation set in
+ * GRID dims — deliberately NOT the mixed cm/inch/grid STANDARD_SIZES above (RESEARCH
+ * Q2). App derives each card's true inches (via gridToInches/formatInches, 2.5mm/dot)
+ * and live drill count and passes them as props; the card renders, never derives
+ * (Pattern 2). Anything off this list is reachable through the custom-size entry
+ * (REFINE-02). "Medium" (80×53) is the default recommendation and carries the BEST tag.
+ */
+export const REFINE_SIZE_PRESETS: Array<{ label: string; cols: number; rows: number; tag?: string }> = [
+  { label: 'Small', cols: 60, rows: 40 },
+  { label: 'Medium', cols: 80, rows: 53, tag: 'BEST' },
+  { label: 'Large', cols: 110, rows: 73 },
+  { label: 'Extra large', cols: 140, rows: 93 },
 ];
 
 
@@ -212,6 +228,13 @@ export function App() {
   const [smoothingStrength, setSmoothingStrength] = usePersistentState(
     'gempixel_smoothing_strength', 1, codecs.int(1)
   );
+  // REFINE-04 (D-03/D-04) target-N color reduction — the post-process tier the
+  // Refine color slider drives. OFF by default so matchResult stays byte-identical
+  // to the pre-reducer pipeline (SC5); flips on the moment the user lowers the
+  // slider below detectedColorCount. targetColorCount is a large sentinel until
+  // then so the slider thumb sits at the top (= a no-op reduce ceiling).
+  const [enableReduce, setEnableReduce] = useState(false);
+  const [targetColorCount, setTargetColorCount] = useState<number>(256);
   // Lazy-init read migrated onto the guarded hook; the imperative checkout writes
   // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here.
   const [unmappedLog, setUnmappedLog] = usePersistentState<string[]>(
@@ -484,7 +507,7 @@ export function App() {
   // dimension-sync effect's double-source-of-truth fragility is addressed separately.
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
-  const { matchResult, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
+  const { matchResult, detectedColorCount, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
     // D-13: the worker consumes the COMMITTED inputs, not the live ones — so an
     // upstream edit (size/image) after a match does not silently re-fire the worker.
     image: matchInputs.image,
@@ -495,6 +518,11 @@ export function App() {
     substitutionThreshold,
     enableSmoothing,
     smoothingStrength,
+    // REFINE-04 post-process tier (D-03/D-04): these live ONLY in the hook's
+    // matchResult memo deps, never the worker effect (image/cols/rows/candidatesKey),
+    // so the color slider re-renders on the main thread with no worker re-fire.
+    enableReduce,
+    targetColorCount,
   });
 
   const wizard = useWizard({
@@ -1258,6 +1286,78 @@ export function App() {
     }
   };
 
+  // ── Refine screen props (23-03, D-03..D-06) ────────────────────────────────
+  // App derives every displayed figure; RefineScreen renders pure (Pattern 2).
+  // SizeCards get pre-computed inch strings + drill counts (density.ts). Edge
+  // cleanup maps onto enableSmoothing/smoothingStrength; the color slider drives
+  // the NEW enableReduce/targetColorCount post-process tier. Size selection sets
+  // live cols/rows only → the existing soft-invalidate/Recompute owns the worker.
+  const refineSizePresets = REFINE_SIZE_PRESETS.map(p => {
+    const { widthIn, heightIn } = gridToInches(p.cols, p.rows);
+    return {
+      label: p.label,
+      cols: p.cols,
+      rows: p.rows,
+      tag: p.tag,
+      inches: `${formatInches(widthIn)} × ${formatInches(heightIn)} in`,
+      drillCount: p.cols * p.rows,
+    };
+  });
+  // Edge-cleanup value: Off (0) when smoothing disabled, else the strength (1-3).
+  const edgeCleanup = (enableSmoothing ? Math.min(3, Math.max(0, smoothingStrength)) : 0) as 0 | 1 | 2 | 3;
+  // Distinct colors currently rendered (post smooth/reduce) — the live readout beside
+  // the slider so a smoothing dead-zone reads "already at N", not a broken control.
+  const currentColorCount = Object.keys(matchResult?.counts ?? {}).length;
+  // Slider thumb: sits at the top (detectedColorCount) until the user opts into reduce.
+  const refineColorTarget = enableReduce ? targetColorCount : detectedColorCount;
+
+  const refineProps: RefineScreenProps = {
+    sizePresets: refineSizePresets,
+    cols,
+    rows,
+    onSelectSize: (c: number, r: number) => {
+      // Worker tier (D-04): set live cols/rows ONLY. The divergence from the
+      // committed matchInputs surfaces the stale banner + single Recompute CTA;
+      // the worker never re-fires per card click (no B2 abort-race).
+      setCols(c);
+      setRows(r);
+      setWidthInput(String(c));
+      setHeightInput(String(r));
+      setSelectedPreset('custom');
+    },
+    widthInput,
+    heightInput,
+    onWidthChange: handleWidthChange,
+    onHeightChange: handleHeightChange,
+    edgeCleanup,
+    onEdgeCleanupChange: (v: 0 | 1 | 2 | 3) => {
+      // Post-process tier (D-03): pure main-thread re-render, no worker, no staleness.
+      if (v === 0) {
+        setEnableSmoothing(false);
+      } else {
+        setEnableSmoothing(true);
+        setSmoothingStrength(v);
+      }
+    },
+    colorTarget: refineColorTarget,
+    detectedColorCount,
+    currentColorCount,
+    onColorTargetChange: (n: number) => {
+      // Post-process tier (D-03/Pitfall 3): flip reduce on and clamp to [8, detected].
+      setEnableReduce(true);
+      setTargetColorCount(Math.max(8, Math.min(n, detectedColorCount)));
+    },
+    selectedBaseKit,
+    onKitChange: setSelectedBaseKit,
+    drillStyle,
+    onShapeChange: setDrillStyle,
+    excludedColors,
+    onToggleExclude: toggleColorExclusion,
+    baseCandidates,
+    stale: isStale,
+    onRecompute: handleRecomputeMatch,
+  };
+
   return (
     <AtelierShell
       step={wizard.step}
@@ -1473,7 +1573,7 @@ export function App() {
 
         <div data-step-panel="2" className={wizard.step === 2 ? 'contents' : 'hidden'}>
           {USE_NEW_REFINE ? (
-            <RefineScreen />
+            <RefineScreen {...refineProps} />
           ) : (
           <Step2Palette
             selectedBaseKit={selectedBaseKit}
