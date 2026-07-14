@@ -135,4 +135,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 — Milestone v4.0 Canvas-First Redesign OPENED (frontend-only canvas-first 4-step flow + Atelier light design system + mobile rework + accurate quoting; recreated from the high-fidelity design handoff). Backend/fulfillment (Storyboard C + vendor APIs + payments) deferred to v5.0. Prior: v3.0 force-closed at 40% (Phases 15–16 shipped). Next: define v4.0 requirements → roadmap.*
+*Last updated: 2026-07-14 — Milestone v4.0 in progress: Phases 20–22 shipped (Atelier design system + canvas-first shell → shared UI primitives → additive engine). Phase 22 validated QUOTE-01/02/03: one 2.5mm/dot density source (`engine/density.ts`), one integer-cents `engine/quote.ts` selector (line items sum exactly; $0 tax "calculated at vendor checkout"; combined shipping w/ dated provenance), plus the deterministic Delta-E-guarded `reduceToColorCount` + raw-keyed `detectedColorCount` engine support (all additive, engine-only, 325 tests green). Next: Phase 23 — the four screens in flow order. Backend/fulfillment deferred to v5.0.*
