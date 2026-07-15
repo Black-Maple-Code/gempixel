@@ -1,99 +1,152 @@
 ---
 phase: 23-the-four-screens-in-flow-order
-reviewed: 2026-07-14T00:00:00Z
+reviewed: 2026-07-15T00:00:00Z
 depth: standard
-files_reviewed: 7
+files_reviewed: 2
 files_reviewed_list:
-  - src/features/screens/flags.ts
-  - src/features/screens/UploadScreen.tsx
-  - src/features/screens/RefineScreen.tsx
-  - src/features/screens/SuppliesScreen.tsx
-  - src/features/screens/OrderScreen.tsx
-  - src/features/screens/orderPacket.ts
   - src/App.tsx
+  - src/features/wizard/CanvasWorkspace.tsx
 findings:
-  critical: 1
-  warning: 2
-  info: 1
+  critical: 0
+  warning: 1
+  info: 3
   total: 4
-status: resolved
-resolved_at: 2026-07-14T00:00:00Z
-resolution:
-  CR-01: fixed — onDeleteProject prop wires Remove to projectStore.remove (commit 1682811)
-  WR-01: fixed — loadProject + resetWorkspace reset finish/shipTo/packetDownloaded (commit b620354)
-  WR-02: fixed — color slider gated below 9 detected colors; clamp hardened (commit f576b74)
-  IN-01: fixed — dead UploadScreen props removed (commit ec99363)
+status: issues_found
 ---
 
-# Phase 23: Code Review Report
+# Phase 23: Code Review Report (gap-closure — viewport-first shell flip)
 
-**Reviewed:** 2026-07-14
-**Depth:** standard
-**Files Reviewed:** 7
-**Status:** resolved (all 4 findings fixed 2026-07-14; `tsc --noEmit` clean, full Vitest suite green — 352 passed / 12 pre-existing skips)
+**Reviewed:** 2026-07-15
+**Depth:** standard (delta vs `b7f0c27`)
+**Files Reviewed:** 2
+**Status:** issues_found
+
+> Scope note: this is a fresh gap-closure review of the "viewport-first shell flip"
+> (UAT Test 26), covering only `src/App.tsx` and the new `src/features/wizard/CanvasWorkspace.tsx`.
+> It supersedes the earlier resolved 7-file review of the screen components.
 
 ## Summary
 
-Reviewed the Phase 23 diff wiring four pure/props-only customer screens (Upload · Refine · Supplies · Order) into the state-owning App.tsx behind the four strangler flags (all now `true`).
+Reviewed the delta: the extraction of `CanvasWorkspace.tsx` (pure/props-only center-canvas
+region) and the App.tsx replacement of the legacy dark 3-column shell (left "My Images" aside
++ right DMC-legend aside + bottom nav) with a centered 1180px cream viewport frame hosting the
+four `data-step-panel` screens.
 
-The load-bearing seams are sound:
-- **Two-tier Refine reactivity is correct.** Size selection (`onSelectSize`) sets live `cols`/`rows` only; the worker keys on committed `matchInputs`, so card clicks never re-fire the worker (verified `useDiamondArtMatch` inputs use `matchInputs.*`). Edge-cleanup and the color slider drive only the hook's post-process memo (`enableSmoothing`/`smoothingStrength`/`enableReduce`/`targetColorCount`) — no worker re-fire. The color slider correctly uses the live `onInput` path (`Slider` fires `onInput` per tick) and `max={detectedColorCount}` (raw-keyed, stable under drag), so the thumb does not jump.
-- **Single-source quote holds.** Supplies and Order both render the one `buildOrderQuote(...)` result (`orderQuote`); neither screen does local cents summation. Totals cannot diverge by construction.
-- **Order honesty + privacy hold.** `handleDownloadOrderPacket` performs a Blob download only — no `fetch`/XHR/`sendBeacon`. Ship-to is embedded in the packet and never transmitted. `buildOrderPacket` is pure/versioned/self-contained. No receipt/order-number/payment UI. No `dangerouslySetInnerHTML`; user strings (ship-to, filename via CSPRNG `packetId`) render/serialize inertly with Preact escaping.
+Verdict on the primary invariants:
 
-One functional wiring defect (BLOCKER) and two robustness/state-leak gaps (WARNING) were found.
+- **Single-canvas-mount (D-14): sound.** The `<canvas>` lives inside `CanvasWorkspace`, which
+  is always rendered inside a `<main>` whose *class* toggles between the step-2 flex layout
+  and `hidden` (`display:none`). The element is never gated behind a step conditional, so the
+  `CanvasViewer` is never remounted on a step change. Mount still keys on `image || matchResult`
+  exactly as before, and the step-2 `useEffect` (`viewerRef.current?.fitToContainer()` on
+  `wizard.step === 2`) correctly re-measures the container that reads 0 while hidden. Guarded
+  with optional chaining, so a not-yet-created viewer is safe.
+- **Dead state cleanup: clean.** `imagesDrawerOpen`, `leftPanelCollapsed`,
+  `rightPanelCollapsed`, `supplyListOpen`, `handleHeaderClick`, and the `sortBy/sortAsc`
+  setters were removed with zero dangling references (grep-confirmed; `tsc` clean).
+- **Relocated controls (New / Save / Back / Next): wired correctly.** IDs, handlers, and the
+  `!canEnter(step+1) || nextBlockedByStale` gating are preserved verbatim; no duplicate IDs.
+- **State leak on load/reset: none found in the delta.** `loadProject`/`resetWorkspace`
+  already reset the order state (finish, shipTo, packetDownloaded) and were not touched here.
 
-## Critical Issues
+One functional regression (print coupling) is worth fixing, plus dead code the flip newly
+orphaned. Per scope, the legacy `Step1–4` ternary branches are dead (all four `USE_NEW_*`
+flags are `true`) but are deliberately retained for the Phase 25 grep-clean; they are noted
+below for completeness only, not weighted.
 
-### CR-01: UploadScreen "Remove" deletes nothing — wired to the wrong list
+## Narrative Findings (AI reviewer)
 
-**File:** `src/features/screens/UploadScreen.tsx:159-171` (call), `src/App.tsx:1657-1659` (wiring)
-**Issue:** The new "Recent" section renders **saved projects** (`projectsRegistry`, each `project.id` from `generateUUID()`), but the Remove-confirm "Yes" button calls `props.deleteRecentImage(project.id, e)`. `deleteRecentImage` (App.tsx:1034-1037) filters the unrelated **recent-uploads** list: `setRecentImages(prev => prev.filter(x => x.id !== id))`. A project id never matches a `recentImages` id (different id namespaces), so the filter removes nothing, `projectStore.remove` is never called, and `projectsRegistry` is never refreshed. Result: the confirm flow runs, the chip stays, and the saved project is never deleted — a fully non-functional Remove button. The correct project-delete pattern already exists at App.tsx:1601-1607 (`projectStore.remove(id)` + `setProjectsRegistry(projectStore.list())` + active-project cleanup); UploadScreen was wired to the recent-image handler instead.
-**Fix:** Add a dedicated project-delete prop and wire it to the real store call:
+### Warnings
+
+#### WR-01: Canvas print path is now coupled to step 2 — Ctrl+P from Upload/Supplies/Order prints a blank canvas region
+
+**File:** `src/App.tsx:1619` (interacts with the `beforeprint` handler at `src/App.tsx:706-731`)
+**Issue:**
+Before the flip, the canvas `<main>` was always `print:block`
+(`<main className="flex-1 relative flex flex-col min-w-0 print:block">`), so a native browser
+print (Ctrl+P) rendered the canvas grid + fold legends from *any* step. After the flip the
+`<main>` class is:
+
 ```tsx
-// UploadScreenProps
-onDeleteProject: (id: string) => void;
-// ...Yes button:
-onClick={(e) => { e.stopPropagation(); setConfirmingId(null); props.onDeleteProject(project.id); }}
+<main className={wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col print:block' : 'hidden'}>
 ```
+
+On steps 1/3/4 the element is `hidden` (`display:none`) with **no `print:` override**, and the
+default `@media print` block (`src/index.css:184`) does not target `main` — it only reveals
+`.print-canvas-sheet`, which is a descendant of the now-`display:none` `main` and therefore
+stays collapsed. The step panels are all `no-print`, and the always-in-DOM
+`.supply-report-print-container` / `.legend-checklist-print-container` only appear under their
+explicit `print-only-*-mode` body classes. Net effect: a plain Ctrl+P from any step other than
+Refine (2) produces an empty page.
+
+This is compounded by the global `beforeprint` handler, which unconditionally forces
+`viewportMode = 'symbols'` and calls `fitToContainer()` regardless of step — it still assumes
+the canvas is printable everywhere, but the DOM no longer honors that on steps 1/3/4.
+
+Practical blast radius is limited today because the new `SuppliesScreen`/`OrderScreen` do not
+wire the dedicated print/export handlers, so Ctrl+P is the only remaining canvas-print path —
+and printing a diamond chart is a core value-prop of the app.
+
+**Fix:** Keep the canvas `<main>` printable regardless of the on-screen step, e.g. give the
+hidden branch a print override:
+
 ```tsx
-// App.tsx wiring
-onDeleteProject={(id) => {
-  projectStore.remove(id);
-  setProjectsRegistry(projectStore.list());
-  if (activeProjectId === id) { setActiveProjectId(null); restore(null); }
-}}
+<main className={wizard.step === 2
+  ? 'relative flex min-w-0 flex-1 flex-col print:block'
+  : 'hidden print:block'}>
 ```
 
-## Warnings
+Alternatively add, to the default `@media print` block,
+`body:not(.print-only-report-mode):not(.print-only-legend-mode) main { display:block !important }`
+so the canvas sheet always surfaces on a plain print. Verify the two explicit modes (which set
+`main { display:none }`) still win.
 
-### WR-01: Order-screen state leaks across project load / reset
+### Info
 
-**File:** `src/App.tsx:343-405` (`loadProject`), `src/App.tsx:407-437` (`resetWorkspace`)
-**Issue:** `finish`, `shipTo`, and `packetDownloaded` are never reset by `loadProject` or `resetWorkspace`. After a user downloads a packet and then loads a different project (whose match is restored, so step 4 is reachable), the Order screen still shows the honest terminal state "Packet downloaded — take this file to your vendor" for a project they never downloaded, and the **previous project's ship-to address stays pre-filled**. This both misleads (false terminal state) and carries one project's client-entered PII into another project's Order form.
-**Fix:** In both `loadProject` and `resetWorkspace`, reset the Order state:
-```tsx
-setFinish('trimmed');
-setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
-setPacketDownloaded(false);
-```
+#### IN-01: Artist Resources modal + `resourcesModalOpen` state are now fully unreachable (trigger deleted)
 
-### WR-02: Refine color slider is degenerate when the image has fewer than 8 colors
+**File:** `src/App.tsx:216`, `src/App.tsx:1834-1927`
+**Issue:** The only control that set `resourcesModalOpen` to `true` was the "Artist Resources"
+button in the deleted left-sidebar footer. After the flip, `setResourcesModalOpen(true)` has
+no caller (grep-confirmed: only `useState`, the `setResourcesModalOpen(false)` closers, and the
+`resourcesModalOpen && (...)` render guard remain), so the ~90-line modal is dead. This is
+distinct from the flag-gated legacy `Step1–4` bodies — it is chrome the flip orphaned. Scope
+notes the modal is intentionally retained for Phase 25, so this is recorded for the grep-clean,
+not as a live defect.
+**Fix:** Either re-home an "Artist Resources" trigger into the new shell (e.g. the frame action
+row) or delete `resourcesModalOpen`/`setResourcesModalOpen` and the modal block in Phase 25.
 
-**File:** `src/features/screens/RefineScreen.tsx:216-223`
-**Issue:** The slider is `min={8}` with `max={detectedColorCount}`. For a low-color or near-monochrome image, `detectedColorCount` can be `< 8` (or `0` in the unmatched/hidden state), making `max < min`. HTML `<input type="range">` clamps `max` up to `min`, so the control collapses to `[8,8]` while the label reads e.g. "2 of 2 matched" with the thumb pinned at the far end — a broken/misleading control. `onColorTargetChange` also clamps to `Math.max(8, Math.min(n, detectedColorCount))`, forcing `targetColorCount = 8 > detectedColorCount` (a nonsensical reduce ceiling above the detected count).
-**Fix:** Clamp the effective max (and gate the reduce floor) so `min <= max`, e.g. `max={Math.max(8, detectedColorCount)}`, and skip enabling reduce when `detectedColorCount <= 8` (there is nothing to reduce). Optionally hide the slider entirely below 8 detected colors.
+#### IN-02: Recent-uploads state and handlers are orphaned in the live flow
 
-## Info
+**File:** `src/App.tsx:205` (`recentImages`), `src/App.tsx:638-640` (persistence effect), `src/App.tsx:1018` (`loadRecentImage`), `src/App.tsx:1056` (`deleteRecentImage`), `src/App.tsx:210` (`imageFitMode`), `src/App.tsx:190`/`207` (`recsOpen`/`recentUploadsOpen`)
+**Issue:** With `USE_NEW_UPLOAD === true`, `UploadScreen` renders and the legacy `Step1Ingest`
+branch is unreachable. `recentImages` is still populated on every upload (`src/App.tsx:1001`)
+and persisted to localStorage on every change (`src/App.tsx:638`), but the recent-uploads UI
+that consumed it lives only in the dead `Step1Ingest`. `loadRecentImage`, `deleteRecentImage`,
+`imageFitMode`, `recsOpen`, and `recentUploadsOpen` are likewise consumed only by that dead
+branch. Harmless (a small ongoing localStorage write for data nothing displays), and part of
+the deliberately-retained legacy surface — noted for Phase 25.
+**Fix:** Retire the recent-uploads state/handlers (and the `projectStore.recents` writes)
+alongside the `Step1Ingest` removal, or wire a recent-uploads affordance into `UploadScreen`
+if the feature is still desired (currently only saved *projects* surface there).
 
-### IN-01: UploadScreen carries unused props (dead plumbing)
+#### IN-03: Legacy export/checkout handlers unreferenced by any live path
 
-**File:** `src/features/screens/UploadScreen.tsx:25-43` (interface), `src/App.tsx:1644-1660` (wiring)
-**Issue:** `image`, `imageName`, `imageFitMode`, `setImageFitMode`, `recentImages`, and `loadRecentImage` are declared on `UploadScreenProps` and passed by App but never read in the component (only `dropZoneRef`, `isDragOver`, the drag/file handlers, `projectsRegistry`, `loadProject`, and `deleteRecentImage` are used). The recent-uploads (drag/drop history) surface was dropped in favor of the saved-projects list; if that is intentional (D-10), the `recentImages`/`loadRecentImage`/fit-mode props are dead and should be removed from the interface and the App wiring to keep the props-only contract honest and prevent confusion with CR-01's mis-wire.
-**Fix:** Remove the unused fields from `UploadScreenProps` and drop them from the `<UploadScreen ... />` call site, or actually consume them if a recent-uploads row is still intended.
+**File:** `src/App.tsx:1068` (`printReport`), `src/App.tsx:1078` (`handleDownloadCanvasOnly`), `src/App.tsx:1102` (`handleDownloadCombinedCanvasSheet`), `src/App.tsx:1129` (`printLegendSheetOnly`), `src/App.tsx:1289` (`handleShopifyCheckout`), `src/App.tsx:1283` (`checkoutWarning`)
+**Issue:** These handlers are threaded only into the legacy `Step3Canvas`/`Step4Export`
+branches, which are unreachable now that `USE_NEW_SUPPLIES`/`USE_NEW_ORDER` are `true`. The new
+`SuppliesScreen`/`OrderScreen` prop objects do not include canvas-download, legend/report print,
+or Shopify-checkout wiring, so those capabilities are currently absent from the live flow. This
+gap predates the shell-flip delta (the screens were built without them in earlier Phase 23
+plans), so it is out of this diff's scope — flagged so it is not lost: confirm during Phase 25
+whether canvas-PNG export / supply-report print / Shopify checkout are meant to be re-homed into
+the new screens or genuinely dropped.
+**Fix:** During the Phase 25 strangler cleanup, either re-home the export/print/checkout
+affordances into the canvas-first screens or delete the now-orphaned handlers and the
+`checkoutWarning` modal with the legacy `Step3/Step4` bodies.
 
 ---
 
-_Reviewed: 2026-07-14_
+_Reviewed: 2026-07-15_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
