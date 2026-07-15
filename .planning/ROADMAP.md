@@ -227,6 +227,16 @@ Plans:
 > ~1180px viewport frame. Phase 25 is therefore a **final grep-clean**, not a from-scratch
 > strangler close.
 
+> **Scope added 2026-07-15 (Phase 23 Test 26 sign-off — UX refinements + code-review follow-up).**
+> On accepting the viewport flip, the user raised four UX refinements and code review logged one
+> regression. These join Phase 25 (the phase that already re-touches this journey and re-verifies
+> the real-photo walk, UAT Test 29):
+> 1. **Auto-advance to Refine on upload** — uploading a photo currently does not advance to step 2, so it reads as a no-op. Auto-advance Upload → Refine on a successful ingest. (Also unblocks UAT Test 29's first step.)
+> 2. **Auto-recompute on dimension change** — the size/worker tier still requires an intermediate "Recompute" click; make a dimension change recompute automatically (revisits the D-03/D-04 soft-invalidate → manual-Recompute decision).
+> 3. **Narrow the Refine rail** — the 360px rail has excess empty space on the right and eats into the viewport (the focus); tighten it so the canvas preview dominates.
+> 4. **Clearer "Advanced" disclosure affordance** — the RefineScreen `<details>` doesn't read as clickable or signal that settings live inside; give it an explicit affordance.
+> 5. **WR-01 (code review, `23-REVIEW.md`)** — the canvas `<main>` is `print:block` only on Refine (step 2); on Upload/Supplies/Order it is `display:none` with no print override, so a plain Ctrl+P of the raw canvas grid prints blank from those screens (the dedicated Print-Supply-Report and legend-print buttons are unaffected). Restore canvas-grid print from the other steps (needs fit-on-print for the hidden canvas), or make the intent explicit.
+
 **Goal**: With the new journey validated in UAT, the remaining `Step1..4` component files, theme remnants, and any leftover dead preset state are grep-cleaned — the strangler is complete and the codebase carries no dual UI.
 **Depends on**: Phase 24
 **Requirements**: (none — strangler close; carries no v4.0 REQ-ID by design)
@@ -236,6 +246,9 @@ Plans:
   2. No dead code path can resurrect dark mode or the old sidebar (grep-clean of `Step*` / theme / aside remnants).
   3. Any remaining open decisions (kit default, color-exclude placement, drillStyle default) are resolved into the Refine "Advanced" disclosure or sane defaults.
   4. The 240+ Vitest suite stays green after deletion and the app ships green with a single UI tree.
+  5. **UX (from Test 26 sign-off):** a successful upload auto-advances Upload → Refine (no dead-end no-op); a dimension change recomputes automatically (no intermediate Recompute click); the Refine rail is tightened so the canvas preview dominates the viewport; and the "Advanced" disclosure reads as clickable and signals housed settings.
+  6. **Print (WR-01):** a plain Ctrl+P produces the canvas grid from every step where it is meaningful — not just Refine — or the intent is made explicit; the dedicated Supply-Report/legend print paths remain intact.
+  7. The real-photo end-to-end journey (UAT Test 29: Upload → Refine → Supplies → Order) is re-verified against the final in-viewport layout with the above UX fixes in place.
 
 **Plans**: TBD
 

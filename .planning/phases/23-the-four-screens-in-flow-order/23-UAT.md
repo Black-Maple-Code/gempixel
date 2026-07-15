@@ -3,7 +3,7 @@ status: complete
 phase: 23-the-four-screens-in-flow-order
 source: 23-01-SUMMARY.md, 23-02-SUMMARY.md, 23-03-SUMMARY.md, 23-04-SUMMARY.md, 23-05-SUMMARY.md
 started: 2026-07-15T14:33:49Z
-updated: 2026-07-15T14:38:00Z
+updated: 2026-07-15T17:09:18Z
 ---
 
 ## Current Test
@@ -169,9 +169,10 @@ coverage_id: 23-05-D4
 
 ### 26. Desktop presentation of the new journey (integrated layout)
 expected: each new screen is the primary Atelier-shell content in a centered ~1180px frame (UI-SPEC dimensions); no legacy dark chrome dominating; no duplicate upload prompts
-result: issue
-reported: "This is not expected state - we are moving to a simplified UI where the user can live within the viewport. We are looking to retire the left hand menu and move those options into the viewport."
-severity: major
+result: pass
+source: gap-closure + browser-verified
+resolved_by: 23-06, 23-07, 23-08 (viewport-first shell flip)
+note: "Browser-verified on a fresh dev-server transform (no server errors) — centered frame max-width:1180px, cream bodyBg rgb(244,241,233), 0 <aside> elements (left My-Images menu + right DMC legend both retired), no 'My Images' text in the live flow, exactly one 'Photo → Diamond chart' upload heading, all four data-step-panel screens present, New/Save/Back-Next relocated into the viewport. Guarded by the integrated 'Layout regression — the four screens host the viewport; legacy shell retired (UAT Test 26)' test. User accepted browser proof in lieu of a manual re-walk."
 
 ### 27. Single-source total agreement: Supplies === Order (23-04 D5 / 23-05 D5)
 expected: Supplies "Est. total" and Order "Total" render the SAME buildOrderQuote total
@@ -188,13 +189,13 @@ note: DOM-verified on Order panel (default state)
 ### 29. End-to-end journey with a real photo (Upload → Refine → Supplies → Order)
 expected: upload a photo → auto-advance to Refine → pick a size (preview + counts update live) → edge-cleanup + color slider re-render live → Supplies table + summary → Order packet downloads
 result: skipped
-reason: Deferred until the viewport-hosting rework (Test 26 gap) lands — the full journey will be re-verified visually against the new in-viewport layout, since the fix re-touches how every screen is presented.
+reason: Viewport-hosting rework (Test 26 gap) landed via Plans 06–08; the full real-photo journey is now deferred to Phase 25, where it will be re-verified together with the four UX refinements the user raised on 2026-07-15 (auto-advance to Refine on upload, auto-recompute on dimension change, narrower Refine rail, clearer "Advanced" affordance). Notably, the expected "upload → auto-advance to Refine" step is a known Phase-25 item: today upload does not auto-advance, so uploading looks like a no-op.
 
 ## Summary
 
 total: 29
-passed: 27
-issues: 1
+passed: 28
+issues: 0
 pending: 0
 skipped: 1
 blocked: 0
@@ -203,7 +204,8 @@ blocked: 0
 
 <!-- YAML format for plan-phase --gaps consumption -->
 - truth: "Each new screen (Upload/Refine/Supplies/Order) is the primary content of the Atelier shell, hosted in the viewport as a centered full-frame layout; the left-hand legacy control menu is retired and its options live in the viewport."
-  status: failed
+  status: resolved
+  resolved_by: "23-06, 23-07, 23-08 (2026-07-15) — viewport-first shell flip; browser-verified (max-width:1180px cream frame, 0 asides, no My-Images, single upload heading, four panels host the viewport), regression-guarded, user-accepted."
   reason: "User reported: This is not expected state - we are moving to a simplified UI where the user can live within the viewport. We are looking to retire the left hand menu and move those options into the viewport."
   severity: major
   test: 26
