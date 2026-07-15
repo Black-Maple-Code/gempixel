@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
 import { App } from '../App';
 import { MatcherClient } from '../engine/worker-client';
-import { CanvasViewer } from '../engine/viewer';
 import { DMC_PALETTE } from '../engine/palette';
 import { __setOffscreenSupportForTest } from '../features/match/useDiamondArtMatch';
 
@@ -82,15 +81,19 @@ describe('Integration Match Triggering and Palette Toggles', () => {
   it('renders base checklist options correctly', async () => {
     render(<App />, container);
 
-    // Expand the collapsible section first
-    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Exclude Colors')
-    );
-    expect(excludeColorsBtn).not.toBeUndefined();
-    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Re-pointed (23-07): color-exclusion now lives in the RefineScreen "Advanced"
+    // disclosure (step-2 panel), not the legacy right aside deleted in Plan 08. Open the
+    // native <details> — RefineScreen mounts the exclusion list only while Advanced is open
+    // (it gates the list on the toggle event) — then assert the exclude checkboxes appear.
+    // Match by the surviving structure/copy, not the legacy right-aside capital-C string.
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const advanced = step2.querySelector('details') as HTMLDetailsElement;
+    expect(advanced).not.toBeNull();
+    advanced.open = true;
+    advanced.dispatchEvent(new Event('toggle', { bubbles: false }));
 
     await vi.waitFor(() => {
-      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = step2.querySelectorAll('input[type="checkbox"]');
       expect(checkboxes.length).toBeGreaterThan(0);
     });
   });
@@ -167,29 +170,30 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Clear call history
     mockMatch.mockClear();
 
-    // Expand the collapsible section first. D-14: the step panels are now
-    // always-mounted CSS-toggled siblings, so Step2's palette checklist coexists
-    // in the DOM with the right-sidebar "Exclude Colors" checklist (which owns the
-    // candidate filter). Scope to the right <aside> so the first checkbox is the
-    // first color-exclusion checkbox, not Step2's substitute/smooth toggles.
-    const rightAside = container.querySelectorAll('aside')[1];
-    const excludeColorsBtn = Array.from(rightAside.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Exclude Colors')
-    );
-    expect(excludeColorsBtn).not.toBeUndefined();
-    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Re-pointed (23-07): the color-exclusion checklist now lives in the RefineScreen
+    // "Advanced" disclosure (step-2 panel), not the legacy right aside deleted in Plan 08.
+    // Open the native <details> (RefineScreen mounts the exclusion list only while Advanced
+    // is open) and toggle the first color there. NOTE the inverted checkbox semantics vs.
+    // the legacy aside: RefineScreen checkboxes are `checked === excluded`, so they start
+    // UNCHECKED (nothing excluded) and clicking one EXCLUDES that color — which is what
+    // shrinks the candidate list by 1.
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const advanced = step2.querySelector('details') as HTMLDetailsElement;
+    expect(advanced).not.toBeNull();
+    advanced.open = true;
+    advanced.dispatchEvent(new Event('toggle', { bubbles: false }));
 
-    // Wait for animation/render and find check box of first color and toggle it (uncheck it)
+    // Wait for the exclusion list to mount, then toggle the first color's checkbox.
     let checkboxes: NodeListOf<Element> = [] as any;
     await vi.waitFor(() => {
-      checkboxes = rightAside.querySelectorAll('input[type="checkbox"]');
+      checkboxes = step2.querySelectorAll('input[type="checkbox"]');
       expect(checkboxes.length).toBeGreaterThan(0);
     });
 
     const firstCheckbox = checkboxes[0] as HTMLInputElement;
-    expect(firstCheckbox.checked).toBe(true);
+    expect(firstCheckbox.checked).toBe(false);
 
-    // Click checkbox once (natively toggles state and fires click/change in jsdom)
+    // Click checkbox once (natively toggles state and fires click/change in jsdom) → excludes it
     firstCheckbox.click();
 
     // Wait for match recalculation
@@ -207,103 +211,12 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('updates highlighted color codes in the viewer when legend rows are selected', async () => {
-    // 1. Stub FileReader/Image/Canvas
-    const mockReader = {
-      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
-        if (this.onload) {
-          this.onload({ target: { result: 'data:image/png;base64,mock' } });
-        }
-      }),
-    };
-    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
-
-    const mockImageInstance = {
-      naturalWidth: 10,
-      naturalHeight: 10,
-      width: 10,
-      height: 10,
-      set src(_val: string) {
-        if (this.onload) {
-          setTimeout(() => this.onload(), 0);
-        }
-      },
-      onload: null as any,
-    };
-    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
-
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
-      if (type === '2d') {
-        return {
-          clearRect: vi.fn(),
-          drawImage: vi.fn(),
-          fillRect: vi.fn(),
-          beginPath: vi.fn(),
-          arc: vi.fn(),
-          fill: vi.fn(),
-          getImageData: vi.fn().mockReturnValue({
-            data: new Uint8ClampedArray(400),
-            width: 10,
-            height: 10,
-          }),
-        } as any;
-      }
-      return null;
-    });
-
-    // 2. Set up MatcherClient mock to return matches when called.
-    // New signature: (bitmap, cols, rows, candidates, onProgress, onComplete, onError).
-    mockMatch.mockImplementationOnce((_bitmap, _cols, _rows, _candidates, _onProgress, onSuccess) => {
-      // Immediately succeed with mock results: 1 cell of color '310'
-      onSuccess({
-        matches: ['310'],
-        counts: { '310': 1 }
-      });
-    });
-
-    render(<App />, container);
-
-    // 3. Trigger image load to populate legend
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File([''], 'test.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', {
-      value: [file],
-      writable: true
-    });
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-    await new Promise(r => setTimeout(r, 100));
-
-    expect(CanvasViewer).toHaveBeenCalled();
-
-    // Find the legend table row for '310' (first row) and click it once.
-    // D-14: the always-mounted Supplies (panel-3) screen now also renders a
-    // display-only supply table, so scope to the right sidebar (Color Legend),
-    // which owns the interactive legend rows wired to setHighlightedColor.
-    const rightAside = container.querySelectorAll('aside')[1];
-    const tableRow = rightAside.querySelector('tbody tr') as HTMLTableRowElement;
-    expect(tableRow).toBeTruthy();
-    expect(tableRow.textContent).toContain('310');
-
-    tableRow.click();
-    await new Promise(r => setTimeout(r, 50));
-
-    // It should invoke setHighlightedColor with '310' on the viewer
-    expect(mockSetHighlightedColor).toHaveBeenCalledWith('310');
-
-    // Click it again to deselect
-    mockSetHighlightedColor.mockClear();
-    tableRow.click();
-    await new Promise(r => setTimeout(r, 50));
-
-    // It should invoke setHighlightedColor with null on the viewer
-    expect(mockSetHighlightedColor).toHaveBeenCalledWith(null);
-
-    // Clean up globals
-    vi.unstubAllGlobals();
-    HTMLCanvasElement.prototype.getContext = originalGetContext;
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "updates highlighted color codes
+  // in the viewer when legend rows are selected" covered the interactive, click-to-highlight
+  // sortable legend that lived ONLY in the legacy right <aside>. That aside is deleted in
+  // Plan 08; the new SuppliesScreen table is display-only by design (SUPPLIES-01), so there
+  // is no highlight-on-row-click behavior to cover. Strangler retirement pulled forward from
+  // Phase 25 — intentional coverage removal of deleted chrome, not a regression.
 
   it('verifies that canvas viewer draw context receives the correct globalAlpha parameters for highlight blending passes', async () => {
     // Import the actual CanvasViewer
@@ -486,66 +399,17 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     });
   });
 
-  it('collapses and expands the left sidebar correctly on trigger clicks', async () => {
-    render(<App />, container);
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): the left "Setup" fixed-width
+  // sidebar and its collapse/expand affordance are deleted in Plan 08 — the user asked to
+  // retire the left-hand menu and move those options into the viewport. The collapse chrome
+  // ceases to exist, so its test goes with it (Phase 25 strangler retirement pulled forward
+  // — intentional removal of deleted chrome, not a regression).
 
-    // Sidebar should start expanded
-    const sidebar = container.querySelector('aside') as HTMLElement;
-    expect(sidebar.className).toContain('w-80');
-
-    // Click collapse button
-    const collapseBtn = container.querySelector('button[title="Collapse Sidebar"]') as HTMLButtonElement;
-    expect(collapseBtn).not.toBeNull();
-    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Wait for sidebar to transition to collapsed state
-    await vi.waitFor(() => {
-      expect(sidebar.className).toContain('w-0');
-    });
-
-    // Pushed expand button should now be visible in DOM
-    const expandBtn = container.querySelector('button[title="Expand Sidebar"]') as HTMLButtonElement;
-    expect(expandBtn).not.toBeNull();
-    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Sidebar should expand back
-    await vi.waitFor(() => {
-      expect(sidebar.className).toContain('w-80');
-    });
-  });
-
-  it('collapses and expands the DMC Supply List correctly on trigger clicks', async () => {
-    render(<App />, container);
-
-    // D-14: the always-mounted step panels also render a DMC list, so scope the
-    // collapse assertions to the right sidebar (Color Legend), which owns the
-    // interactive/sortable DMC Supply List.
-    const rightAside = container.querySelectorAll('aside')[1];
-
-    // Should start open
-    let table = rightAside.querySelector('.no-print table');
-    expect(table).not.toBeNull();
-
-    // Click DMC Supply List header button to collapse
-    const supplyListToggle = Array.from(rightAside.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('DMC Supply List')
-    );
-    expect(supplyListToggle).not.toBeUndefined();
-    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Verify table is collapsed (not in DOM)
-    await vi.waitFor(() => {
-      table = rightAside.querySelector('.no-print table');
-      expect(table).toBeNull();
-    });
-
-    // Expand it again
-    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
-    await vi.waitFor(() => {
-      table = rightAside.querySelector('.no-print table');
-      expect(table).not.toBeNull();
-    });
-  });
+  // RETIRED (23-07): "collapses and expands the DMC Supply List" covered the collapsible
+  // DMC Supply List that lived ONLY in the legacy right <aside> (deleted in Plan 08). The
+  // canvas-first SuppliesScreen replaces it with a display-only table (covered by
+  // SuppliesScreen unit tests), so the collapse toggle no longer exists. Intentional
+  // strangler retirement of deleted chrome.
 
   it('supports toggling between Grid View and Original Photo modes', async () => {
     // 1. Stub FileReader and Image to allow loading
@@ -633,34 +497,11 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('collapses and expands the right workspace panel sidebar correctly', async () => {
-    render(<App />, container);
-
-    // Sidebar should start expanded
-    const sidebars = container.querySelectorAll('aside');
-    const rightSidebar = sidebars[1] as HTMLElement; // second aside
-    expect(rightSidebar.className).toContain('w-96');
-
-    // Click collapse button inside right sidebar
-    const collapseBtn = rightSidebar.querySelector('button[title="Collapse Workspace"]') as HTMLButtonElement;
-    expect(collapseBtn).not.toBeNull();
-    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Wait for sidebar to transition to collapsed state
-    await vi.waitFor(() => {
-      expect(rightSidebar.className).toContain('w-0');
-    });
-
-    // Pushed expand button (labeled "Color Legend") should now be visible in main area
-    const expandBtn = container.querySelector('button[title="Expand color legend"]') as HTMLButtonElement;
-    expect(expandBtn).not.toBeNull();
-    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Sidebar should expand back
-    await vi.waitFor(() => {
-      expect(rightSidebar.className).toContain('w-96');
-    });
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): the right "Color Legend"
+  // fixed-width workspace <aside> and its collapse/expand affordance are deleted in Plan 08.
+  // The legend/supply content is re-homed to the canvas-first SuppliesScreen; the collapse
+  // chrome ceases to exist, so its test is retired (intentional strangler retirement of
+  // deleted chrome, pulled forward from Phase 25).
 
   // DELETED (23-03): "tracks loaded images in recent uploads list…" — the legacy
   // recent-UPLOADS strip (raw images via #source-image-toggle inside Step1Ingest) is not
@@ -735,29 +576,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('supports sorting columns in the DMC Supply List on header clicks', async () => {
-    render(<App />, container);
-
-    // D-14: scope to the right sidebar's sortable DMC Supply List — the
-    // always-mounted step panels also render a (non-sortable) DMC table.
-    const rightAside = container.querySelectorAll('aside')[1];
-
-    // Click DMC header to sort by code
-    const dmcHeader = Array.from(rightAside.querySelectorAll('.no-print th')).find(
-      (th) => th.textContent?.includes('DMC')
-    ) as HTMLElement;
-    expect(dmcHeader).not.toBeUndefined();
-
-    // Click it to trigger sort
-    dmcHeader.click();
-    await vi.waitFor(() => {
-      expect(dmcHeader.textContent).toContain('▲');
-    });
-
-    // Click it again to reverse sort direction
-    dmcHeader.click();
-    await vi.waitFor(() => {
-      expect(dmcHeader.textContent).toContain('▼');
-    });
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "supports sorting columns in the
+  // DMC Supply List" covered the sortable column headers that lived ONLY on the legacy right
+  // <aside> supply list (deleted in Plan 08). The canvas-first SuppliesScreen table is
+  // display-only by design (SUPPLIES-01) with no sort affordance, so this behavior no longer
+  // exists — intentional strangler retirement of deleted chrome, pulled forward from Phase 25.
 });
