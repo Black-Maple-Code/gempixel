@@ -21,6 +21,12 @@ export class CanvasViewer {
   private lastPointerX = 0;
   private lastPointerY = 0;
 
+  // Multi-touch pinch state (D-05). Live pressed pointers keyed by pointerId;
+  // the pinch branch only fires when exactly two are down, so jsdom (which
+  // dispatches at most one synthetic pointer) never enters it.
+  private activePointers = new Map<number, { x: number; y: number }>();
+  private prevPinchDist = 0;
+
   private drillStyle: 'square' | 'round' = 'square';
   private gridWidth = 0;
   private gridHeight = 0;
@@ -52,6 +58,12 @@ export class CanvasViewer {
   }
 
   private setupListeners() {
+    // D-06: declare the canvas itself as gesture-owned so the page never scrolls
+    // or browser-zooms under a touch gesture. Scoped to the canvas element ONLY —
+    // surrounding scroll UI stays natively scrollable. The wheel listener below
+    // remains the sole { passive: false } + preventDefault site (wheel is not
+    // covered by touch-action).
+    this.canvas.style.touchAction = 'none';
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.addEventListener('pointermove', this.handlePointerMove);
     this.canvas.addEventListener('pointerup', this.handlePointerUp);
@@ -69,9 +81,22 @@ export class CanvasViewer {
 
   private handlePointerDown = (e: PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
+    this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     this.isDragging = true;
     this.lastPointerX = e.clientX;
     this.lastPointerY = e.clientY;
+
+    if (this.activePointers.size === 2) {
+      // Second live pointer -> enter pinch mode. Seed the reference distance from
+      // the two stored points so the first pinch move produces a valid ratio.
+      const pts = [...this.activePointers.values()];
+      this.prevPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      // D-05 capture caveat: do NOT capture the 2nd pointer — letting the 1st
+      // pointer's capture swallow it would break two-finger tracking. Capture is
+      // only taken for the first (single-finger/mouse) pointer below.
+      return;
+    }
+
     try {
       this.canvas.setPointerCapture(e.pointerId);
     } catch (err) {
@@ -80,6 +105,29 @@ export class CanvasViewer {
   };
 
   private handlePointerMove = (e: PointerEvent) => {
+    // Keep each tracked pointer's coordinates current.
+    if (this.activePointers.has(e.pointerId)) {
+      this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (this.activePointers.size === 2) {
+      // Pinch branch: reuse the existing cursor-anchored handleZoom (same 0.5–50
+      // clamp, same onZoomChange). Midpoint is in canvas-local coords, matching
+      // handleWheel (clientX - rect.left, clientY - rect.top).
+      const pts = [...this.activePointers.values()];
+      const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const rect = this.canvas.getBoundingClientRect();
+      const left = rect ? rect.left : 0;
+      const top = rect ? rect.top : 0;
+      const midX = (pts[0].x + pts[1].x) / 2 - left;
+      const midY = (pts[0].y + pts[1].y) / 2 - top;
+      if (this.prevPinchDist > 0) {
+        this.handleZoom(midX, midY, currentDist / this.prevPinchDist);
+      }
+      this.prevPinchDist = currentDist;
+      return;
+    }
+
     if (!this.isDragging) return;
     const dx = e.clientX - this.lastPointerX;
     const dy = e.clientY - this.lastPointerY;
@@ -91,6 +139,10 @@ export class CanvasViewer {
   };
 
   private handlePointerUp = (e: PointerEvent) => {
+    this.activePointers.delete(e.pointerId);
+    if (this.activePointers.size < 2) {
+      this.prevPinchDist = 0;
+    }
     if (!this.isDragging) return;
     this.isDragging = false;
     try {
@@ -101,6 +153,10 @@ export class CanvasViewer {
   };
 
   private handlePointerCancel = (e: PointerEvent) => {
+    this.activePointers.delete(e.pointerId);
+    if (this.activePointers.size < 2) {
+      this.prevPinchDist = 0;
+    }
     if (!this.isDragging) return;
     this.isDragging = false;
     try {
