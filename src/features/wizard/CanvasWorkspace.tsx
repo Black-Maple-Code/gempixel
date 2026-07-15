@@ -116,7 +116,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
                 <button
                   onClick={() => onZoomIn()}
                   aria-label="Zoom In"
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ➕
                 </button>
@@ -127,7 +127,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
                 <button
                   onClick={() => onZoomOut()}
                   aria-label="Zoom Out"
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ➖
                 </button>
@@ -138,7 +138,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
                 <button
                   onClick={() => onFit()}
                   aria-label="Fit Viewport"
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ⛶
                   <span className="hidden">Zoom</span>
