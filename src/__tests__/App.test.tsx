@@ -216,36 +216,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     expect(exactQuoteSpan).toBeTruthy();
   });
 
-  it('supports bottom bar navigation for responsive mobile drawer toggles', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
-
-    // Initially both sidebars are visible / active (not collapsed)
-    const asides = container.querySelectorAll('aside');
-    expect(asides[0].className).not.toContain('w-0');
-    expect(asides[1].className).not.toContain('w-0');
-
-    // Click 'Canvas' bottom tab to collapse all panels on mobile
-    const buttons = container.querySelectorAll('button');
-    const canvasTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'canvas');
-    expect(canvasTab).toBeTruthy();
-
-    canvasTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    // Both sidebars should now be collapsed (w-0 / display hidden class)
-    expect(asides[0].className).toContain('w-0');
-    expect(asides[1].className).toContain('w-0');
-
-    // Click 'Setup' bottom tab to expand left controls panel
-    const controlsTab = Array.from(buttons).find(b => b.textContent?.toLowerCase() === 'setup');
-    expect(controlsTab).toBeTruthy();
-    controlsTab?.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    expect(asides[0].className).not.toContain('w-0');
-    expect(asides[1].className).toContain('w-0');
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "supports bottom bar navigation
+  // for responsive mobile drawer toggles" asserted the collapse state (`w-0`) of the two
+  // legacy asides (left "Setup" + right "Color Legend") driven by the mobile bottom-tab bar.
+  // Both asides are deleted in Plan 08 (the user asked to retire the left-hand menu and move
+  // those options into the viewport), so the collapse chrome ceases to exist — intentional
+  // strangler retirement of deleted chrome, pulled forward from Phase 25. Canvas-first
+  // navigation is covered by the StepBar/#wizard-*-btn tests, which survive the flip.
 
   // TODO(25): the legacy drill-TYPE select (standard/ab/glow/crystal) lived in
   // Step2Palette; flipping USE_NEW_REFINE (23-03) swaps in RefineScreen, whose Advanced
