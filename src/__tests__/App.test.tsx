@@ -1534,3 +1534,157 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     expect(step2.className).toContain('contents');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gap-closure missing-item #4 (UAT Test 26): an integrated full-App layout
+// regression guard for "the four canvas-first screens host the centered viewport
+// frame; the legacy dark 3-column shell + left 'My Images' menu + right
+// 'Color Legend' aside are retired." Renders <App /> (not a per-component unit
+// render) and asserts by CONTENT + data-* attributes, jsdom-safe (no geometry).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Layout regression — the four screens host the viewport; legacy shell retired (UAT Test 26)', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const projectId = 'test-project-layout26';
+  const idx150 = DMC_PALETTE.findIndex(c => c.dmc === '150');
+  const idx151 = DMC_PALETTE.findIndex(c => c.dmc === '151');
+
+  // A project that restores a match on load (so the single-mount canvas mounts and
+  // all four screens render real content), mirroring the BAG-02 fixture pattern.
+  const seedProject = () => {
+    const nowStr = new Date().toISOString();
+    const summary = { id: projectId, name: 'Layout26 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
+    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
+    const data = {
+      id: projectId,
+      name: 'Layout26 Project',
+      dateCreated: nowStr,
+      dateModified: nowStr,
+      dimensions: { cols: 25, rows: 20 },
+      drillStyle: 'square',
+      selectedBaseKit: 'all',
+      drillType: 'standard',
+      kitBaseCost: 15,
+      drillPacketCost: 0.25,
+      pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
+      gridData,
+    };
+    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
+    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
+  };
+
+  const loadFromChip = async () => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+    const chip = Array.from(
+      container.querySelectorAll('[data-screen="upload"] button'),
+    ).find(b => b.textContent?.includes('Layout26 Project')) as HTMLButtonElement;
+    expect(chip).toBeTruthy();
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  const next = async () => {
+    (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+  const back = async () => {
+    (container.querySelector('#wizard-back-btn') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 10));
+  };
+
+  const panel = (n: number) => container.querySelector(`[data-step-panel="${n}"]`) as HTMLElement;
+  const isVisible = (el: HTMLElement) => !el.classList.contains('hidden');
+
+  it('hosts UploadScreen as the visible step-1 primary content', async () => {
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(panel(1).querySelector('[data-screen="upload"]')).toBeTruthy();
+    expect(isVisible(panel(1))).toBe(true);
+    // The other panels are display-toggled hidden at initial render.
+    expect(isVisible(panel(2))).toBe(false);
+    expect(isVisible(panel(3))).toBe(false);
+    expect(isVisible(panel(4))).toBe(false);
+  });
+
+  it('hosts each screen as the visible panel across Upload → Refine → Supplies → Order, with the canvas as a Refine sibling', async () => {
+    seedProject();
+    await loadFromChip();
+
+    // Step 2 — Refine hosts the rail AND the single-mount canvas preview sibling.
+    await next();
+    expect(isVisible(panel(2))).toBe(true);
+    expect(panel(2).querySelector('[data-screen="refine"]')).toBeTruthy();
+    expect(container.querySelector('canvas')).toBeTruthy();
+    expect(container.querySelectorAll('canvas').length).toBe(1);
+
+    // Step 3 — Supplies.
+    await next();
+    expect(isVisible(panel(3))).toBe(true);
+    expect(panel(3).querySelector('[data-screen="supplies"]')).toBeTruthy();
+
+    // Step 4 — Order.
+    await next();
+    expect(isVisible(panel(4))).toBe(true);
+    expect(panel(4).querySelector('[data-screen="order"]')).toBeTruthy();
+  });
+
+  it('retires the legacy left menu, right aside, and dark shell — asserted by content, not element type', async () => {
+    seedProject();
+    await loadFromChip();
+    await next(); // to Refine (a step that used to show both legacy asides)
+
+    // No legacy left "My Images" menu button anywhere.
+    const myImagesBtn = Array.from(container.querySelectorAll('button')).find(
+      b => b.textContent?.includes('My Images'),
+    );
+    expect(myImagesBtn).toBeUndefined();
+
+    // No legacy right-aside "Color Legend" heading (SuppliesScreen uses
+    // "Order summary" / "Drill supply plan", never "Color Legend").
+    const colorLegend = Array.from(container.querySelectorAll('*')).find(
+      el => el.childElementCount === 0 && el.textContent?.trim() === 'Color Legend',
+    );
+    expect(colorLegend).toBeUndefined();
+
+    // No element carries the retired dark-shell signature (bg-slate-950 AND
+    // text-slate-100 together). The retained modal backdrops use bare
+    // bg-slate-950/80 (no text-slate-100) and are out of scope — so filtering on
+    // BOTH classes is what pins the deleted shell wrapper specifically.
+    const shellSignature = Array.from(
+      container.querySelectorAll('[class*="bg-slate-950"]'),
+    ).filter(el => el.className.includes('text-slate-100'));
+    expect(shellSignature.length).toBe(0);
+  });
+
+  it('keeps exactly one persistent canvas node across a step change (D-14 single mount)', async () => {
+    seedProject();
+    await loadFromChip();
+    await next(); // Refine
+
+    expect(container.querySelectorAll('canvas').length).toBe(1);
+    const canvasBefore = container.querySelector('canvas');
+    expect(canvasBefore).toBeTruthy();
+
+    // Advance to Supplies and back to Refine — the canvas must be the SAME node,
+    // never remounted (the CanvasWorkspace is an always-mounted frame sibling).
+    await next(); // Supplies
+    await back(); // Refine
+    const canvasAfter = container.querySelector('canvas');
+    expect(container.querySelectorAll('canvas').length).toBe(1);
+    expect(canvasAfter).toBe(canvasBefore);
+  });
+});

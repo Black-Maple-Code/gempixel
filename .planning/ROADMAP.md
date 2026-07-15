@@ -66,7 +66,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 - [x] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits. (completed 2026-07-14)
 - [ ] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag.
 - [ ] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart.
-- [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Delete Step1..4, side asides, theme toggle, and dead sidebar/preset state after UAT — the strangler close.
+- [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Final grep-clean of residual `Step1..4` component files, theme remnants, and leftover dead preset state. **Narrowed (2026-07-15, Phase 23 UAT Test 26 gap fix, Plans 06–08):** the legacy dark 3-column shell, the left "My Images" menu, and the right Color-Legend/DMC aside are ALREADY retired in Phase 23 — Phase 25 is no longer a from-scratch strangler close.
 
 ## Phase Details
 
@@ -218,12 +218,21 @@ Plans:
 
 ### Phase 25: Retire Legacy Steps + Cleanup
 
-**Goal**: With the new journey validated in UAT, the old Step1..4 components, side asides, theme toggle, and dead sidebar/preset state are removed — the strangler is complete and the codebase carries no dual UI.
+> **Scope narrowed 2026-07-15 (Phase 23 UAT Test 26 gap fix, Plans 06–08).** The Phase 23
+> gap closure already retired the load-bearing dual UI: the legacy dark 3-column shell
+> (`bg-slate-950` wrapper), the left "My Images" menu + drawer, the right Color-Legend/DMC
+> aside, the in-aside Back/Next, the bottom mobile tab bar, and the dead
+> collapse/drawer state (`leftPanelCollapsed`/`rightPanelCollapsed`/`imagesDrawerOpen`/
+> `supplyListOpen`) are all deleted, with the four Atelier screens now hosting the centered
+> ~1180px viewport frame. Phase 25 is therefore a **final grep-clean**, not a from-scratch
+> strangler close.
+
+**Goal**: With the new journey validated in UAT, the remaining `Step1..4` component files, theme remnants, and any leftover dead preset state are grep-cleaned — the strangler is complete and the codebase carries no dual UI.
 **Depends on**: Phase 24
 **Requirements**: (none — strangler close; carries no v4.0 REQ-ID by design)
 **Success Criteria** (what must be TRUE):
 
-  1. The old Step1..4 screens, side asides, dark-mode toggle, and dead sidebar/preset state are deleted; only the new Atelier journey remains.
+  1. The residual `Step1..4` component files and their now-dead ternary branches (the legacy shell chrome + both asides were already deleted in Phase 23), plus the dark-mode/theme remnants and any leftover dead preset state, are removed; only the new Atelier journey remains.
   2. No dead code path can resurrect dark mode or the old sidebar (grep-clean of `Step*` / theme / aside remnants).
   3. Any remaining open decisions (kit default, color-exclude placement, drillStyle default) are resolved into the Refine "Advanced" disclosure or sane defaults.
   4. The 240+ Vitest suite stays green after deletion and the app ships green with a single UI tree.

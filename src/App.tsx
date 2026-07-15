@@ -1595,7 +1595,7 @@ export function App() {
             disabled={!matchResult}
             className="cursor-pointer rounded-[var(--radius-control)] border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Save to My Images
+            Save project
           </button>
         </div>
 
