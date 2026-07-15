@@ -494,47 +494,6 @@
   }
 }
 
-@media (max-width: 767.98px) {
-  /* Sidebars as full-width drawer overlays on mobile */
-  aside {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 45 !important;
-    padding-bottom: 5rem !important; /* Space for mobile nav bar */
-    box-sizing: border-box !important;
-    transition: transform .28s ease;
-  }
-
-  /* Make sure right panel slides from right/top correctly */
-  aside.w-96 {
-    width: 100vw !important;
-  }
-
-  /* When collapsed, set width to 0 and hide */
-  aside.w-0 {
-    width: 0 !important;
-    display: none !important;
-  }
-
-  /* Add space at the bottom of the main viewport so the canvas doesn't get covered by mobile bottom bar */
-  main {
-    padding-bottom: 4.5rem !important;
-  }
-
-  /* Drawer backdrop behind an open mobile drawer */
-  .drawer-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 44;
-    background: rgba(0, 0, 0, .5);
-    backdrop-filter: blur(2px);
-  }
-}
-
 /* Dotted viewport texture (transparent dot in light theme = no texture) */
 .viewport-dots {
   background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
