@@ -4,16 +4,16 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 23
 current_phase_name: the-four-screens-in-flow-order
-status: verifying
+status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-14T21:47:40.320Z"
-last_activity: 2026-07-14
+last_updated: "2026-07-15T15:55:06.944Z"
+last_activity: 2026-07-15
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 18
-  completed_plans: 17
+  total_plans: 21
+  completed_plans: 19
   percent: 50
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-07-14 — Phase 23 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-07-15 — Phase 23 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -103,6 +103,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 23 P03 | 34min | 3 tasks | 7 files |
 | Phase 23 P04 | 40min | 3 tasks | 8 files |
 | Phase 23 P05 | 30min | 3 tasks | 8 files |
+| Phase 23 P06 | 22min | 2 tasks | 4 files |
 
 ## Risk & Health
 
@@ -150,7 +151,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-14T21:47:33.258Z
+Last session: 2026-07-15T15:53:50.992Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -187,6 +188,8 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: 23-04: Supplies order-summary panel is a <div> not <aside> so it never shifts the App layout aside indices the workspace/legend tests key off
 - [Phase ?]: 23-05: Order packet is a pure deterministic serializer (buildOrderPacket) with packetId+createdAt INJECTED — generateUUID/Date live in the App handler, keeping the module side-effect free and unit-testable
 - [Phase ?]: 23-05: The honest handoff replaces Shopify checkout — Order ships a client-side JSON packet download + honest terminal state (no order#/receipt/payment, D-09); legacy handleShopifyCheckout stays dormant for Phase 25
+- [Phase ?]: [Phase 23]: 23-06 (gap-closure 1/3): extracted the center-canvas region into a pure/props-only CanvasWorkspace.tsx — canvasRef threaded as a prop keeps the CanvasViewer bound to the SAME element (D-14 single mount survives re-parenting); viewer zoom calls wrapped as onZoomIn/onZoomOut/onFit handler props so viewerRef stays in App; deleted the duplicate #hero-file-upload hero dropzone (UploadScreen owns ingestion, D-10)
+- [Phase ?]: [Phase 23]: 23-06: re-pointed App.test.tsx + print.test.tsx project-LOAD helpers off the legacy 'My Images' drawer onto the always-mounted UploadScreen recent chips (same loadProject(id)) so Plan 08 can delete the drawer; drawer-DELETE assertion + four it.skip TODO(25) legacy-panel tests left for Plan 08/Phase 25. Byte-behavior-equivalent; legacy shell still renders; tsc 0, vitest 352 pass/12 skip
 
 ## Operator Next Steps
 
