@@ -213,7 +213,10 @@ Plans:
   2. On a touch device the user can pinch-to-zoom and pan the chart, aided by on-screen zoom buttons, with `touch-action: none` on the canvas so the page never scrolls under the gesture.
   3. Desktop layout is unregressed and the 240+ Vitest suite stays green.
 
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 24-01-PLAN.md — MOBILE-01: container-query reflow to a single portrait column + canvas-first sticky Refine pane + delete dead drawer CSS (Wave 1)
+- [ ] 24-02-PLAN.md — MOBILE-02: hand-rolled multi-touch pinch/pan in `viewer.ts` + canvas-only `touch-action:none` + touch-friendly zoom buttons (Wave 1)
+- [ ] 24-03-PLAN.md — Verification: full build + 240+ Vitest suite green + desktop-unregressed proof + human-verify mobile reflow & touch (Wave 2)
 **UI hint**: yes
 
 ### Phase 25: Retire Legacy Steps + Cleanup
