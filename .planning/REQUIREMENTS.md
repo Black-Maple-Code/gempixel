@@ -49,7 +49,7 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 ### Mobile & Touch
 
 - [x] **MOBILE-01**: The same 4-step journey works in a single portrait column on a phone (≈300px wide), with every control inline (never a drawer).
-- [ ] **MOBILE-02**: The user can zoom and pan the chart on touch devices (pinch-to-zoom + on-screen zoom controls) without the page scrolling (`touch-action: none` on the canvas).
+- [x] **MOBILE-02**: The user can zoom and pan the chart on touch devices (pinch-to-zoom + on-screen zoom controls) without the page scrolling (`touch-action: none` on the canvas).
 
 ## Future Requirements (Deferred)
 
@@ -112,7 +112,7 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | ORDER-01 | Phase 23 | Complete |
 | ORDER-02 | Phase 23 | Complete |
 | MOBILE-01 | Phase 24 | Complete |
-| MOBILE-02 | Phase 24 | Pending |
+| MOBILE-02 | Phase 24 | Complete |
 
 **Coverage:**
 
