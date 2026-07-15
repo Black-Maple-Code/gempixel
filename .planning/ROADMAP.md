@@ -270,7 +270,7 @@ Plans:
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
-| 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete   | 2026-07-15 |
+| 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 
