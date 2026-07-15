@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
 current_phase: 24
-current_phase_name: Mobile Responsive + Touch Pass
+current_phase_name: mobile-responsive-touch-pass
 status: executing
 stopped_at: Phase 24 context gathered
-last_updated: "2026-07-15T19:55:35.445Z"
+last_updated: "2026-07-15T23:07:18.200Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 23 complete, transitioned to Phase 24
+last_activity_desc: Phase 24 execution started
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 24
+  completed_plans: 22
   percent: 67
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 23 — the-four-screens-in-flow-order
+**Current focus:** Phase 24 — mobile-responsive-touch-pass
 
 ## Current Position
 
-Phase: 24 — Mobile Responsive + Touch Pass
-Plan: Not started
+Phase: 24 (mobile-responsive-touch-pass) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-15 — Phase 23 complete, transitioned to Phase 24
+Last activity: 2026-07-15 — Phase 24 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -107,6 +107,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 23 P06 | 22min | 2 tasks | 4 files |
 | Phase 23 P07 | 14min | 2 tasks tasks | 2 files files |
 | Phase 23 P08 | 35 | 2 tasks | 4 files |
+| Phase 24 P01 | 2min | 3 tasks | 4 files |
 
 ## Risk & Health
 
@@ -154,7 +155,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-15T19:55:35.430Z
+Last session: 2026-07-15T23:06:24.260Z
 Stopped at: Phase 24 context gathered
 Resume file: .planning/phases/24-mobile-responsive-touch-pass/24-CONTEXT.md
 
@@ -196,6 +197,8 @@ Resume file: .planning/phases/24-mobile-responsive-touch-pass/24-CONTEXT.md
 - [Phase ?]: [Phase 23]: 23-07 (gap-closure 2/3): severed the remaining Vitest coupling to the legacy left sidebar + right Color-Legend/DMC aside — re-pointed both color-exclusion tests onto the RefineScreen 'Advanced' <details> (surviving 'Exclude colors' copy + inverted checked===excluded semantics; details driven open via open=true + synthetic toggle under jsdom); retired 5 integration + 1 App.test legacy-chrome tests (sidebar/aside collapse, sortable DMC list, highlight-on-row-click) with inline strangler-retirement notes. Suite has zero aside coupling; Plan 08 flip can delete both asides green. tsc 0, vitest 346 pass/12 skip
 - [Phase ?]: Phase 23 23-08 (gap-closure 3/3): flipped AtelierShell to the centered ~1180px cream viewport frame hosting the four screens (Refine = preview | 360px rail); CanvasWorkspace is a step-2-gated always-mounted <main> sibling so the single canvas never remounts (D-14). UAT Test 26 closed. tsc 0, vitest 350 pass/12 skip
 - [Phase ?]: Phase 23 23-08: relocated Save/New/Back-Next into the viewport (ids + gating verbatim); hoisted error banners to frame scope; deleted retired chrome + dead collapse/drawer/sort state; kept legacy Step1..4 ternaries + Artist Resources modal for Phase 25 grep-clean
+- [Phase 24]: Phase 24-01: container-type lives on the AtelierShell root box (not the display:contents shell body) so the container query reaches RefineScreen's section
+- [Phase 24]: Phase 24-01: mobile reflow uses descendant-only @max-[640px] Tailwind v4 container-query overrides; desktop base flex-row/w-[360px] untouched (provably unregressed)
 
 ## Operator Next Steps
 
