@@ -380,28 +380,29 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       // And canvas should unmount because matchResult is reset to null
       expect(container.querySelector('canvas')).toBeNull();
 
-      // Verify removal of registry and project details on deletion
-      // Re-render to see the project switcher row again
+      // Verify removal of registry and project details on deletion via the
+      // UploadScreen recent-chip Remove affordance (inline "Remove? Yes / Cancel",
+      // D-10) — the legacy left "My Images" drawer + its ×/"Delete Image" button are
+      // retired in Plan 08. Wires to the same App onDeleteProject → projectStore.remove.
       render(null, container);
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
-      // Toggle Commissions drawer open again
-      (Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images')) as HTMLButtonElement).click();
+      // Click the chip's ghost "Remove" → inline confirm appears.
+      const removeBtn = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.trim() === 'Remove') as HTMLButtonElement;
+      expect(removeBtn).toBeTruthy();
+      removeBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Click delete button ('×') inside project row
-      // Mock window.confirm to return true
-      const originalConfirm = window.confirm;
-      window.confirm = () => true;
-
-      const deleteBtn = container.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
-      expect(deleteBtn).toBeTruthy();
-      deleteBtn.click();
+      // Confirm the removal ("Yes").
+      const confirmYes = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.trim() === 'Yes') as HTMLButtonElement;
+      expect(confirmYes).toBeTruthy();
+      confirmYes.click();
       await new Promise(r => setTimeout(r, 10));
-
-      // Restore confirm
-      window.confirm = originalConfirm;
 
       // Registry should be empty now
       const registryAfterDelete = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');

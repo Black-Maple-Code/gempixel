@@ -5,8 +5,9 @@ import type { ColorSymbolMap } from '../../engine/symbols';
 /**
  * CanvasWorkspace — the center-canvas preview region (the `viewport-dots`
  * surface hosting the SINGLE-MOUNT `<canvas>`, the floating viewport HUD,
- * zoom controls, low-zoom warning, print legends, the loading overlay, and
- * the match/action error banners).
+ * zoom controls, low-zoom warning, print legends, and the loading overlay).
+ * The match/action error banners were hoisted to frame scope in App (Plan 08)
+ * so they surface on any step, not only while the canvas is visible.
  *
  * PURE / props-only (Phase 20 D-01): App.tsx stays the sole state owner. This
  * component owns NO domain state and imports NO engine *value* (only the
@@ -53,9 +54,6 @@ export interface CanvasWorkspaceProps {
   loading: boolean;
   loadingPhase: 'preparing' | 'matching';
   progress: number;
-  matchError: string | null;
-  actionError: string | null;
-  onDismissActionError: () => void;
 }
 
 export function CanvasWorkspace(props: CanvasWorkspaceProps) {
@@ -77,9 +75,6 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
     loading,
     loadingPhase,
     progress,
-    matchError,
-    actionError,
-    onDismissActionError,
   } = props;
 
   return (
@@ -252,43 +247,6 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
             </>
           )}
-        </div>
-      )}
-
-      {/* Match error banner — surfaces worker/synchronous failures across the whole
-          pipeline: off-thread decode-stage failures (D-10) as well as match-stage
-          failures (B1/W5). loading is cleared on error (see the hook), so this never
-          co-displays with the spinner. Copy is stage-agnostic so a decode-stage
-          message reads correctly. Text-only content (never dangerouslySetInnerHTML)
-          so a crafted worker error string cannot inject markup. Clears automatically
-          on the next match, which resets the hook's error to null. */}
-      {matchError && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-          Couldn't process the image: {matchError}
-        </div>
-      )}
-
-      {/* Unified action-error banner (ERR-01) — one surface for imperative
-          one-shot failures: save quota-full (CR-02/B3), download-generation
-          failures, and a corrupt checkout unmapped-colors log (W4). Fixed +
-          z-[60] so it sits above the Save Project Modal (z-50). Offset to top-16
-          (distinct from the matchError banner at top-4) so the two never overlap
-          (UX directive: no overlapping indicators). Text-only — {actionError} is
-          rendered as a plain JSX text child, never dangerouslySetInnerHTML, so a
-          crafted error/stored string cannot inject markup (ASVS output-encoding,
-          T-11-07). Dismissible via the × so a stale one-shot error doesn't linger;
-          each action handler also clears it at its start (clear-then-act). */}
-      {actionError && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] no-print max-w-md flex items-start gap-3 px-4 py-2.5 rounded-lg bg-rose-950/95 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-          <span>{actionError}</span>
-          <button
-            type="button"
-            aria-label="Dismiss error"
-            onClick={onDismissActionError}
-            className="shrink-0 -mr-1 -mt-0.5 px-1 text-rose-300 hover:text-rose-100 transition-colors text-sm leading-none"
-          >
-            ×
-          </button>
         </div>
       )}
     </div>

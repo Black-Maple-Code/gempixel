@@ -178,7 +178,6 @@ export function App() {
   // generation failures, and a corrupt checkout unmapped-colors log. Each action
   // handler clears it at its start (clear-then-act) and it is dismissible.
   const [actionError, setActionError] = useState<string | null>(null);
-  const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
   // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
   // ingestion settings sit near the top without scrolling; user can reopen it.
   const [imageSourceOpen, setImageSourceOpen] = useState(true);
@@ -187,13 +186,8 @@ export function App() {
   const [widthInput, setWidthInput] = useState<string>('80');
   const [heightInput, setHeightInput] = useState<string>('53');
   const [selectedPreset, setSelectedPreset] = useState<string>('custom');
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [excludeListOpen, setExcludeListOpen] = useState(false);
   const [recsOpen, setRecsOpen] = useState(true);
-  const [supplyListOpen, setSupplyListOpen] = useState(true);
-  // BAG-02/D-09: open/closed state for the a11y-safe "Why these bags?" dye-lot
-  // explainer; follows the supplyListOpen progressive-disclosure idiom.
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
@@ -203,8 +197,11 @@ export function App() {
   useEffect(() => {
     safeStorage.removeItem('gempixel_theme');
   }, []);
-  const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
-  const [sortAsc, setSortAsc] = useState<boolean>(false);
+  // Legend sort is retired with the right Color-Legend aside (Plan 08); the
+  // supply order is the stable default (quantity desc). Kept as read-only values
+  // so sortedMatches stays deterministic; the interactive sort setters are gone.
+  const [sortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
+  const [sortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<RecentImage[]>(() => projectStore.recents.list());
 
   const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
@@ -733,6 +730,16 @@ export function App() {
     };
   }, [viewportMode]);
 
+  // Re-fit the single-mount canvas when Refine (step 2) becomes the visible screen.
+  // The canvas <main> is display:none on Upload/Supplies/Order, so its container
+  // measures 0 there; re-entering Refine must re-measure the now-visible canvas
+  // WITHOUT remounting the viewer (D-14). Guarded on a live viewer + step 2.
+  useEffect(() => {
+    if (wizard.step === 2) {
+      viewerRef.current?.fitToContainer();
+    }
+  }, [wizard.step]);
+
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
     const activeEl = document.activeElement;
@@ -1049,15 +1056,6 @@ export function App() {
   const deleteRecentImage = (id: string, e: Event) => {
     e.stopPropagation();
     setRecentImages(prev => prev.filter(x => x.id !== id));
-  };
-
-  const handleHeaderClick = (type: 'color' | 'code' | 'name' | 'quantity') => {
-    if (sortBy === type) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortBy(type);
-      setSortAsc(type === 'name' || type === 'code' || type === 'color');
-    }
   };
 
   // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
@@ -1542,123 +1540,105 @@ export function App() {
         </button>
       </div>
     )}
-    <div className="flex flex-1 min-h-0 w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
-      {/* Left Sidebar Control Panel */}
-      <aside
-        className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 no-print transition-all duration-300 relative shrink-0 ${
-          leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
-        }`}
-      >
-        <div className="flex justify-end items-center border-b border-slate-800/60 pb-3 shrink-0">
+    {/* Centered Atelier viewport frame (UI-SPEC A1-A4) — the four screens are the
+        shell's PRIMARY content, hosted in a scroll container whose inner content is
+        centered and width-capped at the fixed 1180px card frame, on the cream
+        Atelier background. This replaces the retired dark 3-column shell (the
+        bg-slate-950 wrapper + 320px left "My Images" aside + center <main> + right
+        Color-Legend/DMC aside). UAT Test 26 gap closed. */}
+    <div className="relative flex-1 min-h-0 overflow-y-auto bg-bg print:overflow-visible print:h-auto">
+      <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-4 print:p-0">
+
+        {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
+            the canvas is visible (they moved out of CanvasWorkspace in Plan 08).
+            matchError = worker/decode failures; actionError = imperative one-shot
+            failures (ERR-01), dismissible. Text-only (never dangerouslySetInnerHTML)
+            so a crafted error string cannot inject markup. */}
+        {matchError && (
+          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-rose-500/60 bg-rose-950/90 px-4 py-2.5 text-xs font-medium text-rose-100 shadow-lg">
+            Couldn't process the image: {matchError}
+          </div>
+        )}
+        {actionError && (
+          <div className="fixed top-16 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-lg border border-rose-500/60 bg-rose-950/95 px-4 py-2.5 text-xs font-medium text-rose-100 no-print shadow-lg backdrop-blur">
+            <span>{actionError}</span>
+            <button
+              type="button"
+              aria-label="Dismiss error"
+              onClick={() => setActionError(null)}
+              className="-mr-1 -mt-0.5 shrink-0 px-1 text-sm leading-none text-rose-300 transition-colors hover:text-rose-100"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Relocated frame action row — the still-needed options that used to live in
+            the retired left drawer: New/Reset (#new-project-btn → resetWorkspace) and
+            Save (#save-project-btn → save modal). Recent projects + load + remove live
+            inside UploadScreen on step 1 (D-10); the top-bar Save pill still works too. */}
+        <div className="no-print mb-3 flex items-center justify-end gap-2">
           <button
-            onClick={() => setLeftPanelCollapsed(true)}
-            className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center border border-transparent hover:border-slate-700/30"
-            title="Collapse Sidebar"
+            id="new-project-btn"
+            onClick={resetWorkspace}
+            className="cursor-pointer rounded-[var(--radius-control)] border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-border hover:text-ink"
+            title="Reset the workspace to start a new image"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
+            New
+          </button>
+          <button
+            id="save-project-btn"
+            onClick={() => {
+              setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
+              setSaveModalOpen(true);
+            }}
+            disabled={!matchResult}
+            className="cursor-pointer rounded-[var(--radius-control)] border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Save to My Images
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4 pr-1">
-          {/* My Images saved-projects drawer */}
-          <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => setImagesDrawerOpen(!imagesDrawerOpen)}
-              className="flex items-center gap-1.5 text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
-            >
-              <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${imagesDrawerOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">My Images</span>
-              <span className="text-[9px] text-slate-500 font-medium">({projectsRegistry.length})</span>
-            </button>
-            <button
-              id="new-project-btn"
-              onClick={resetWorkspace}
-              className="text-[9px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer border border-indigo-500/20 px-1.5 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors"
-              title="Reset workspace to start a new image"
-            >
-              New
-            </button>
-          </div>
-          
-          {imagesDrawerOpen && (
-            <div className="flex flex-col gap-2 mt-1">
-              <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto scrollbar-thin">
-                {projectsRegistry.map(project => {
-                  const isActive = activeProjectId === project.id;
-                  return (
-                    <div
-                      key={project.id}
-                      onClick={() => loadProject(project.id)}
-                      className={`group relative flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all border ${
-                        isActive
-                          ? 'bg-indigo-600/10 border-indigo-500/30'
-                          : 'bg-slate-950/40 border-slate-850 hover:bg-slate-950/60 hover:border-slate-800'
-                      }`}
-                    >
-                      {project.thumbnail ? (
-                        <img
-                          src={project.thumbnail}
-                          alt={project.name}
-                          className="w-8 h-8 rounded object-cover border border-slate-800/80 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded bg-slate-800 border border-slate-700/80 shrink-0 flex items-center justify-center text-[9px] text-slate-500 font-bold">
-                          GEM
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-semibold text-slate-200 block truncate group-hover:text-white transition-colors">{project.name}</span>
-                        <span className="text-[9px] text-slate-500 block truncate font-mono">{new Date(project.dateModified).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Delete "${project.name}"?`)) {
-                            projectStore.remove(project.id);
-                            setProjectsRegistry(projectStore.list());
-                            if (activeProjectId === project.id) {
-                              setActiveProjectId(null);
-                              restore(null);
-                            }
-                          }
-                        }}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-950/80 text-[11px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
-                        title="Delete Image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-                {projectsRegistry.length === 0 && (
-                  <span className="text-[10px] text-slate-500 text-center block py-2 italic">No images saved yet.</span>
-                )}
-              </div>
-              <button
-                id="save-project-btn"
-                onClick={() => {
-                  setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
-                  setSaveModalOpen(true);
-                }}
-                disabled={!matchResult}
-                className="w-full bg-slate-950/80 hover:bg-slate-850 disabled:bg-slate-950/20 disabled:text-slate-600 text-indigo-400 hover:text-indigo-300 disabled:border-slate-900 border border-slate-800 rounded py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
-              >
-                <span>Save to My Images</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Screens + single-mount canvas as a flex row. On Refine (step 2) the visible
+            children read as [CanvasWorkspace preview | RefineScreen 360px rail]; on
+            Upload/Supplies/Order the canvas is display:none and the sole visible panel
+            fills the frame (justify-center keeps the single-column Upload centered).
+            The panels stay always-mounted, display-toggled siblings (D-14): visible =
+            display:contents (layout transparent), hidden = display:none; each is
+            no-print (screens never print — the canvas sheet + supply/legend report
+            print artifacts are separate). Because the panels use display:contents,
+            each screen's OWN root is the flex item (RefineScreen is w-[360px], the
+            others fill). */}
+        <div className="flex min-h-0 flex-1 flex-row justify-center">
 
-        {/* Wizard Step Contents — always-mounted, CSS-toggled siblings (D-14/SC4).
-            The visible panel uses display:contents so it is layout-transparent
-            (behaves exactly as an unwrapped direct child); the others are
-            display:none. Nothing here unmounts on a step change, so the single
-            <CanvasViewer> in <main> never remounts. */}
-        <div data-step-panel="1" className={wizard.step === 1 ? 'contents' : 'hidden'}>
+          {/* Single-mount canvas preview — an always-rendered frame sibling shown only
+              on Refine (step 2) and display:none otherwise, so the CanvasViewer element
+              is NEVER unmounted on a step change (D-14). A step-2 useEffect re-fits it
+              because it measures 0 while hidden. Kept a <main> so the print-mode CSS
+              (which hides `main`) treats it exactly as before. */}
+          <main className={wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col print:block' : 'hidden'}>
+            <CanvasWorkspace
+              canvasRef={canvasRef}
+              image={image}
+              matchResult={matchResult}
+              viewportMode={viewportMode}
+              setViewportMode={setViewportMode}
+              onZoomIn={() => viewerRef.current?.zoomIn()}
+              onZoomOut={() => viewerRef.current?.zoomOut()}
+              onFit={() => viewerRef.current?.fitToContainer()}
+              zoomScale={zoomScale}
+              cols={cols}
+              rows={rows}
+              symbolMap={symbolMap}
+              leftLegendColors={leftLegendColors}
+              rightLegendColors={rightLegendColors}
+              loading={loading}
+              loadingPhase={loadingPhase}
+              progress={progress}
+            />
+          </main>
+
+        <div data-step-panel="1" className={wizard.step === 1 ? 'contents no-print' : 'hidden'}>
           {USE_NEW_UPLOAD ? (
             <UploadScreen
               dropZoneRef={dropZoneRef}
@@ -1722,7 +1702,7 @@ export function App() {
           )}
         </div>
 
-        <div data-step-panel="2" className={wizard.step === 2 ? 'contents' : 'hidden'}>
+        <div data-step-panel="2" className={wizard.step === 2 ? 'contents no-print' : 'hidden'}>
           {USE_NEW_REFINE ? (
             <RefineScreen {...refineProps} />
           ) : (
@@ -1754,7 +1734,7 @@ export function App() {
           )}
         </div>
 
-        <div data-step-panel="3" className={wizard.step === 3 ? 'contents' : 'hidden'}>
+        <div data-step-panel="3" className={wizard.step === 3 ? 'contents no-print' : 'hidden'}>
           {USE_NEW_SUPPLIES ? (
             <SuppliesScreen {...suppliesProps} />
           ) : (
@@ -1789,7 +1769,7 @@ export function App() {
           )}
         </div>
 
-        <div data-step-panel="4" className={wizard.step === 4 ? 'contents' : 'hidden'}>
+        <div data-step-panel="4" className={wizard.step === 4 ? 'contents no-print' : 'hidden'}>
           {USE_NEW_ORDER ? (
             <OrderScreen {...orderProps} />
           ) : (
@@ -1814,41 +1794,24 @@ export function App() {
         </div>
 
 
-        {/* Sidebar Footer Actions */}
-        <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
-          {matchResult && (
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">
-              <span className="w-2 h-2 rounded-sm bg-accent-2 inline-block" />
-              Matched · {sortedMatches.length} colors
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setResourcesModalOpen(true)}
-              className="flex-1 bg-panel hover:bg-border text-muted hover:text-ink py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-border active:scale-[0.98]"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              <span>Artist Resources</span>
-            </button>
-          </div>
         </div>
-      </div>
 
-      {/* Sticky wizard navigation footer */}
-      <div className="mt-auto pt-4 border-t border-slate-800/60 shrink-0 no-print flex flex-col gap-4 bg-slate-900/60 px-1 pb-1">
-        <div className="flex items-center justify-between">
+        {/* Relocated wizard nav footer — Back/Next re-homed to frame scope. Ids,
+            handlers, and disabled/stale gating preserved verbatim so navigation +
+            reset tests pass unchanged: #wizard-back-btn / #wizard-next-btn; Next is
+            disabled by !canEnter(step+1) || nextBlockedByStale; the final step hides
+            Next. StepBar + guardedGoTo still own navigation. */}
+        <div className="no-print mt-4 flex items-center justify-between border-t border-border pt-4">
           {wizard.step > 1 ? (
             <button
               id="wizard-back-btn"
               onClick={wizard.back}
-              className="text-xs font-bold text-slate-450 hover:text-slate-200 cursor-pointer transition-colors"
+              className="cursor-pointer text-xs font-bold text-muted transition-colors hover:text-ink"
             >
               &lt; Back
             </button>
           ) : (
-            <div className="text-xs font-bold text-slate-700/0 select-none cursor-default w-[42px]">&nbsp;</div>
+            <div className="w-[42px] select-none">&nbsp;</div>
           )}
 
           {wizard.step < 4 ? (
@@ -1856,302 +1819,17 @@ export function App() {
               id="wizard-next-btn"
               onClick={() => { if (!nextBlockedByStale) wizard.next(); }}
               disabled={!wizard.canEnter(wizard.step + 1) || nextBlockedByStale}
-              className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next Step →
             </button>
           ) : (
-            <div className="text-xs font-bold text-indigo-750/0 select-none cursor-default w-[72px]">&nbsp;</div>
+            <div className="w-[72px] select-none">&nbsp;</div>
           )}
         </div>
+
       </div>
-    </aside>
-
-    {/* Main Canvas Area */}
-    <main className="flex-1 relative flex flex-col min-w-0 print:block">
-
-        {leftPanelCollapsed && (
-          <button
-            onClick={() => setLeftPanelCollapsed(false)}
-            className="absolute top-16 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
-            title="Expand Sidebar"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        )}
-
-        {rightPanelCollapsed && (
-          <button
-            onClick={() => setRightPanelCollapsed(false)}
-            className="absolute top-16 right-4 z-50 flex items-center gap-2 pl-2 pr-3 py-2 bg-panel hover:bg-border text-ink rounded-lg shadow-xl border border-border transition-all duration-200 cursor-pointer hidden md:flex hover:scale-105 active:scale-95"
-            title="Expand color legend"
-          >
-            <svg className="w-4 h-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7M17 19l-7-7 7-7" />
-            </svg>
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-xs font-bold text-ink">Color Legend</span>
-              <span className="text-[9px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
-            </div>
-          </button>
-        )}
-
-        <CanvasWorkspace
-          canvasRef={canvasRef}
-          image={image}
-          matchResult={matchResult}
-          viewportMode={viewportMode}
-          setViewportMode={setViewportMode}
-          onZoomIn={() => viewerRef.current?.zoomIn()}
-          onZoomOut={() => viewerRef.current?.zoomOut()}
-          onFit={() => viewerRef.current?.fitToContainer()}
-          zoomScale={zoomScale}
-          cols={cols}
-          rows={rows}
-          symbolMap={symbolMap}
-          leftLegendColors={leftLegendColors}
-          rightLegendColors={rightLegendColors}
-          loading={loading}
-          loadingPhase={loadingPhase}
-          progress={progress}
-          matchError={matchError}
-          actionError={actionError}
-          onDismissActionError={() => setActionError(null)}
-        />
-      </main>
-      {/* Right Sidebar Checklist & Legend */}
-      <aside
-        className={`bg-panel border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300 relative ${
-          rightPanelCollapsed ? 'w-0 border-l-0 p-0' : 'w-96'
-        }`}
-      >
-        {/* Color Legend Header */}
-        <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 px-4 pt-3.5 no-print shrink-0">
-          <div className="flex items-baseline gap-2">
-            <span className="font-display text-lg font-bold text-ink leading-none">Color Legend</span>
-            <span className="text-[10px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
-          </div>
-          <button
-            onClick={() => setRightPanelCollapsed(true)}
-            className="p-1 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
-            title="Collapse Workspace"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Collapsible Sub-palette selection checklist */}
-        <div className="border-b border-slate-800/80 no-print flex flex-col shrink-0 transition-all">
-          <button
-            onClick={() => setExcludeListOpen(!excludeListOpen)}
-            className="w-full flex justify-between items-center py-3 px-4 hover:bg-slate-850/50 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
-          >
-            <div className="flex items-center gap-2">
-              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span>Exclude Colors</span>
-              {excludedColors.size > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
-              )}
-            </div>
-            {excludeListOpen && (
-              <div className="flex gap-2 no-print" onClick={(e) => e.stopPropagation()}>
-                <button onClick={handleSelectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                  Select All
-                </button>
-                <span className="text-slate-700 text-[10px] select-none">|</span>
-                <button onClick={handleDeselectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                  Deselect All
-                </button>
-              </div>
-            )}
-          </button>
-          
-          {excludeListOpen && (
-            <div className="px-4 pb-4 flex flex-col gap-2 transition-all">
-              <p className="text-[10px] text-slate-400">Uncheck colors to exclude them from calculations.</p>
-              <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto border border-slate-850 p-1.5 rounded bg-slate-950/60 shadow-inner">
-                {baseCandidates.map(c => {
-                  const isExcluded = excludedColors.has(c.dmc);
-                  return (
-                    <label
-                      key={c.dmc}
-                      className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-850 p-1 rounded text-xs select-none"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!isExcluded}
-                        onChange={() => toggleColorExclusion(c.dmc)}
-                        className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-3 w-3 cursor-pointer"
-                      />
-                      <span
-                        className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      <span className="font-mono text-slate-350 text-[11px] truncate" title={c.name}>{c.dmc}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Legend table */}
-        <div className="px-2 py-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
-          <button
-            onClick={() => setSupplyListOpen(!supplyListOpen)}
-            className="w-full flex justify-between items-center py-2.5 hover:bg-slate-850/30 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none no-print mb-2 border border-slate-850/50 p-2 rounded bg-slate-950/20 shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${supplyListOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">DMC Supply List</span>
-              {sortedMatches.length > 0 && !supplyListOpen && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold">{sortedMatches.length} colors</span>
-              )}
-            </div>
-            {highlightedColor && supplyListOpen && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRowClick(highlightedColor);
-                }}
-                className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors"
-              >
-                Clear Highlight
-              </button>
-            )}
-          </button>
-
-          {/* Table Container */}
-          {supplyListOpen && (
-            <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
-                  <tr>
-                    <th 
-                      onClick={() => handleHeaderClick('color')}
-                      className="py-1.5 px-1 w-6 text-center cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Color Hue"
-                    >
-                      Color{sortBy === 'color' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('code')}
-                      className="py-1.5 px-1 w-10 text-center cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by DMC Code"
-                    >
-                      DMC{sortBy === 'code' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('name')}
-                      className="py-1.5 px-1 truncate max-w-[75px] cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Color Name"
-                    >
-                      Name{sortBy === 'name' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('quantity')}
-                      className="py-1.5 px-1 text-right cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Quantity Needed"
-                    >
-                      Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th className="py-1.5 px-1 text-right">Safety</th>
-                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title="Optimized combinations of 200, 500, 1000, 2000 bags">Bags (Opt)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedMatches.map(row => {
-                    const isHighlighted = highlightedColor === row.code;
-                    return (
-                      <tr
-                        key={row.code}
-                        onClick={() => handleRowClick(row.code)}
-                        className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
-                          isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
-                        }`}
-                      >
-                        <td className="py-1 px-1 flex justify-center">
-                          <span
-                            className="block w-2.5 h-2.5 rounded-full border border-slate-850 shadow-sm"
-                            style={{ backgroundColor: row.hex }}
-                          />
-                        </td>
-                        <td className="py-1 px-1 font-mono font-bold text-center text-slate-200 text-[10px]">
-                          {row.code}
-                          {drillType !== 'standard' && (
-                            <span className={`ml-0.5 text-[7px] font-sans px-0.5 rounded-sm ${
-                              drillType === 'ab'
-                                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                : drillType === 'glow'
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                : 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                            }`}>
-                              {drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'GLOW' : 'XTAL'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-1 px-1 text-slate-450 truncate max-w-[75px] text-[10px]" title={row.name}>
-                          {row.name}
-                        </td>
-                        <td className="py-1 px-1 text-right text-slate-400 font-mono text-[10px]">{row.count}</td>
-                        <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono text-[10px]">{row.safety}</td>
-                        <td className="py-1 px-1 text-right font-bold text-slate-300 font-mono text-[9.5px]">
-                          <div className="flex flex-col items-end leading-none">
-                            <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
-                            <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {sortedMatches.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
-                        No matching colors. Load an image to compute.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-        </div>
-
-        {/* Legend footer summary + primary CTA */}
-        {matchResult && (
-          <div className="shrink-0 border-t border-border px-4 py-3 flex flex-col gap-3 no-print">
-            <div className="flex flex-col gap-1 text-[11px] font-mono">
-              <div className="flex justify-between">
-                <span className="text-muted uppercase tracking-wider">Drills (+10% safety)</span>
-                <span className="font-bold text-ink">{totalSafetyDrills.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                {/* WR-02: totalPackets sums mixed-size bags (200/500/1000/2000)
-                    from the optimizer, so a "200-ct" qualifier misrepresents it.
-                    Use a size-neutral label; per-row bagsText carries the sizes. */}
-                <span className="text-muted uppercase tracking-wider">Bags</span>
-                <span className="font-bold text-ink">{totalPackets}</span>
-              </div>
-              <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
-                <span className="text-muted uppercase tracking-wider">Est. total</span>
-                <span className="text-lg font-bold text-accent-2 font-mono">${totalCostSafety.toFixed(2)}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleShopifyCheckout}
-              className="btn-chunk rounded-md py-3 text-xs font-bold uppercase tracking-wide cursor-pointer"
-            >
-              Buy Supplies →
-            </button>
-          </div>
-        )}
-      </aside>
+    </div>
 
       {/* Artist Resources Modal */}
       {resourcesModalOpen && (
@@ -2248,73 +1926,6 @@ export function App() {
         </div>
       )}
 
-      {/* Mobile drawer backdrop — tap to return to Canvas */}
-      {(!leftPanelCollapsed || !rightPanelCollapsed) && (
-        <div
-          className="drawer-backdrop md:hidden no-print"
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(true);
-          }}
-        />
-      )}
-
-      {/* Mobile Bottom Tab Bar Navigation: Setup · Canvas · Colors */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 flex border-t border-border bg-panel pt-2.5 pb-[max(1.4rem,env(safe-area-inset-bottom))] no-print font-mono select-none">
-        {/* Setup */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(false);
-            setRightPanelCollapsed(true);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            !leftPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </span>
-          Setup
-        </button>
-
-        {/* Canvas */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(true);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            leftPanelCollapsed && rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </span>
-          Canvas
-        </button>
-
-        {/* Colors */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(false);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            !rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-          </span>
-          Colors
-        </button>
-      </nav>
 
       {/* Checkout Warning Modal */}
       {checkoutWarning && (
@@ -2523,7 +2134,6 @@ export function App() {
         </table>
         <p className="supply-report-total">Proposed total: {formatUSD(totalCostSafetyCents)}</p>
       </div>
-    </div>
     </AtelierShell>
   );
 }
