@@ -1609,14 +1609,14 @@ export function App() {
             print artifacts are separate). Because the panels use display:contents,
             each screen's OWN root is the flex item (RefineScreen is w-[360px], the
             others fill). */}
-        <div className="flex min-h-0 flex-1 flex-row justify-center">
+        <div className="flex min-h-0 flex-1 flex-row justify-center @max-[640px]:flex-col @max-[640px]:justify-start @max-[640px]:overflow-y-auto">
 
           {/* Single-mount canvas preview — an always-rendered frame sibling shown only
               on Refine (step 2) and display:none otherwise, so the CanvasViewer element
               is NEVER unmounted on a step change (D-14). A step-2 useEffect re-fits it
               because it measures 0 while hidden. Kept a <main> so the print-mode CSS
               (which hides `main`) treats it exactly as before. */}
-          <main className={wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col print:block' : 'hidden'}>
+          <main className={wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col print:block @max-[640px]:sticky @max-[640px]:top-0 @max-[640px]:h-[45dvh] @max-[640px]:flex-none @max-[640px]:z-10' : 'hidden'}>
             <CanvasWorkspace
               canvasRef={canvasRef}
               image={image}
