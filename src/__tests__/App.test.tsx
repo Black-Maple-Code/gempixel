@@ -364,22 +364,21 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Verify project row exists in Left Sidebar switcher
-      const projectRow = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(projectRow).toBeTruthy();
-      expect(projectRow.textContent).toContain('Client A Commission');
+      // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+      // legacy "My Images" left drawer is retired in Plan 08. The chip's load button
+      // calls the same App loadProject(id) the drawer row called.
+      const loadChip = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.includes('Client A Commission')) as HTMLButtonElement;
+      expect(loadChip).toBeTruthy();
+      expect(loadChip.textContent).toContain('Client A Commission');
 
       // Verify canvas is NOT rendered initially (since matchResult and image are null on fresh mount before load)
       const initialCanvas = container.querySelector('canvas');
       expect(initialCanvas).toBeNull();
 
-      // Click project row to load configuration
-      projectRow.click();
+      // Click the chip to load configuration
+      loadChip.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Verify canvas mounts successfully (because matchResult is restored even without raw image!)
@@ -485,15 +484,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click project row to load configuration
-      const projectRow = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(projectRow).toBeTruthy();
-      projectRow.click();
+      // Load via the always-mounted UploadScreen recent-project chip (D-10); the
+      // legacy "My Images" left drawer is retired in Plan 08. Same App loadProject(id).
+      const loadChip = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.includes('Null Image Project')) as HTMLButtonElement;
+      expect(loadChip).toBeTruthy();
+      loadChip.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Next button should now be enabled because project ID is loaded, even though image is null
@@ -618,11 +615,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
 
-      // Load the project so a match restores and the canvas host mounts.
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('.group.relative') as HTMLDivElement).click();
+      // Load the project so a match restores and the canvas host mounts. Load via the
+      // always-mounted UploadScreen recent-project chip (D-10) — the legacy "My Images"
+      // left drawer is retired in Plan 08; the chip calls the same App loadProject(id).
+      const loadChip = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.includes('Single Mount')) as HTMLButtonElement;
+      expect(loadChip).toBeTruthy();
+      loadChip.click();
       await new Promise(r => setTimeout(r, 10));
 
       // Let the async restore/match fully settle so any load-time viewer
@@ -1060,12 +1060,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     const loadProjectToStep = async (targetStep: number) => {
       render(<App />, container);
       await new Promise(r => setTimeout(r, 10));
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(rowBtn).toBeTruthy();
-      rowBtn.click();
+      // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+      // legacy "My Images" left drawer is retired in Plan 08; same App loadProject(id).
+      const loadChip = Array.from(
+        container.querySelectorAll('[data-screen="upload"] button'),
+      ).find(b => b.textContent?.includes('ERR01 Project')) as HTMLButtonElement;
+      expect(loadChip).toBeTruthy();
+      loadChip.click();
       await new Promise(r => setTimeout(r, 10));
       for (let s = 1; s < targetStep; s++) {
         (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
@@ -1251,15 +1252,16 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
   };
 
-  const openDrawer = async () => {
-    const toggle = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images')) as HTMLButtonElement;
-    expect(toggle).toBeTruthy();
-    toggle.click();
-    await new Promise(r => setTimeout(r, 10));
-  };
-
+  // Load via the always-mounted UploadScreen recent-project chip (D-10) — the legacy
+  // "My Images" left drawer is retired in Plan 08; the chip calls the same App
+  // loadProject(id). The chip stays mounted regardless of step, so re-loading (to
+  // prove Order state resets) just clicks it again.
   const loadRow = async () => {
-    (container.querySelector('.group.relative') as HTMLDivElement).click();
+    const loadChip = Array.from(
+      container.querySelectorAll('[data-screen="upload"] button'),
+    ).find(b => b.textContent?.includes('WR01 Project')) as HTMLButtonElement;
+    expect(loadChip).toBeTruthy();
+    loadChip.click();
     await new Promise(r => setTimeout(r, 10));
   };
 
@@ -1299,11 +1301,10 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     render(<App />, container);
     await new Promise(r => setTimeout(r, 10));
 
-    await openDrawer();
     await loadRow();
     await fillShipToAndDownload();
 
-    // Re-load the same project (drawer stays open) — loadProject must reset Order state.
+    // Re-load the same project (chip stays mounted) — loadProject must reset Order state.
     await loadRow();
 
     // Panel-4 (OrderScreen) is always-mounted: its ship-to input is cleared and the
@@ -1318,7 +1319,6 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     render(<App />, container);
     await new Promise(r => setTimeout(r, 10));
 
-    await openDrawer();
     await loadRow();
     await fillShipToAndDownload();
 
@@ -1380,12 +1380,13 @@ describe('BAG-02 / SC2 — the total bag count is user-visibly rendered from pla
   const loadProjectToStep = async (targetStep: number) => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 10));
-    const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-    toggleBtn?.click();
-    await new Promise(r => setTimeout(r, 10));
-    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-    expect(rowBtn).toBeTruthy();
-    rowBtn.click();
+    // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+    // legacy "My Images" left drawer is retired in Plan 08; same App loadProject(id).
+    const loadChip = Array.from(
+      container.querySelectorAll('[data-screen="upload"] button'),
+    ).find(b => b.textContent?.includes('BAG02 Project')) as HTMLButtonElement;
+    expect(loadChip).toBeTruthy();
+    loadChip.click();
     await new Promise(r => setTimeout(r, 10));
     for (let s = 1; s < targetStep; s++) {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
@@ -1454,12 +1455,13 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
   const loadProject = async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 10));
-    const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-    toggleBtn?.click();
-    await new Promise(r => setTimeout(r, 10));
-    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-    expect(rowBtn).toBeTruthy();
-    rowBtn.click();
+    // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+    // legacy "My Images" left drawer is retired in Plan 08; same App loadProject(id).
+    const loadChip = Array.from(
+      container.querySelectorAll('[data-screen="upload"] button'),
+    ).find(b => b.textContent?.includes('D13 Project')) as HTMLButtonElement;
+    expect(loadChip).toBeTruthy();
+    loadChip.click();
     await new Promise(r => setTimeout(r, 10));
   };
 

@@ -231,12 +231,16 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
   const loadProjectToStep = async (targetStep: number) => {
     render(<App />, container);
     await new Promise((r) => setTimeout(r, 10));
-    const toggleBtn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes('My Images'));
-    toggleBtn?.click();
-    await new Promise((r) => setTimeout(r, 10));
-    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-    expect(rowBtn).toBeTruthy();
-    rowBtn.click();
+    // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+    // legacy "My Images" left drawer is retired in Plan 08. Each test here seeds
+    // exactly one project, so the first recent chip's load button (the first
+    // button inside a `.group.relative` chip) is that project; clicking it calls
+    // the same App loadProject(id) the drawer row called.
+    const chip = container.querySelector(
+      '[data-screen="upload"] .group.relative button',
+    ) as HTMLButtonElement;
+    expect(chip).toBeTruthy();
+    chip.click();
     await new Promise((r) => setTimeout(r, 10));
     for (let s = 1; s < targetStep; s++) {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
