@@ -64,7 +64,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 - [x] **Phase 20: Atelier Design System & Canvas-First Shell** - Light-only tokens + self-hosted fonts, dark mode fully retired, and a strangler shell where the horizontal 4-step bar is the only navigator (viewer mounted once). (completed 2026-07-14)
 - [x] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes. (completed 2026-07-14)
 - [x] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits. (completed 2026-07-14)
-- [ ] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag.
+- [x] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag. (completed 2026-07-15)
 - [ ] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart.
 - [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Final grep-clean of residual `Step1..4` component files, theme remnants, and leftover dead preset state. **Narrowed (2026-07-15, Phase 23 UAT Test 26 gap fix, Plans 06–08):** the legacy dark 3-column shell, the left "My Images" menu, and the right Color-Legend/DMC aside are ALREADY retired in Phase 23 — Phase 25 is no longer a from-scratch strangler close.
 
@@ -171,7 +171,7 @@ Plans:
   4. **Supplies** — the legend/supply table (symbol · swatch · DMC code + name · drills incl. +10% · bags + "why these bags?") and an inline itemized order-summary both read from the single-source quote, so Supplies and Order can never diverge.
   5. **Order** — an auto-filled, **locked** spec (Rolled Canvas, size from grid, finish) + finish selection + ship-to + the itemized quote, completed by downloading a versioned, self-contained order packet — no implied payment and no fake receipt.
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -198,7 +198,7 @@ Plans:
 
 - [x] 23-06-PLAN.md — Extract CanvasWorkspace (single-mount canvas + HUD/zoom/legends), delete the duplicate hero upload prompt, and re-point App/print test project-loads onto UploadScreen chips; legacy shell still renders, suite green (REFINE-01, UPLOAD-01) [Wave 1]
 - [x] 23-07-PLAN.md — Sever test coupling to the legacy asides: re-point color-exclusion to RefineScreen Advanced; retire sidebar/legend-collapse, sortable-DMC, and highlight-on-legend tests as intentional strangler retirement (REFINE-01, SUPPLIES-01) [Wave 2]
-- [ ] 23-08-PLAN.md — Flip the shell: centered ~1180px cream frame hosts the four screens (Refine = canvas + rail), relocate recent/Save/New/Back-Next into the viewport, delete both asides + dead collapse state, add the integrated layout regression test, narrow ROADMAP Phase 25 to a grep-clean (UPLOAD-01, REFINE-01, SUPPLIES-01, ORDER-01) [Wave 3]
+- [x] 23-08-PLAN.md — Flip the shell: centered ~1180px cream frame hosts the four screens (Refine = canvas + rail), relocate recent/Save/New/Back-Next into the viewport, delete both asides + dead collapse state, add the integrated layout regression test, narrow ROADMAP Phase 25 to a grep-clean (UPLOAD-01, REFINE-01, SUPPLIES-01, ORDER-01) [Wave 3]
 
 **UI hint**: yes
 
@@ -257,7 +257,7 @@ Plans:
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
-| 23. The Four Screens in Flow Order | v4.0 | 7/8 | In Progress|  |
+| 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete   | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 

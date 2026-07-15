@@ -6,15 +6,15 @@ current_phase: 23
 current_phase_name: the-four-screens-in-flow-order
 status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-07-15T16:07:53.909Z"
+last_updated: "2026-07-15T16:38:00.544Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 21
-  completed_plans: 20
-  percent: 50
+  completed_plans: 21
+  percent: 67
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 23 (the-four-screens-in-flow-order) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 23 execution started
 
@@ -105,6 +105,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 23 P05 | 30min | 3 tasks | 8 files |
 | Phase 23 P06 | 22min | 2 tasks | 4 files |
 | Phase 23 P07 | 14min | 2 tasks tasks | 2 files files |
+| Phase 23 P08 | 35 | 2 tasks | 4 files |
 
 ## Risk & Health
 
@@ -152,7 +153,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-15T16:06:52.310Z
+Last session: 2026-07-15T16:36:36.501Z
 Stopped at: Phase 23 UI-SPEC approved
 Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 
@@ -192,6 +193,8 @@ Resume file: .planning/phases/23-the-four-screens-in-flow-order/23-UI-SPEC.md
 - [Phase ?]: [Phase 23]: 23-06 (gap-closure 1/3): extracted the center-canvas region into a pure/props-only CanvasWorkspace.tsx — canvasRef threaded as a prop keeps the CanvasViewer bound to the SAME element (D-14 single mount survives re-parenting); viewer zoom calls wrapped as onZoomIn/onZoomOut/onFit handler props so viewerRef stays in App; deleted the duplicate #hero-file-upload hero dropzone (UploadScreen owns ingestion, D-10)
 - [Phase ?]: [Phase 23]: 23-06: re-pointed App.test.tsx + print.test.tsx project-LOAD helpers off the legacy 'My Images' drawer onto the always-mounted UploadScreen recent chips (same loadProject(id)) so Plan 08 can delete the drawer; drawer-DELETE assertion + four it.skip TODO(25) legacy-panel tests left for Plan 08/Phase 25. Byte-behavior-equivalent; legacy shell still renders; tsc 0, vitest 352 pass/12 skip
 - [Phase ?]: [Phase 23]: 23-07 (gap-closure 2/3): severed the remaining Vitest coupling to the legacy left sidebar + right Color-Legend/DMC aside — re-pointed both color-exclusion tests onto the RefineScreen 'Advanced' <details> (surviving 'Exclude colors' copy + inverted checked===excluded semantics; details driven open via open=true + synthetic toggle under jsdom); retired 5 integration + 1 App.test legacy-chrome tests (sidebar/aside collapse, sortable DMC list, highlight-on-row-click) with inline strangler-retirement notes. Suite has zero aside coupling; Plan 08 flip can delete both asides green. tsc 0, vitest 346 pass/12 skip
+- [Phase ?]: Phase 23 23-08 (gap-closure 3/3): flipped AtelierShell to the centered ~1180px cream viewport frame hosting the four screens (Refine = preview | 360px rail); CanvasWorkspace is a step-2-gated always-mounted <main> sibling so the single canvas never remounts (D-14). UAT Test 26 closed. tsc 0, vitest 350 pass/12 skip
+- [Phase ?]: Phase 23 23-08: relocated Save/New/Back-Next into the viewport (ids + gating verbatim); hoisted error banners to frame scope; deleted retired chrome + dead collapse/drawer/sort state; kept legacy Step1..4 ternaries + Artist Resources modal for Phase 25 grep-clean
 
 ## Operator Next Steps
 
