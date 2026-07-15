@@ -171,7 +171,7 @@ Plans:
   4. **Supplies** — the legend/supply table (symbol · swatch · DMC code + name · drills incl. +10% · bags + "why these bags?") and an inline itemized order-summary both read from the single-source quote, so Supplies and Order can never diverge.
   5. **Order** — an auto-filled, **locked** spec (Rolled Canvas, size from grid, finish) + finish selection + ship-to + the itemized quote, completed by downloading a versioned, self-contained order packet — no implied payment and no fake receipt.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5 base plans executed + 3 gap-closure plans (UAT Test 26)
 
 Plans:
 **Wave 1**
@@ -193,6 +193,12 @@ Plans:
 **Wave 5** *(blocked on 23-04)*
 
 - [ ] 23-05-PLAN.md — Order: locked spec + finish + ship-to + itemized quote + versioned self-contained packet download; honest terminal (no payment/receipt); flip USE_NEW_ORDER (ORDER-01/02, D-08/09) [Wave 5]
+
+**Gap Closure — UAT Test 26 (viewport-first hosting; retire the legacy left menu)**
+
+- [ ] 23-06-PLAN.md — Extract CanvasWorkspace (single-mount canvas + HUD/zoom/legends), delete the duplicate hero upload prompt, and re-point App/print test project-loads onto UploadScreen chips; legacy shell still renders, suite green (REFINE-01, UPLOAD-01) [Wave 1]
+- [ ] 23-07-PLAN.md — Sever test coupling to the legacy asides: re-point color-exclusion to RefineScreen Advanced; retire sidebar/legend-collapse, sortable-DMC, and highlight-on-legend tests as intentional strangler retirement (REFINE-01, SUPPLIES-01) [Wave 2]
+- [ ] 23-08-PLAN.md — Flip the shell: centered ~1180px cream frame hosts the four screens (Refine = canvas + rail), relocate recent/Save/New/Back-Next into the viewport, delete both asides + dead collapse state, add the integrated layout regression test, narrow ROADMAP Phase 25 to a grep-clean (UPLOAD-01, REFINE-01, SUPPLIES-01, ORDER-01) [Wave 3]
 
 **UI hint**: yes
 
