@@ -171,7 +171,7 @@ Plans:
   4. **Supplies** — the legend/supply table (symbol · swatch · DMC code + name · drills incl. +10% · bags + "why these bags?") and an inline itemized order-summary both read from the single-source quote, so Supplies and Order can never diverge.
   5. **Order** — an auto-filled, **locked** spec (Rolled Canvas, size from grid, finish) + finish selection + ship-to + the itemized quote, completed by downloading a versioned, self-contained order packet — no implied payment and no fake receipt.
 
-**Plans**: 6/8 plans executed
+**Plans**: 7/8 plans executed
 
 Plans:
 **Wave 1**
@@ -197,7 +197,7 @@ Plans:
 **Gap Closure — UAT Test 26 (viewport-first hosting; retire the legacy left menu)**
 
 - [x] 23-06-PLAN.md — Extract CanvasWorkspace (single-mount canvas + HUD/zoom/legends), delete the duplicate hero upload prompt, and re-point App/print test project-loads onto UploadScreen chips; legacy shell still renders, suite green (REFINE-01, UPLOAD-01) [Wave 1]
-- [ ] 23-07-PLAN.md — Sever test coupling to the legacy asides: re-point color-exclusion to RefineScreen Advanced; retire sidebar/legend-collapse, sortable-DMC, and highlight-on-legend tests as intentional strangler retirement (REFINE-01, SUPPLIES-01) [Wave 2]
+- [x] 23-07-PLAN.md — Sever test coupling to the legacy asides: re-point color-exclusion to RefineScreen Advanced; retire sidebar/legend-collapse, sortable-DMC, and highlight-on-legend tests as intentional strangler retirement (REFINE-01, SUPPLIES-01) [Wave 2]
 - [ ] 23-08-PLAN.md — Flip the shell: centered ~1180px cream frame hosts the four screens (Refine = canvas + rail), relocate recent/Save/New/Back-Next into the viewport, delete both asides + dead collapse state, add the integrated layout regression test, narrow ROADMAP Phase 25 to a grep-clean (UPLOAD-01, REFINE-01, SUPPLIES-01, ORDER-01) [Wave 3]
 
 **UI hint**: yes
@@ -248,7 +248,7 @@ Plans:
 | 20. Atelier Design System & Canvas-First Shell | v4.0 | 6/6 | Complete    | 2026-07-14 |
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
-| 23. The Four Screens in Flow Order | v4.0 | 6/8 | In Progress|  |
+| 23. The Four Screens in Flow Order | v4.0 | 7/8 | In Progress|  |
 | 24. Mobile Responsive + Touch Pass | v4.0 | TBD | Not started | — |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 
