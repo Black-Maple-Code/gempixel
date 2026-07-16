@@ -21,12 +21,6 @@ export interface AtelierShellProps {
   canEnter: (step: number) => boolean;
   /** Navigate handler (WizardApi.goTo) — passed straight to StepBar. */
   goTo: (step: number) => void;
-  /**
-   * D-13 soft-invalidate: the earliest step index that is out of date after an
-   * upstream edit, or null when nothing is stale. Passed straight to StepBar,
-   * which renders the out-of-date marker on steps at/after this index.
-   */
-  stale?: number | null;
   /** Save handler for the top-bar Save pill. */
   onSave: () => void;
   /** Whether Save is currently allowed (pill disabled when false). */
@@ -47,7 +41,7 @@ const GEM_LOGO_CELLS = [
   '--gem-pink',
 ] as const;
 
-export function AtelierShell({ children, step, canEnter, goTo, stale, onSave, canSave }: AtelierShellProps) {
+export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave }: AtelierShellProps) {
   return (
     <div className="@container flex flex-col h-dvh overflow-hidden print:h-auto print:overflow-visible">
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-panel no-print shrink-0">
@@ -62,7 +56,7 @@ export function AtelierShell({ children, step, canEnter, goTo, stale, onSave, ca
         </div>
 
         {/* Center: the single navigator */}
-        <StepBar step={step} canEnter={canEnter} goTo={goTo} stale={stale} />
+        <StepBar step={step} canEnter={canEnter} goTo={goTo} />
 
         {/* Right: the one deliberate dark accent — Save pill
             (bg #1B1A17 = ink token, text #F4F1E9 = on-accent token). */}

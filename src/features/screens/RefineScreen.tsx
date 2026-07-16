@@ -27,10 +27,10 @@ export interface RefineSizePreset {
  * fully-computed prop (Pattern 2). The only local state is two presentational
  * disclosure flags (custom-size + advanced) — never domain data.
  *
- * Two-tier reactivity (D-03/D-04) — the load-bearing seam:
- *  - **Size selection = worker tier.** `onSelectSize` sets live cols/rows in App ONLY;
- *    the existing soft-invalidate surfaces the "Recompute match" CTA. The screen NEVER
- *    fires the worker itself (no B2 abort-race per card click).
+ * Two-tier reactivity (D-02/D-03) — the load-bearing seam:
+ *  - **Size selection = worker tier.** `onSelectSize` sets live cols/rows in App and
+ *    App auto-fires the recompute (a SizeCard fires at once; a custom-size edit fires on
+ *    a debounce). The screen NEVER fires the worker itself (no B2 abort-race per click).
  *  - **Edge-cleanup + color slider = post-process tier.** They drive the hook's
  *    smooth/reduce memo (main thread) — live every tick, no worker re-fire, no staleness.
  *
@@ -65,9 +65,6 @@ export interface RefineScreenProps {
   excludedColors: Set<string>;
   onToggleExclude: (code: string) => void;
   baseCandidates: DmcColor[];
-  // ── Stale / recompute (worker tier only) ────────────────────────────
-  stale: boolean;
-  onRecompute: () => void;
 }
 
 export function RefineScreen(props: RefineScreenProps) {
@@ -93,8 +90,6 @@ export function RefineScreen(props: RefineScreenProps) {
     excludedColors,
     onToggleExclude,
     baseCandidates,
-    stale,
-    onRecompute,
   } = props;
 
   // Presentational-only disclosure flags (never domain data). `advancedOpen` also
@@ -105,7 +100,7 @@ export function RefineScreen(props: RefineScreenProps) {
   return (
     <section
       data-screen="refine"
-      className="flex w-[360px] max-w-full flex-col gap-6 border-l border-border bg-panel p-6 text-ink @max-[640px]:w-full @max-[640px]:border-l-0"
+      className="flex w-full max-w-[320px] flex-col gap-6 border-l border-border bg-panel p-6 text-ink @max-[640px]:w-full @max-[640px]:border-l-0"
     >
       {/* ── Size (worker tier) ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
@@ -169,25 +164,6 @@ export function RefineScreen(props: RefineScreenProps) {
           </div>
         )}
 
-        {/* Rail-local stale cue (worker tier). The page-level banner is the global
-            D-13 affordance; this mirrors it in the rail so the size seam reads
-            clearly. Clicking commits the live size via App's handleRecomputeMatch. */}
-        {stale && (
-          <div
-            role="status"
-            className="flex items-center justify-between gap-2 rounded-[var(--radius-control)] border border-warn px-3 py-2 text-warn"
-            style={{ backgroundColor: '#F7EFD8' }}
-          >
-            <span className="text-[11px] font-semibold">Size changed — preview is out of date</span>
-            <button
-              type="button"
-              onClick={onRecompute}
-              className="shrink-0 rounded-md bg-warn px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-on-accent hover:brightness-110"
-            >
-              Recompute match
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Edge cleanup (post-process tier) ───────────────────────────── */}
@@ -245,7 +221,25 @@ export function RefineScreen(props: RefineScreenProps) {
         className="flex flex-col gap-2 border-t border-border pt-3"
         onToggle={(e) => setAdvancedOpen((e.currentTarget as HTMLDetailsElement).open)}
       >
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Advanced</summary>
+        {/* SC5: an explicit clickable affordance — a caret that flips on open + a
+            settings-inside hint — so the group reads as an openable settings drawer,
+            not plain bold text. The native disclosure triangle is hidden in favor of
+            the state-driven caret. */}
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'inline-block text-[10px] text-muted transition-transform',
+              advancedOpen && 'rotate-90',
+            )}
+          >
+            ▸
+          </span>
+          <span>Advanced</span>
+          <span className="font-mono text-[10px] font-normal uppercase tracking-wider text-faint">
+            kit · colors · shape
+          </span>
+        </summary>
 
         <div className="mt-3 flex flex-col gap-4">
           {/* Kit */}

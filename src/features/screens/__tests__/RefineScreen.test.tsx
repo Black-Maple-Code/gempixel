@@ -5,11 +5,13 @@ import { RefineScreen, type RefineScreenProps } from '../RefineScreen';
 import type { DmcColor } from '../../../engine/types';
 
 /**
- * RefineScreen render contract (23-03). Props-driven jsdom render asserting the LOCKED
- * two-tier reactivity seam (D-03/D-04): a size-card click is the worker tier (calls
- * onSelectSize, never onRecompute/worker); edge-cleanup + the color slider are the
- * post-process tier (their own setters, no staleness). Also locks the stable slider max
- * (= detectedColorCount, Pitfall 3) and the Advanced defaults (closed; kit=all, shape=square).
+ * RefineScreen render contract (23-03, retargeted 25-04). Props-driven jsdom render
+ * asserting the two-tier reactivity seam (D-02/D-03): a size-card click is the worker
+ * tier (calls onSelectSize; App owns the auto-fired recompute, so the screen carries NO
+ * Recompute affordance); edge-cleanup + the color slider are the post-process tier (their
+ * own setters, no staleness). Also locks the stable slider max (= detectedColorCount,
+ * Pitfall 3), the Advanced defaults (closed; kit=all, shape=square), and the SC5 Advanced
+ * caret + settings-hint affordance.
  */
 describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () => {
   let container: HTMLDivElement;
@@ -62,8 +64,6 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     excludedColors: new Set<string>(),
     onToggleExclude: vi.fn(),
     baseCandidates: [candidate('310', 'Black', '#000000'), candidate('321', 'Red', '#c00000')],
-    stale: false,
-    onRecompute: vi.fn(),
     ...overrides,
   });
 
@@ -94,12 +94,11 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     expect(small.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('size-card click calls onSelectSize(cols, rows) and NEVER onRecompute (worker tier is App-owned)', () => {
+  it('size-card click calls onSelectSize(cols, rows) — the screen never fires the worker itself (App owns the auto-recompute)', () => {
     const props = setup();
     const large = sizeCards().find(c => c.textContent?.includes('110×73 grid'))!;
     large.click();
     expect(props.onSelectSize).toHaveBeenCalledWith(110, 73);
-    expect(props.onRecompute).not.toHaveBeenCalled();
   });
 
   it('renders the color Slider with max === detectedColorCount and reports numeric input', () => {
@@ -168,22 +167,24 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     expect(squareRadio.getAttribute('aria-checked')).toBe('true');
   });
 
-  it('renders the Recompute affordance only when stale, and clicking it calls onRecompute', () => {
-    // Not stale → no affordance.
-    const notStale = setup({ stale: false });
-    let recompute = Array.from(container.querySelectorAll('button')).find(
+  it('carries NO rail-local Recompute affordance (the manual stale cue is retired, D-02)', () => {
+    // Auto-recompute is App-owned; the screen no longer surfaces any manual
+    // "Recompute match" CTA regardless of props.
+    setup();
+    const recompute = Array.from(container.querySelectorAll('button')).find(
       b => b.textContent?.trim() === 'Recompute match',
     );
     expect(recompute).toBeUndefined();
-    expect(notStale.onRecompute).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain('out of date');
+  });
 
-    // Stale → affordance renders and fires onRecompute.
-    const props = setup({ stale: true });
-    recompute = Array.from(container.querySelectorAll('button')).find(
-      b => b.textContent?.trim() === 'Recompute match',
-    );
-    expect(recompute).toBeTruthy();
-    (recompute as HTMLButtonElement).click();
-    expect(props.onRecompute).toHaveBeenCalledTimes(1);
+  it('the Advanced summary reads as a clickable settings group — caret affordance + settings hint (SC5)', () => {
+    setup();
+    const summary = container.querySelector('summary') as HTMLElement;
+    expect(summary).toBeTruthy();
+    // A state-driven caret glyph (▸) signals the disclosure is openable.
+    expect(summary.textContent).toContain('▸');
+    // A "settings inside" hint cues what the group houses.
+    expect(summary.textContent).toContain('kit · colors · shape');
   });
 });
