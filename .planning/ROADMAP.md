@@ -246,6 +246,27 @@ Plans:
 > 4. **Clearer "Advanced" disclosure affordance** — the RefineScreen `<details>` doesn't read as clickable or signal that settings live inside; give it an explicit affordance.
 > 5. **WR-01 (code review, `23-REVIEW.md`)** — the canvas `<main>` is `print:block` only on Refine (step 2); on Upload/Supplies/Order it is `display:none` with no print override, so a plain Ctrl+P of the raw canvas grid prints blank from those screens (the dedicated Print-Supply-Report and legend-print buttons are unaffected). Restore canvas-grid print from the other steps (needs fit-on-print for the hidden canvas), or make the intent explicit.
 
+> **Scope added 2026-07-16 (Phase 24 human-verify walkthrough — web viewport/zoom refinements).**
+> Reviewing the desktop-web layout after the Phase 24 mobile pass, the user raised four
+> viewport/zoom issues. These join Phase 25 (which already re-touches the Refine viewport and
+> re-verifies the real-photo walk, UAT Test 29):
+> 6. **Fit-to-zoom is the default view** — the canvas should default to fit-to-container ("fit")
+>    and only leave fit when the user explicitly zooms in/out; it must not start at, or get stuck
+>    at, an arbitrary zoom. (Ties into #8 below.)
+> 7. **Right rail must fit the browser, not encroach on the viewport** — the Refine controls rail
+>    currently encroaches on the canvas viewport instead of the layout fitting the browser width;
+>    the rail must fit the browser size and never obstruct the viewport (the canvas is the focus).
+>    Sharpens existing UX refinement #3 ("narrow the Refine rail") from a whitespace tidy into a
+>    layout-fit requirement.
+> 8. **SizeCards must not change the preview zoom** — selecting Small/Medium/Large/XL currently
+>    changes the zoom level of the picture; a canvas-size change must not jump the user's zoom (it
+>    should re-fit cleanly per #6, not snap to an arbitrary zoom).
+> 9. **View-mode switcher snaps to the bottom** — the Grid / Grid+Symbols / Original-photo toggle
+>    should snap to the bottom of the browser viewport on web, but must never obstruct or overlap
+>    the canvas viewport.
+> All four are desktop-web layout/zoom fixes; they ride alongside the strangler close in Phase 25's
+> Refine re-touch and do not alter the cleanup scope.
+
 **Goal**: With the new journey validated in UAT, the remaining `Step1..4` component files, theme remnants, and any leftover dead preset state are grep-cleaned — the strangler is complete and the codebase carries no dual UI.
 **Depends on**: Phase 24
 **Requirements**: (none — strangler close; carries no v4.0 REQ-ID by design)
@@ -258,6 +279,7 @@ Plans:
   5. **UX (from Test 26 sign-off):** a successful upload auto-advances Upload → Refine (no dead-end no-op); a dimension change recomputes automatically (no intermediate Recompute click); the Refine rail is tightened so the canvas preview dominates the viewport; and the "Advanced" disclosure reads as clickable and signals housed settings.
   6. **Print (WR-01):** a plain Ctrl+P produces the canvas grid from every step where it is meaningful — not just Refine — or the intent is made explicit; the dedicated Supply-Report/legend print paths remain intact.
   7. The real-photo end-to-end journey (UAT Test 29: Upload → Refine → Supplies → Order) is re-verified against the final in-viewport layout with the above UX fixes in place.
+  8. **Web viewport/zoom (from Phase 24 walkthrough):** the canvas defaults to fit-to-container and only leaves "fit" on explicit user zoom in/out; changing the canvas size via SizeCards does not jump the preview zoom (re-fits cleanly instead); the Refine rail fits the browser width without encroaching on the canvas viewport; and the Grid / Grid+Symbols / Original view switcher snaps to the bottom of the viewport without ever obstructing the canvas.
 
 **Plans**: TBD
 
