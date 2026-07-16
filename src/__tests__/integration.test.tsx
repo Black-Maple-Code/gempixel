@@ -339,6 +339,15 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
+    // D-08 / SC5: a successful ingest auto-advances Upload → Refine (step 2). The
+    // panel-2 wrapper becomes the visible (display:contents) step and panel-1 hides.
+    await vi.waitFor(() => {
+      const panel2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+      expect(panel2.className).toContain('contents');
+      const panel1 = container.querySelector('[data-step-panel="1"]') as HTMLElement;
+      expect(panel1.className).toContain('hidden');
+    });
+
     // Reveal the Refine custom-size entry (always-mounted panel-2).
     const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
     const customBtn = Array.from(step2.querySelectorAll('button')).find(

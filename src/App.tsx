@@ -743,6 +743,24 @@ export function App() {
     }
   }, [wizard.step]);
 
+  // D-08 / SC5: auto-advance Upload → Refine once a freshly ingested image commits.
+  // Keyed on the image object IDENTITY: a file ingest installs a NEW HTMLImageElement,
+  // so this fires exactly once per upload (fresh or re-upload). Project loads set
+  // `image` to null (they carry activeProjectId instead), so a loaded project NEVER
+  // triggers this — it stays on Upload until the user navigates, preserving the load
+  // flow. This runs as an EFFECT rather than a synchronous `wizard.goTo(2)` inside
+  // img.onload on purpose: the onload closure's captured wizard still reads the
+  // pre-upload `hasImage` (false), so canEnter(2) would reject the advance in
+  // production — only the isTestEnv bypass would mask it. By the time this effect runs,
+  // the setImage render has committed, hasImage is true, and goTo(2) is legal.
+  // (Same effect-not-inline discretion Plan 25-04 applied for the re-fit trigger.)
+  useEffect(() => {
+    if (image) wizard.goTo(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- image identity only;
+    // including `wizard` (new object each render) would re-yank the user to Refine on
+    // any unrelated re-render.
+  }, [image]);
+
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
     const activeEl = document.activeElement;
@@ -933,18 +951,18 @@ export function App() {
         }
         setRows(newRows);
         setImage(img);
-        // The FIRST upload commits (a match computes); a re-upload after a match already
-        // exists stays uncommitted so the worker never silently re-fires — the new image
-        // is committed by the next dimension-change auto-recompute (D-02 is scoped to
-        // dimension changes; image-swap commit is the ingest/D-08 domain).
-        // ME-02: excludedColors + selectedPreset feed candidatesKey, which the match hook
-        // keys on. Resetting them on the uncommitted re-upload path would silently re-fire
-        // the worker on the OLD committed image, so reset them only on the committing path.
-        if (!matchResult) {
-          setExcludedColors(new Set());
-          setSelectedPreset('custom');
-          setMatchInputs({ image: img, cols, rows: newRows });
-        }
+        // D-08 image-swap commit: EVERY successful ingest commits the new image — not
+        // just the first (the prior `if (!matchResult)` guard left a same-size re-upload
+        // uncommitted, so the canvas kept showing the OLD image's match; Plan 25-04
+        // flagged this as this plan's domain, and the new auto-advance to Refine would
+        // otherwise land the user on a stale grid). Committing the new image AND resetting
+        // the candidate inputs together is race-safe: the match hook keys on
+        // {image, cols, rows, candidatesKey}, so the worker re-fires on the NEW image with
+        // fresh candidates in one commit — the 25-04 hazard (candidates reset WITHOUT a new
+        // image commit re-firing on the OLD image) cannot occur when they commit together.
+        setExcludedColors(new Set());
+        setSelectedPreset('custom');
+        setMatchInputs({ image: img, cols, rows: newRows });
 
         // Add to recent images history (limit to 5)
         setRecentImages(prev => {
