@@ -32,6 +32,14 @@ export interface AtelierShellProps {
    * (D-05 / SC9). Optional so the shell degrades gracefully if omitted.
    */
   bottomBar?: ComponentChildren;
+  /**
+   * In-flow canvas control strip for Zone 3 (Plan 25-07, GAP-1/SC8) — the
+   * relocated view-mode switcher + zoom controls. Rendered as a `shrink-0
+   * no-print` strip immediately ABOVE the `bottomBar` Back/Next bar, so Zone 2
+   * (the canvas region) fills the remaining height and nothing floats over the
+   * raster. Optional; supplied by App only on Refine (step 2).
+   */
+  canvasControls?: ComponentChildren;
 }
 
 // The 3×3 pixel-logo tile reuses the pure-CSS `.gem-logo` mark (src/index.css);
@@ -48,7 +56,7 @@ const GEM_LOGO_CELLS = [
   '--gem-pink',
 ] as const;
 
-export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, bottomBar }: AtelierShellProps) {
+export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, bottomBar, canvasControls }: AtelierShellProps) {
   return (
     // Fixed 3-zone shell (D-05): Zone 1 top step-bar (shrink-0) → Zone 2 the
     // internally-scrolling content (flex-1 min-h-0 overflow-y-auto — `min-h-0` is
@@ -88,6 +96,14 @@ export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, 
       <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible print:h-auto">
         {children}
       </div>
+
+      {/* Zone 3a — in-flow canvas control strip (Plan 25-07). Sits above the
+          Back/Next bar; both are `shrink-0`, so Zone 2 keeps filling the height. */}
+      {canvasControls && (
+        <div className="no-print shrink-0 border-t border-border bg-panel px-4 py-2">
+          {canvasControls}
+        </div>
+      )}
 
       {/* Zone 3 — fixed bottom action bar (relocated Back/Next). `px-4 py-3`
           matches the header; `no-print` because the wizard chrome never prints. */}

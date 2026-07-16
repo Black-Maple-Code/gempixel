@@ -15,6 +15,7 @@ import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
 import { AtelierShell } from './features/wizard/AtelierShell';
 import { CanvasWorkspace } from './features/wizard/CanvasWorkspace';
+import { CanvasControlBar } from './features/wizard/CanvasControlBar';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
 import { USE_NEW_SUPPLIES } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
@@ -1440,6 +1441,17 @@ export function App() {
         setSaveModalOpen(true);
       }}
       canSave={!!matchResult}
+      canvasControls={wizard.step === 2 ? (
+        <CanvasControlBar
+          image={image}
+          viewportMode={viewportMode}
+          setViewportMode={setViewportMode}
+          onZoomIn={() => viewerRef.current?.zoomIn()}
+          onZoomOut={() => viewerRef.current?.zoomOut()}
+          onFit={() => viewerRef.current?.fitToContainer()}
+          zoomScale={zoomScale}
+        />
+      ) : undefined}
       bottomBar={
         /* Relocated wizard nav footer (D-05) — Back/Next re-homed to the shell's
            fixed Zone 3 so Next stays hittable without page scroll (SC9). Ids and
@@ -1563,11 +1575,6 @@ export function App() {
               image={image}
               matchResult={matchResult}
               viewportMode={viewportMode}
-              setViewportMode={setViewportMode}
-              onZoomIn={() => viewerRef.current?.zoomIn()}
-              onZoomOut={() => viewerRef.current?.zoomOut()}
-              onFit={() => viewerRef.current?.fitToContainer()}
-              zoomScale={zoomScale}
               cols={cols}
               rows={rows}
               symbolMap={symbolMap}
