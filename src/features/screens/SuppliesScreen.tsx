@@ -158,7 +158,7 @@ export function SuppliesScreen(props: SuppliesScreenProps) {
       {/* ── Right: order-summary panel (single-source quote, verbatim) ────
           A plain <div> (NOT <aside>) so it does not shift the App layout's
           aside indices that the workspace/legend tests key off of. */}
-      <div className="flex w-full flex-col gap-3 border-l border-border bg-panel p-6 md:w-[320px] md:shrink-0">
+      <div className="flex w-full flex-col gap-3 border-l border-border bg-panel p-6 md:w-[320px] md:shrink-0 md:sticky md:top-0 md:self-start">
         <h2 className="font-serif text-[18px] font-semibold leading-[1.2] text-ink">
           Order summary
         </h2>
