@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–26
 current_phase: 25
-current_phase_name: Retire Legacy Steps + Cleanup
+current_phase_name: retire-legacy-steps-cleanup
 status: executing
 stopped_at: Phase 25 UI-SPEC approved
-last_updated: "2026-07-16T07:32:26.756Z"
+last_updated: "2026-07-16T15:03:14.212Z"
 last_activity: 2026-07-16
-last_activity_desc: Phase 24 complete, transitioned to Phase 25
+last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 24
+  total_plans: 30
   completed_plans: 24
   percent: 71
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** Provide a simple, non-AI, high-fidelity grid preview of any image mapped directly to Art Dot / DMC colors, with accurate supply counts based on canvas size.
-**Current focus:** Phase 24 — mobile-responsive-touch-pass
+**Current focus:** Phase 25 — retire-legacy-steps-cleanup
 
 ## Current Position
 
-Phase: 25 — Retire Legacy Steps + Cleanup
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-16 — Phase 24 complete, transitioned to Phase 25
+Phase: 25 (retire-legacy-steps-cleanup) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 25
+Last activity: 2026-07-16 — Phase 25 execution started
 
 Progress: [██████████] 100%
 
