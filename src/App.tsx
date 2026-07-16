@@ -56,6 +56,11 @@ export const customTemplateCodec: Codec<string> = {
 };
 
 
+// Minimum grid dimension for an auto-recompute. Mirrors the ingest/width-height
+// clamp lower bound (`Math.max(1, …)`), so a half-typed / degenerate custom size
+// never fires a garbage worker run (D-02 clamp-guard).
+export const MIN_GRID = 1;
+
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
   // Standard Sizes (12x16, 16x20, 20x28, 40x60 in)
@@ -548,47 +553,46 @@ export function App() {
     isTestEnv,
   });
 
-  // D-13 soft-invalidate signal. When a match already exists but the live upstream
-  // inputs (image / canvas size, both Step 1 "Upload" inputs) have diverged from the
-  // committed inputs that produced it, downstream steps are out of date. The match
-  // feeds every step from Refine (2) onward, so the earliest out-of-date step is 2.
-  // The last-good match/supplies stay on screen (no data loss); the user recomputes
-  // via the one banner CTA.
-  const isStale =
-    !!matchResult &&
-    (matchInputs.image !== image || matchInputs.cols !== cols || matchInputs.rows !== rows);
-  const staleFromStep: number | null = isStale ? 2 : null;
-
-  // The dimensions the on-screen (last-good) match actually corresponds to. While
-  // stale these lag the live cols/rows, so the canvas/exports keep rendering the
-  // committed grid faithfully instead of mismatching the new (not-yet-applied) size.
+  // The dimensions the on-screen match actually corresponds to (the COMMITTED match
+  // inputs). The canvas/exports render at these dims, so a dimension change that is
+  // still being recomputed keeps showing the last-good grid coherently until the fresh
+  // one lands — the two-phase loading overlay covers that pending window.
   const matchCols = matchInputs.cols;
   const matchRows = matchInputs.rows;
 
-  // "Recompute match" CTA: commit the current live inputs. This makes matchInputs ==
-  // live (clearing staleFromStep immediately) and, because the hook keys on these
-  // committed inputs, fires the EXISTING match effect exactly once — no new worker
-  // path, no B2 abort-race re-entry. The last-good match stays until the fresh one lands.
-  const handleRecomputeMatch = () => {
+  // D-02 auto-recompute: commit the given (or current live) inputs. Committing makes
+  // the match hook — which keys on matchInputs — fire the EXISTING match effect exactly
+  // once (no new worker path, no B2 abort-race re-entry). Callers pass the freshly
+  // computed cols/rows explicitly so the commit never reads stale React state from the
+  // same tick as the setCols/setRows that scheduled it. The last-good match stays on
+  // screen until the fresh one lands.
+  const handleRecomputeMatch = (nextCols: number = cols, nextRows: number = rows) => {
     setActionError(null);
     // ME-01: without a live source image there is nothing to recompute. Committing
-    // would clear the stale banner while the worker bails on the null image, silently
-    // stranding a mismatched grid. Keep the stale state and prompt a re-upload instead.
+    // would let the worker bail on the null image and silently strand a mismatched
+    // grid, so keep the last-good match and prompt a re-upload instead.
     if (!image) {
       setActionError('Re-upload the source image to recompute the match.');
       return;
     }
-    setMatchInputs({ image, cols, rows });
+    setMatchInputs({ image, cols: nextCols, rows: nextRows });
   };
 
-  // Block advancing PAST a stale step: forward navigation into steps at/after the
-  // stale index is refused until recompute; backward nav to completed steps is fine.
-  // This never touches useWizard.canEnter (engine indices stay frozen, D-04).
-  const guardedGoTo = (target: number) => {
-    if (staleFromStep !== null && target > wizard.step && target >= staleFromStep) return;
-    wizard.goTo(target);
+  // D-02: a valid custom-size edit auto-recomputes on a ~500ms debounce so rapid
+  // keystrokes ("1" → "15" → "150") collapse into a single worker run. The clamp-guard
+  // (MIN_GRID + a live image) means a half-typed or imageless value never fires.
+  const customRecomputeTimerRef = useRef<number | null>(null);
+  const scheduleCustomRecompute = (nextCols: number, nextRows: number) => {
+    if (customRecomputeTimerRef.current !== null) {
+      clearTimeout(customRecomputeTimerRef.current);
+    }
+    customRecomputeTimerRef.current = window.setTimeout(() => {
+      customRecomputeTimerRef.current = null;
+      if (image && nextCols >= MIN_GRID && nextRows >= MIN_GRID) {
+        handleRecomputeMatch(nextCols, nextRows);
+      }
+    }, 500);
   };
-  const nextBlockedByStale = staleFromStep !== null && wizard.step + 1 >= staleFromStep;
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
     // The printable/exported legend is a KEY for the grid, so it must list only
@@ -626,10 +630,18 @@ export function App() {
     return () => {
       viewerRef.current?.destroy();
       viewerRef.current = null;
+      if (customRecomputeTimerRef.current !== null) {
+        clearTimeout(customRecomputeTimerRef.current);
+        customRecomputeTimerRef.current = null;
+      }
     };
   }, []);
 
   const lastFitProjectRef = useRef<string | null>(null);
+  // Tracks the committed dims the canvas last fitted to, so a dimension change
+  // (SizeCard / custom size) re-fits the viewport cleanly once — riding the Plan 03
+  // isFitMode resting state — without a post-process slider tick ever re-fitting (D-04).
+  const lastFitDimsRef = useRef<string | null>(null);
 
   // Initialize CanvasViewer when canvas is rendered (depends on image OR matchResult)
   useEffect(() => {
@@ -654,8 +666,8 @@ export function App() {
     if (viewerRef.current && matchResult && activeCandidates.length > 0) {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
-      // D-13: draw the grid at the COMMITTED match dimensions so a stale (edited-but-
-      // not-yet-recomputed) size keeps rendering the last-good grid coherently.
+      // Draw the grid at the COMMITTED match dimensions so an in-flight recompute keeps
+      // rendering the last-good grid coherently until the fresh one lands.
       viewerRef.current.setData(matchCols, matchRows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
@@ -663,11 +675,20 @@ export function App() {
       viewerRef.current.setViewMode(viewportMode);
       viewerRef.current.setSymbolMap(symbolMap);
 
-      // Automatically fit to container by default on first load of a new image or when switching projects
-      if (lastFitImageRef.current !== image || (activeProjectId && lastFitProjectRef.current !== activeProjectId)) {
+      // Auto-fit on first load of a new image, on a project switch, OR on a committed
+      // dimension change (D-02/D-04). The fit math keys on the grid dims alone, so
+      // fitting here — after setData installs the new dims — re-fits cleanly with no
+      // zoom-jump. A post-process slider tick (same dims) never re-fits.
+      const fitDimsKey = `${matchCols}x${matchRows}`;
+      if (
+        lastFitImageRef.current !== image ||
+        (activeProjectId && lastFitProjectRef.current !== activeProjectId) ||
+        lastFitDimsRef.current !== fitDimsKey
+      ) {
         viewerRef.current.fitToContainer();
         lastFitImageRef.current = image;
         lastFitProjectRef.current = activeProjectId;
+        lastFitDimsRef.current = fitDimsKey;
       }
     }
   }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, matchCols, matchRows, drillType, activeProjectId, viewportMode, symbolMap]);
@@ -778,10 +799,10 @@ export function App() {
     setCols(computedCols);
 
     // Auto-adjust height if image is loaded to maintain aspect ratio
+    let computedRows = rows;
     if (image) {
       const ar = image.naturalWidth / image.naturalHeight;
       const computedHeight = val / ar;
-      let computedRows = rows;
       if (unit === 'grid') {
         computedRows = Math.max(1, Math.round(computedHeight));
         setHeightInput(Math.max(1, Math.round(computedHeight)).toString());
@@ -795,6 +816,9 @@ export function App() {
       }
       setRows(computedRows);
     }
+
+    // D-02: auto-recompute the match on the debounced, clamp-guarded custom size.
+    scheduleCustomRecompute(computedCols, computedRows);
   };
 
   const handleHeightChange = (valStr: string) => {
@@ -814,10 +838,10 @@ export function App() {
     setRows(computedRows);
 
     // Auto-adjust width if image is loaded to maintain aspect ratio
+    let computedCols = cols;
     if (image) {
       const ar = image.naturalWidth / image.naturalHeight;
       const computedWidth = val * ar;
-      let computedCols = cols;
       if (unit === 'grid') {
         computedCols = Math.max(1, Math.round(computedWidth));
         setWidthInput(Math.max(1, Math.round(computedWidth)).toString());
@@ -831,6 +855,9 @@ export function App() {
       }
       setCols(computedCols);
     }
+
+    // D-02: auto-recompute the match on the debounced, clamp-guarded custom size.
+    scheduleCustomRecompute(computedCols, computedRows);
   };
 
   // Toggle exclusion for a color
@@ -1241,14 +1268,16 @@ export function App() {
     cols,
     rows,
     onSelectSize: (c: number, r: number) => {
-      // Worker tier (D-04): set live cols/rows ONLY. The divergence from the
-      // committed matchInputs surfaces the stale banner + single Recompute CTA;
-      // the worker never re-fires per card click (no B2 abort-race).
+      // Worker tier (D-02): set live cols/rows AND auto-fire the recompute at once.
+      // A SizeCard is a discrete preset, so firing immediately (no debounce) is safe —
+      // handleRecomputeMatch commits {image, c, r} explicitly, avoiding stale React
+      // state, and the fire-once setMatchInputs commit keeps the B2 abort-race guard.
       setCols(c);
       setRows(r);
       setWidthInput(String(c));
       setHeightInput(String(r));
       setSelectedPreset('custom');
+      handleRecomputeMatch(c, r);
     },
     widthInput,
     heightInput,
@@ -1283,8 +1312,6 @@ export function App() {
     excludedColors,
     onToggleExclude: toggleColorExclusion,
     baseCandidates,
-    stale: isStale,
-    onRecompute: handleRecomputeMatch,
   };
 
   // SUPPLIES-01/02 (D-07): the pure Supplies screen reads the already-joined supply
@@ -1388,36 +1415,13 @@ export function App() {
     <AtelierShell
       step={wizard.step}
       canEnter={wizard.canEnter}
-      goTo={guardedGoTo}
-      stale={staleFromStep}
+      goTo={wizard.goTo}
       onSave={() => {
         setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
         setSaveModalOpen(true);
       }}
       canSave={!!matchResult}
     >
-    {/* D-13 soft-invalidate banner — one page-level "Recompute match" CTA following
-        the existing non-throwing banner convention (amber/warn, dismiss-free: it
-        clears itself the moment the match is recomputed). Kept out of print. */}
-    {staleFromStep !== null && (
-      <div
-        role="status"
-        className="no-print flex items-center justify-between gap-4 px-4 py-2.5 border-b border-warn text-warn shrink-0"
-        style={{ backgroundColor: '#F7EFD8' }}
-      >
-        <div className="flex flex-col">
-          <span className="font-display text-sm font-semibold leading-tight">This step is out of date</span>
-          <span className="text-[11px] text-muted">Your upstream changes aren't in the match yet — recompute to apply them.</span>
-        </div>
-        <button
-          type="button"
-          onClick={handleRecomputeMatch}
-          className="shrink-0 bg-warn text-on-accent rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide hover:brightness-110 transition-all cursor-pointer"
-        >
-          Recompute match
-        </button>
-      </div>
-    )}
     {/* Centered Atelier viewport frame (UI-SPEC A1-A4) — the four screens are the
         shell's PRIMARY content, hosted in a scroll container whose inner content is
         centered and width-capped at the fixed 1180px card frame, on the cream
@@ -1583,11 +1587,11 @@ export function App() {
 
         </div>
 
-        {/* Relocated wizard nav footer — Back/Next re-homed to frame scope. Ids,
-            handlers, and disabled/stale gating preserved verbatim so navigation +
-            reset tests pass unchanged: #wizard-back-btn / #wizard-next-btn; Next is
-            disabled by !canEnter(step+1) || nextBlockedByStale; the final step hides
-            Next. StepBar + guardedGoTo still own navigation. */}
+        {/* Relocated wizard nav footer — Back/Next re-homed to frame scope. Ids and
+            handlers preserved verbatim so navigation + reset tests pass unchanged:
+            #wizard-back-btn / #wizard-next-btn; Next is disabled purely by
+            !canEnter(step+1); the final step hides Next. StepBar + wizard.goTo own
+            navigation (D-02 retired the stale forward-nav block). */}
         <div className="no-print mt-4 flex items-center justify-between border-t border-border pt-4">
           {wizard.step > 1 ? (
             <button
@@ -1604,8 +1608,8 @@ export function App() {
           {wizard.step < 4 ? (
             <button
               id="wizard-next-btn"
-              onClick={() => { if (!nextBlockedByStale) wizard.next(); }}
-              disabled={!wizard.canEnter(wizard.step + 1) || nextBlockedByStale}
+              onClick={wizard.next}
+              disabled={!wizard.canEnter(wizard.step + 1)}
               className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next Step →
