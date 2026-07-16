@@ -343,7 +343,24 @@ Plans:
   4. The interim nature is honest in the UI (a self-serve handoff, not a GemPixel-fulfilled order and no fake payment), consistent with the v4.0 100%-client-side boundary.
   5. The legacy `Step3Canvas` export/checkout wiring is fully superseded (single path, no dual UI) and the 240+ Vitest suite stays green.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 26-01-PLAN.md — Additive `drawLegendOnly` renderer in `engine/export.ts` + test; frozen renderer signatures untouched (ORDER-04, D-05) [Wave 1]
+
+**Wave 2** *(blocked on 26-01 — re-home before delete)*
+
+- [ ] 26-02-PLAN.md — Re-home: OrderScreen two honest task sections + per-task state; App wires 4 PNG/packet downloads + single Diamond Drills USA cart; tests retargeted (ORDER-04, ORDER-05, D-01/D-03/D-06/D-07) [Wave 2]
+
+**Wave 3** *(blocked on 26-02 — strangler delete)*
+
+- [ ] 26-03-PLAN.md — Delete `Step3Canvas.tsx` + `flags.ts` + 2 coupled modals; collapse panel-3 to `SuppliesScreen`; refactor cart-error to the actionError banner; retire coupled tests (ORDER-04, ORDER-05, D-02/D-08) [Wave 3]
+
+**Wave 4** *(blocked on 26-03 — D-08 re-token + grep-gate)*
+
+- [ ] 26-04-PLAN.md — Re-token the error banners + Save Project Modal to Atelier light; reword stale shell comment; enforce the hard D-08 grep-gate (ORDER-04, ORDER-05, D-08) [Wave 4]
 
 ## Progress
 
@@ -366,7 +383,7 @@ Plans:
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | 8/8 | Complete    | 2026-07-16 |
-| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | TBD | Not started | — |
+| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 0/4 | Planned | — |
 
 ## Backlog
 
