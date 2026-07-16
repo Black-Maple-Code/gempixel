@@ -182,40 +182,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   // UI and the case no longer applies. Grid ↔ inch derivation is covered by density.ts
   // unit tests (gridToInches/formatInches) and the SizeCard inch-string assertions.
 
-  // TODO(26): the editable pricing config grid (canvas cost, est. shipping, per-bag
-  // 200/500/1k/2k prices) lived in the legacy Step3Canvas body. Flipping
-  // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which is a
-  // read-only supply table + single-source order summary (D-07) — price EDITING has
-  // no canvas-first home yet (an Order/vendor concern). The underlying priceDb still
-  // feeds planOrderSupply/buildOrderQuote; only its input UI left panel-3. Un-skip
-  // when a price-config surface is re-homed, or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
-  it.skip('calculates supply costing commission quotes correctly in quote tab', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
-
-    // D-14: the Supplies (step 3) panel is always mounted (CSS-toggled sibling),
-    // so its cost controls can be asserted directly by scoping to its panel —
-    // no navigation required (and the strict StepBar/Next stay locked with no image).
-    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
-    expect(step3).toBeTruthy();
-
-    // Single-plan UI (D-11): the per-bag-size price grid always renders, so there are
-    // 6 number inputs — Canvas price, Est. Shipping, then the 200/500/1k/2k prices.
-    const inputs = step3.querySelectorAll('input[type="number"]');
-    expect(inputs.length).toBe(6);
-    const canvasCostInput = inputs[0] as HTMLInputElement;
-    const shippingEstimateInput = inputs[1] as HTMLInputElement;
-    const price200Input = inputs[2] as HTMLInputElement;
-
-    expect(canvasCostInput.value).toBe('15');
-    expect(shippingEstimateInput.value).toBe('8');
-    expect(price200Input.value).toBe('0.6'); // 200-qty default standard price
-
-    // Canvas base cost: $15, shipping: $8, drills cost: $0 (no matchResult) -> Total Cost: $23.00
-    const quoteSections = step3.querySelectorAll('span');
-    const exactQuoteSpan = Array.from(quoteSections).find(s => s.textContent?.includes('$23.00'));
-    expect(exactQuoteSpan).toBeTruthy();
-  });
+  // RETIRED(26-03): "calculates supply costing commission quotes correctly in quote tab"
+  // asserted the editable pricing-config grid (canvas cost, est. shipping, per-bag
+  // 200/500/1k/2k inputs) in the deleted Step3Canvas body. That price-EDITING UI has no
+  // canvas-first home (SuppliesScreen is a read-only supply table + single-source order
+  // summary, D-07). The priceDb still feeds planOrderSupply/buildOrderQuote (covered by
+  // the BAG-02 totalPackets test + quote engine unit tests); only its input grid is gone.
+  // Strangler-close retirement (D-02), mirroring the Phase 23 aside-retargeting precedent.
 
   // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "supports bottom bar navigation
   // for responsive mobile drawer toggles" asserted the collapse state (`w-0`) of the two
@@ -229,31 +202,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   // deleted Step2Palette panel-2 body. The priceDb drill-type preset effect still runs;
   // drill type has no canvas-first UI home this milestone.
 
-  // TODO(26): as above — the per-bag-size price grid was the legacy Step3Canvas
-  // price-config UI, which has no canvas-first home after the USE_NEW_SUPPLIES flip
-  // (SuppliesScreen is a read-only supply table + order summary). Un-skip on re-home
-  // or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
-  it.skip('renders the 4 per-bag-size price inputs unconditionally (single-plan UI, D-11)', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
-
-    // D-14: query the always-mounted Supplies (step 3) panel directly.
-    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
-    expect(step3).toBeTruthy();
-
-    // The optimized plan is the SOLE plan now (no toggle to flip): the per-bag-size
-    // price grid always renders, so there are 6 number inputs unconditionally —
-    // Canvas price, Est. Shipping, 200 qty, 500 qty, 1000 qty, and 2000 qty.
-    const inputs = step3.querySelectorAll('input[type="number"]');
-    expect(inputs.length).toBe(6);
-    // D-11: the "Optimize bag sizes" toggle no longer exists.
-    expect(container.querySelector('#optimize-bags-checkbox')).toBeNull();
-    expect(container.textContent).not.toMatch(/optimize bag sizes/i);
-    expect((inputs[2] as HTMLInputElement).value).toBe('0.6'); // 200 qty default standard price
-    expect((inputs[3] as HTMLInputElement).value).toBe('1.1'); // 500 qty default standard price
-    expect((inputs[4] as HTMLInputElement).value).toBe('1.8'); // 1000 qty default standard price
-    expect((inputs[5] as HTMLInputElement).value).toBe('3.2'); // 2000 qty default standard price
-  });
+  // RETIRED(26-03): "renders the 4 per-bag-size price inputs unconditionally" asserted the
+  // same deleted Step3Canvas price-config grid (canvas/shipping + 200/500/1k/2k inputs).
+  // SuppliesScreen is read-only, so the grid has no canvas-first home; the underlying
+  // priceDb presets are covered by the drill-type preset effect + quote engine unit tests.
+  // Strangler-close retirement (D-02).
 
   describe('Commissions Workspace LocalStorage and Project Switching', () => {
     beforeEach(() => {
@@ -593,88 +546,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     // deleted Step2Palette panel-2 body. RefineScreen's color-count slider (REFINE-04) is
     // the canvas-first color-merge control; enableSubstitution still defaults ON in the pipeline.
 
-    // TODO(26): the "Affiliate & Partner Settings" expander + unmapped-colors log +
-    // "Clear Log" control lived in the legacy Step3Canvas body. Flipping
-    // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which has no
-    // affiliate/unmapped-log surface (an Order/vendor + diagnostics concern). The
-    // underlying unmappedLog state + persistence still run; only their panel-3 UI
-    // driver left. Un-skip on re-home, or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
-    it.skip('renders logged unmapped colors lists and handles clear action in settings', async () => {
-      // Pre-seed local storage log & project
-      localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(['939', '3843']));
-      const mockProjectSummary = {
-        id: 'test-project-unmapped',
-        name: 'Unmapped Project',
-        thumbnail: '',
-        dateModified: new Date().toISOString(),
-        dateCreated: new Date().toISOString()
-      };
-      const mockProjectData = {
-        id: 'test-project-unmapped',
-        name: 'Unmapped Project',
-        dateCreated: new Date().toISOString(),
-        dateModified: new Date().toISOString(),
-        dimensions: { cols: 80, rows: 53 },
-        unit: 'grid',
-        excludedColors: [],
-        drillStyle: 'square',
-        selectedBaseKit: 'all',
-        drillType: 'standard',
-        canvasBaseCost: 15,
-        drillPacketCost: 0.25,
-        drillBagSize: 200,
-        laborFee: 25,
-        markupType: 'fixed',
-        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
-        gridData: [0, 1]
-      };
-
-      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
-      localStorage.setItem('gempixel_project_test-project-unmapped', JSON.stringify(mockProjectData));
-
-      render(<App />, container);
-      await new Promise(r => setTimeout(r, 10));
-
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click to load project
-      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(rowBtn).toBeTruthy();
-      rowBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Go to Step 3
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
-      await new Promise(r => setTimeout(r, 10));
-
-      // Open the Settings expander. D-14: all panels are always mounted, so scope
-      // to the Supplies (step 3) panel — the first <summary> in the whole container
-      // is now Step 1's "Ingestion Settings".
-      const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
-      const summaryEl = step3.querySelector('summary') as HTMLElement;
-      expect(summaryEl.textContent).toContain('Affiliate & Partner Settings');
-
-      // Assert logged colors are visible
-      expect(step3.textContent).toContain('939');
-      expect(step3.textContent).toContain('3843');
-
-      // Click Clear Log
-      const clearBtn = Array.from(step3.querySelectorAll('button')).find(b => b.textContent === 'Clear Log') as HTMLButtonElement;
-      expect(clearBtn).toBeTruthy();
-      clearBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Logged colors list should be cleared. unmappedLog now persists through
-      // usePersistentState, so clearing to [] re-serializes as '[]' rather than
-      // removing the key; both null and '[]' parse to an empty array (format-safe).
-      expect(container.textContent).toContain('No unmapped colors logged.');
-      expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual([]);
-    });
+    // RETIRED(26-03): "renders logged unmapped colors lists and handles clear action in
+    // settings" drove the "Affiliate & Partner Settings" expander + unmapped-colors log +
+    // "Clear Log" control in the deleted Step3Canvas body — a diagnostics surface with no
+    // canvas-first home. The unmappedLog persistence itself still runs on checkout and is
+    // covered by the retargeted W4/WR-02 corrupt-log guard tests below (which assert the
+    // log is written/repaired). Strangler-close retirement (D-02).
 
     // RETIRED(25-01): the inline project save / Update / Save-as-Copy controls lived in
     // the deleted Step4Export panel-4 body. handleSaveProject + the workspace registry
@@ -786,78 +663,86 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.clear();
     });
 
-    // TODO(26): the "Download Canvas Grid (PNG)" trigger lived in the legacy
-    // Step3Canvas body (displaced by USE_NEW_SUPPLIES, 23-04). The generic
-    // download-error → actionError affordance is now RE-HOMED to the OrderScreen
-    // packet download ("surfaces the banner when the order-packet download fails",
-    // above), so no coverage is dropped. This specific legacy PNG-download trigger
-    // + handleDownloadCanvasOnly stay for the dormant Step body; retire in Phase 26 (D-01).
-    it.skip('shows the actionError banner when a canvas download fails (W5)', async () => {
+    // RETARGETED(26-03): the canvas-download-error → actionError affordance was the legacy
+    // "Download Canvas Grid (PNG)" trigger in the deleted Step3Canvas. handleDownloadCanvasOnly
+    // is now reachable via the OrderScreen section-① "Download canvas grid" CTA
+    // (order-download-canvas-cta), so drive it there — coverage of the handler's catch is
+    // preserved on the live path (mirrors the Phase 23 aside-retargeting precedent).
+    it('shows the actionError banner when a canvas download fails (W5)', async () => {
       seedProject();
-      await loadProjectToStep(3);
+      await loadProjectToStep(4);
 
-      // triggerCanvasDownload is mocked to throw → the handler's catch must surface
-      // the unified banner instead of a silent console.error-only no-op.
-      const downloadBtn = Array.from(container.querySelectorAll('button')).find(
-        b => b.textContent?.includes('Download Canvas Grid (PNG)')
+      // triggerCanvasDownload is mocked to throw → the handler's catch must surface the
+      // unified banner instead of a silent console.error-only no-op.
+      const downloadBtn = container.querySelector(
+        '[data-testid="order-download-canvas-cta"]',
       ) as HTMLButtonElement;
       expect(downloadBtn).toBeTruthy();
-      expect(downloadBtn.disabled).toBe(false);
       downloadBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
       expect(container.textContent).toMatch(/could not generate the download/i);
     });
 
-    // TODO(26): the "Order Drills" Shopify-checkout trigger lived in the legacy
-    // Step3Canvas body. The canvas-first Order screen (23-05) is the HONEST handoff
-    // (download packet, D-09) and deliberately has NO Shopify checkout / payment UI,
-    // so this trigger has no canvas-first home. handleShopifyCheckout + its
-    // corrupt-log guard are UNCHANGED for the dormant Step body; retire in Phase 26 (D-01).
-    it.skip('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
+    // RETARGETED(26-03): the corrupt-unmapped-log checkout guard was the legacy "Order Drills"
+    // trigger in the deleted Step3Canvas. handleShopifyCheckout is now reachable via the
+    // OrderScreen section-② "Open drill cart at Diamond Drills USA" CTA (order-cart-cta), so
+    // drive the guard there — the corrupt-log read/repair coverage is preserved on the live
+    // path. The file-level compileShopifyCartLink mock returns an unmapped item ['939'], so the
+    // guard branch runs; D-08 now surfaces the caveat on the actionError banner (no modal) while
+    // the cart still opens (window.open stubbed for jsdom).
+    it('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
       seedProject();
-      await loadProjectToStep(3);
+      await loadProjectToStep(4);
 
       // Seed the corrupt value AFTER mount: usePersistentState's write-effect rewrites
       // this key to '[]' on mount, so it must be corrupted just before checkout reads it.
       localStorage.setItem('gempixel_unmapped_colors_log', '{not json');
 
-      const checkoutBtn = Array.from(container.querySelectorAll('button')).find(
-        b => b.textContent?.includes('Order Drills')
+      const cartBtn = container.querySelector(
+        '[data-testid="order-cart-cta"]',
       ) as HTMLButtonElement;
-      expect(checkoutBtn).toBeTruthy();
+      expect(cartBtn).toBeTruthy();
 
-      // The unguarded JSON.parse would have thrown here (W4) — must not now.
-      expect(() => checkoutBtn.click()).not.toThrow();
-      await new Promise(r => setTimeout(r, 10));
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+      try {
+        // The unguarded JSON.parse would have thrown here (W4) — must not now.
+        expect(() => cartBtn.click()).not.toThrow();
+        await new Promise(r => setTimeout(r, 10));
+      } finally {
+        openSpy.mockRestore();
+      }
 
-      // Banner surfaced …
+      // Banner surfaced the corrupt-log note (D-08 folds it into the actionError banner) …
       expect(container.textContent).toMatch(/could not read the saved unmapped-colors log/i);
       // … and checkout proceeded: the corrupt value was replaced with a valid log
       // built from the [] fallback + the new unmapped code (no silent abort).
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    // TODO(26): same as the W4 case above — the honest Order screen (D-09) ships NO
-    // Shopify checkout, so the "Order Drills" trigger has no canvas-first home; the
-    // wrong-type-log guard in handleShopifyCheckout is unchanged. Retire in Phase 26 (D-01).
-    it.skip('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
+    // RETARGETED(26-03): same guard as W4 for a valid-JSON-but-wrong-type log ('5' -> number 5),
+    // driven on the live OrderScreen cart CTA (order-cart-cta). The old guard only caught parse
+    // THROWS, so [...5] on the next line threw a TypeError outside the try, killing checkout; the
+    // shape check must fall back to [].
+    it('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
       seedProject();
-      await loadProjectToStep(3);
+      await loadProjectToStep(4);
 
-      // A value that is valid JSON but the wrong shape ('5' -> number 5): the old
-      // guard only caught parse THROWS, so [...5] on the next line threw a TypeError
-      // outside the try, killing checkout. The shape check must now fall back to [].
       localStorage.setItem('gempixel_unmapped_colors_log', '5');
 
-      const checkoutBtn = Array.from(container.querySelectorAll('button')).find(
-        b => b.textContent?.includes('Order Drills')
+      const cartBtn = container.querySelector(
+        '[data-testid="order-cart-cta"]',
       ) as HTMLButtonElement;
-      expect(checkoutBtn).toBeTruthy();
+      expect(cartBtn).toBeTruthy();
 
-      // Must not throw (the non-iterable spread would have) …
-      expect(() => checkoutBtn.click()).not.toThrow();
-      await new Promise(r => setTimeout(r, 10));
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+      try {
+        // Must not throw (the non-iterable spread would have) …
+        expect(() => cartBtn.click()).not.toThrow();
+        await new Promise(r => setTimeout(r, 10));
+      } finally {
+        openSpy.mockRestore();
+      }
 
       // … banner surfaced and checkout proceeded with the [] fallback + new code.
       expect(container.textContent).toMatch(/could not read the saved unmapped-colors log/i);

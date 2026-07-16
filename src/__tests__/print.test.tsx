@@ -314,51 +314,12 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
   // sanitizeMoney guard, toCents(Infinity) threw in the render body and white-
   // screened the app. The load + step-3 render must now complete without throwing
   // and produce a finite, money-formatted total.
-  // WR-01: loading a project whose drillType differs from the active default
-  // ('standard') must preserve its saved per-bag prices. The drillType-keyed
-  // preset effect fires on the standard->ab change and, without the skip guard,
-  // clobbers the restored custom prices with the 'ab' type defaults.
-  // TODO(25): this asserts the restored per-bag prices via the legacy Step3Canvas
-  // "Prices per Bag Size ($)" input grid, which has no canvas-first home after the
-  // USE_NEW_SUPPLIES flip (23-04) — SuppliesScreen is read-only. The WR-01 behavior
-  // (loadProject preserving saved prices across a differing drillType) still runs in
-  // App; only its price-grid readout left panel-3. Un-skip when a price-config surface
-  // is re-homed, or retire in the Phase 25 strangler cleanup.
-  it.skip('preserves saved per-bag prices when the loaded drillType differs (WR-01)', async () => {
-    const nowStr = new Date().toISOString();
-    const summary = { id: projectId, name: 'WR-01 Custom Prices', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
-    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
-    // Distinctive prices that match neither the 'standard' default nor the 'ab'
-    // preset ({200:0.70,500:1.30,1000:2.20,2000:3.90}).
-    const customPrices = { 200: 0.99, 500: 1.99, 1000: 2.99, 2000: 3.99 };
-    const data = {
-      id: projectId,
-      name: 'WR-01 Custom Prices',
-      dateCreated: nowStr,
-      dateModified: nowStr,
-      dimensions: { cols: 25, rows: 20 },
-      drillStyle: 'square',
-      selectedBaseKit: 'all',
-      drillType: 'ab', // differs from the initial 'standard' -> preset effect fires
-      kitBaseCost: 15,
-      drillPacketCost: 0.25,
-      pricesPerBagSize: customPrices,
-      gridData,
-    };
-    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
-    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
-
-    await loadProjectToStep(3);
-
-    // Read the per-bag price grid inputs (200/500/1000/2000, in order).
-    const priceSection = Array.from(container.querySelectorAll('span'))
-      .find((s) => s.textContent === 'Prices per Bag Size ($)')
-      ?.closest('div');
-    expect(priceSection).toBeTruthy();
-    const priceInputs = Array.from(priceSection!.querySelectorAll('input')) as HTMLInputElement[];
-    // The restored custom prices survive — NOT overwritten by the 'ab' preset.
-    expect(priceInputs.map((i) => i.value)).toEqual(['0.99', '1.99', '2.99', '3.99']);
-  });
+  // RETIRED(26-03): "preserves saved per-bag prices when the loaded drillType differs (WR-01)"
+  // read the restored prices back through the legacy Step3Canvas "Prices per Bag Size ($)"
+  // input grid, which was deleted in 26-03 (SuppliesScreen is read-only, no price grid). The
+  // WR-01 behavior itself — loadProject's skipDrillPresetRef guard preserving saved prices
+  // across a differing drillType — still runs in App; only its price-grid readout is gone.
+  // Strangler-close retirement (D-02), mirroring the Phase 23 aside-retargeting precedent.
 
   it('does not white-screen when a loaded project has a non-finite kitBaseCost (CR-01)', async () => {
     const nowStr = new Date().toISOString();
