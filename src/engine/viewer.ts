@@ -17,6 +17,12 @@ export class CanvasViewer {
   private offsetX = 0;
   private offsetY = 0;
 
+  // D-04: fit-to-container is the resting zoom state. `isFitMode` starts true
+  // (fit is the default) and only flips false when the user explicitly zooms via
+  // the single handleZoom funnel (zoomIn/zoomOut/wheel/pinch). fitToContainer
+  // re-enters fit. Behavior-only extension — no public signature changes.
+  private isFitMode = true;
+
   private isDragging = false;
   private lastPointerX = 0;
   private lastPointerY = 0;
@@ -194,6 +200,14 @@ export class CanvasViewer {
     if (this.onZoomChange) {
       this.onZoomChange(this.scale);
     }
+
+    // D-04: an explicit user zoom (every path funnels here) leaves fit mode.
+    this.isFitMode = false;
+  }
+
+  /** D-04: true while the canvas rests in fit-to-container (no explicit user zoom yet). */
+  public isInFitMode(): boolean {
+    return this.isFitMode;
   }
 
   public getViewportState() {
@@ -490,5 +504,8 @@ export class CanvasViewer {
     if (this.onZoomChange) {
       this.onZoomChange(this.scale);
     }
+
+    // D-04: re-entering fit-to-container returns to the resting fit state.
+    this.isFitMode = true;
   }
 }
