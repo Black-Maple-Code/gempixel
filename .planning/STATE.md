@@ -6,14 +6,14 @@ current_phase: 26
 current_phase_name: interim-customer-fulfillment-canvas-png-packet-diamond-drill
 status: executing
 stopped_at: Phase 26 UI-SPEC approved
-last_updated: "2026-07-16T22:46:11.021Z"
+last_updated: "2026-07-16T23:06:07.138Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 26 execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 36
-  completed_plans: 33
+  completed_plans: 34
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 26 (interim-customer-fulfillment-canvas-png-packet-diamond-drill) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-16 — Phase 26 execution started
 
@@ -114,6 +114,7 @@ Progress: [██████████] 100%
 | Phase 24 P03 | 1min | 2 tasks | 1 files |
 | Phase 25 P07 | 5 | 3 tasks | 5 files |
 | Phase 25 P08 | ~10m | 2 tasks | 2 files |
+| Phase 26 P02 | 15min | 2 tasks | 4 files |
 
 ## Risk & Health
 
@@ -161,7 +162,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T21:19:31.529Z
+Last session: 2026-07-16T23:05:34.228Z
 Stopped at: Phase 26 UI-SPEC approved
 Resume file: .planning/phases/26-interim-customer-fulfillment-canvas-png-packet-diamond-drill/26-UI-SPEC.md
 
@@ -209,6 +210,8 @@ Resume file: .planning/phases/26-interim-customer-fulfillment-canvas-png-packet-
 - [Phase 24]: 24-03 (human-verify APPROVED): regression gate green (build exit 0; full suite 355 passed/12 skipped >> 240 floor); mobile reflow (MOBILE-01) + touch pinch/pan (MOBILE-02) verified live at 300/360/1280px. Gap closure eab212f: StepBar reflowed to compact scrollable pills below 640px (fixes pre-existing overflow vs Success Criterion 1). Pinch gesture + Refine sticky pane verified-by-proxy (jsdom pinch tests + source-confirmed sticky utilities), not a live physical gesture.
 - [Phase 25]: 25-07: Relocated the Refine view-mode switcher + zoom controls off the raster into a pure CanvasControlBar mounted as an in-flow AtelierShell Zone-3 strip (D-05/D-07, GAP-1/SC8); canvas now fills full height.
 - [Phase ?]: 25-08: Pinned the Supplies order-summary panel with md:-prefixed sticky utilities (md:sticky md:top-0 md:self-start) — desktop pins within Zone 2 scroll region (25-05 D-05) while mobile keeps its Phase-24 single-column flow, closing GAP-2/SC9 class-only with zero new deps, contained to SuppliesScreen + its test.
+- [Phase ?]: 26-02: canvasDownloaded flips on ANY section-1 download, not packet-only (D-07)
+- [Phase 26]: 26-02: Order step is two independent honest task sections (canvas downloads + Diamond Drills USA cart) with per-task done-states replacing packetDownloaded
 
 ## Operator Next Steps
 

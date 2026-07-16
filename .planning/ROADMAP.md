@@ -343,7 +343,7 @@ Plans:
   4. The interim nature is honest in the UI (a self-serve handoff, not a GemPixel-fulfilled order and no fake payment), consistent with the v4.0 100%-client-side boundary.
   5. The legacy `Step3Canvas` export/checkout wiring is fully superseded (single path, no dual UI) and the 240+ Vitest suite stays green.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -352,7 +352,7 @@ Plans:
 
 **Wave 2** *(blocked on 26-01 — re-home before delete)*
 
-- [ ] 26-02-PLAN.md — Re-home: OrderScreen two honest task sections + per-task state; App wires 4 PNG/packet downloads + single Diamond Drills USA cart; tests retargeted (ORDER-04, ORDER-05, D-01/D-03/D-06/D-07) [Wave 2]
+- [x] 26-02-PLAN.md — Re-home: OrderScreen two honest task sections + per-task state; App wires 4 PNG/packet downloads + single Diamond Drills USA cart; tests retargeted (ORDER-04, ORDER-05, D-01/D-03/D-06/D-07) [Wave 2]
 
 **Wave 3** *(blocked on 26-02 — strangler delete)*
 
@@ -383,7 +383,7 @@ Plans:
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | 8/8 | Complete    | 2026-07-16 |
-| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 1/4 | In Progress|  |
+| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 2/4 | In Progress|  |
 
 ## Backlog
 
