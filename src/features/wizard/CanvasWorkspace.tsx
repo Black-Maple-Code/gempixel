@@ -79,39 +79,19 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
 
   return (
     <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-bg viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
-      {/* Floating Viewport HUD overlay */}
-      {image && (
+      {/* Floating Viewport HUD overlay — zoom controls + low-zoom warning.
+          The view-mode switcher moved to a bottom-snapped dock (D-07); this top
+          HUD now only renders in grid/symbols mode where zoom is meaningful, so
+          it never shows as an empty glass box in reference mode. */}
+      {image && (viewportMode === 'grid' || viewportMode === 'symbols') && (
         <div
           className="viewport-hud no-print"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="flex bg-bg/40 rounded-lg p-0.5 border border-border/40">
-            {(['grid', 'symbols', 'reference'] as const).map(mode => {
-              const isActive = viewportMode === mode;
-              const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
-              const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
-              return (
-                <div key={mode} className="tooltip-group">
-                  <button
-                    onClick={() => setViewportMode(mode)}
-                    className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-accent text-on-accent shadow shadow-accent/20'
-                        : 'text-muted hover:text-ink'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                  <div className="tooltip-box">{tooltip}</div>
-                </div>
-              );
-            })}
-          </div>
-
           {/* Zoom controls */}
           {(viewportMode === 'grid' || viewportMode === 'symbols') && (
-            <div className="flex items-center gap-1 border-l border-border pl-3">
+            <div className="flex items-center gap-1">
               <div className="tooltip-group">
                 <button
                   onClick={() => onZoomIn()}
@@ -213,6 +193,39 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <span className="text-[10px] text-faint font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* View-mode switcher — bottom-snapped dock (D-07), horizontally centered,
+          stacked above the hint pill (>=8px clear) and never overlapping the
+          canvas raster. Mirrors the hint-pill glass/positioning idiom. */}
+      {image && (
+        <div
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 no-print flex bg-panel/80 rounded-lg p-0.5 border border-border backdrop-blur"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {(['grid', 'symbols', 'reference'] as const).map(mode => {
+            const isActive = viewportMode === mode;
+            const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
+            const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
+            return (
+              <div key={mode} className="tooltip-group">
+                <button
+                  onClick={() => setViewportMode(mode)}
+                  aria-pressed={isActive}
+                  className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-accent text-on-accent shadow shadow-accent/20'
+                      : 'text-muted hover:text-ink'
+                  }`}
+                >
+                  {label}
+                </button>
+                <div className="tooltip-box">{tooltip}</div>
+              </div>
+            );
+          })}
         </div>
       )}
 
