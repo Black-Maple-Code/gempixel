@@ -66,7 +66,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 - [x] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits. (completed 2026-07-14)
 - [x] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag. (completed 2026-07-15)
 - [x] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart. (completed 2026-07-16)
-- [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Final grep-clean of residual `Step1..4` component files, theme remnants, and leftover dead preset state. **Narrowed (2026-07-15, Phase 23 UAT Test 26 gap fix, Plans 06–08):** the legacy dark 3-column shell, the left "My Images" menu, and the right Color-Legend/DMC aside are ALREADY retired in Phase 23 — Phase 25 is no longer a from-scratch strangler close.
+- [x] **Phase 25: Retire Legacy Steps + Cleanup** - Final grep-clean of residual `Step1..4` component files, theme remnants, and leftover dead preset state. **Narrowed (2026-07-15, Phase 23 UAT Test 26 gap fix, Plans 06–08):** the legacy dark 3-column shell, the left "My Images" menu, and the right Color-Legend/DMC aside are ALREADY retired in Phase 23 — Phase 25 is no longer a from-scratch strangler close. (completed 2026-07-16)
 
 ## Phase Details
 
@@ -313,7 +313,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 25-06-PLAN.md — Regression gate + real-photo E2E re-verify, UAT Test 29 (SC7, SC10 guardrail check)
+- [x] 25-06-PLAN.md — Regression gate + real-photo E2E re-verify, UAT Test 29 (SC7, SC10 guardrail check)
 
 **Wave 5** *(gap closure — UAT Test 29 issues-found; GAP-1 + GAP-2 only; file-disjoint, parallel)*
 
@@ -365,7 +365,7 @@ Plans:
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
-| 25. Retire Legacy Steps + Cleanup | v4.0 | 7/8 | In Progress|  |
+| 25. Retire Legacy Steps + Cleanup | v4.0 | 8/8 | Complete    | 2026-07-16 |
 | 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | TBD | Not started | — |
 
 ## Backlog
