@@ -5,16 +5,16 @@ milestone_name: Canvas-First Redesign — Phases 20–26
 current_phase: 25
 current_phase_name: Retire Legacy Steps + Cleanup
 status: verifying
-stopped_at: Phase 24 context gathered
-last_updated: "2026-07-16T03:53:48.185Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-07-16T06:27:28.644Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 24 complete, transitioned to Phase 25
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
   total_plans: 24
   completed_plans: 24
-  percent: 83
+  percent: 71
 ---
 
 # Project State
@@ -158,9 +158,9 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T01:38:27.278Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-mobile-responsive-touch-pass/24-CONTEXT.md
+Last session: 2026-07-16T06:27:28.634Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-CONTEXT.md
 
 ## Decisions
 
