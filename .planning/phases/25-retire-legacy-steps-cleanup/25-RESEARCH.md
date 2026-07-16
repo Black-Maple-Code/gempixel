@@ -472,7 +472,7 @@ handlers, the coupled `slate-*` modals, `flags.ts`.
 | A3 | The custom-size debounce should live in the App-level width/height change handlers (`handleWidthChange`/`handleHeightChange`); exact commit point is discretion. | Pattern 2 | LOW — behavioral tuning; band 400–600ms is UI-SPEC-sanctioned. |
 | A4 | Re-loading a *recent* image should also auto-advance (parity with fresh upload). Not explicitly stated in D-08. | Code Examples | LOW — cosmetic parity; planner's call. |
 
-## Open Questions
+## Open Questions (Resolved)
 
 1. **Which frame-scope `slate-*` modals are fulfillment-coupled?**
    - What we know: the protected set is anything reached via the 3 handlers passed to
@@ -482,12 +482,28 @@ handlers, the coupled `slate-*` modals, `flags.ts`.
    - Recommendation: planner traces each modal's `open` state + trigger during planning; preserve
      all three unless a modal is provably unreachable from the 3 handlers. Defer any uncertain
      deletion to Phase 26.
+   - **RESOLVED (2026-07-16, user decision):** Preserve all three this phase; **defer the Artist
+     Resources modal to Phase 26.** Pattern-mapping (`25-PATTERNS.md`) confirmed Checkout Warning
+     (`:1931`) and Save Project (`:2029`) are fulfillment-coupled → preserve, and that Artist
+     Resources (`:1836`) has no `setResourcesModalOpen(true)` trigger anywhere in `src/`
+     (provably unreachable). Despite being dead, it is held under preserve-when-in-doubt because
+     of residual ambiguity over whether it is the UI-SPEC's fulfillment-coupled "curated
+     canvas-links modal"; Phase 26 re-homes fulfillment and will delete it with full context.
+     Plans unchanged — the confident theme sweep stays scoped to `CanvasWorkspace.tsx` (D-09 map)
+     + the 3 deleted Step files + the `gempixel_theme` `removeItem` only.
 
 2. **Container-resize re-fit — in scope now or defer?**
    - What we know: D-04 lists it as a re-fit trigger; no `ResizeObserver` exists.
    - What's unclear: whether adding one risks the jsdom suite (jsdom has no layout).
    - Recommendation: implement behind an `isFitMode` guard; if it destabilizes tests, ship the
      other three triggers now and note resize as a fast-follow.
+   - **RESOLVED (2026-07-16, user decision):** **Defer to fast-follow.** Ship the other three
+     D-04 triggers this phase (init + new-image via the existing step-2 `fitToContainer` effect;
+     grid-dimension change via Plan 25-04's unconditional `fitToContainer()`); do NOT add a
+     `ResizeObserver` now, to avoid destabilizing the 240+ jsdom suite over a minor UX nicety.
+     The `isFitMode` accessor (Plan 25-03) still lands as additive foundation so the fast-follow
+     needs no engine-signature change. D-04 is honestly represented as 3-of-4 triggers shipping,
+     1 deferred (no `must_have`/verification asserts container-resize behavior). Plans unchanged.
 
 ## Environment Availability
 
