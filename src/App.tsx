@@ -1497,7 +1497,7 @@ export function App() {
         shell's PRIMARY content, hosted in AtelierShell's Zone 2 scroll region
         (D-05); this wrapper centers + width-caps the inner content at the fixed
         1180px card frame on the cream Atelier background. This replaces the retired
-        dark 3-column shell (the bg-slate-950 wrapper + 320px left "My Images" aside
+        dark 3-column shell (the dark full-bleed wrapper + 320px left "My Images" aside
         + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
     <div className="relative min-h-full bg-bg print:h-auto">
       <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-4 print:p-0">
@@ -1508,18 +1508,18 @@ export function App() {
             failures (ERR-01), dismissible. Text-only (never dangerouslySetInnerHTML)
             so a crafted error string cannot inject markup. */}
         {matchError && (
-          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-rose-500/60 bg-rose-950/90 px-4 py-2.5 text-xs font-medium text-rose-100 shadow-lg">
+          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn shadow-lg">
             Couldn't process the image: {matchError}
           </div>
         )}
         {actionError && (
-          <div className="fixed top-16 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-lg border border-rose-500/60 bg-rose-950/95 px-4 py-2.5 text-xs font-medium text-rose-100 no-print shadow-lg backdrop-blur">
+          <div className="fixed top-16 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn no-print shadow-lg backdrop-blur">
             <span>{actionError}</span>
             <button
               type="button"
               aria-label="Dismiss error"
               onClick={() => setActionError(null)}
-              className="-mr-1 -mt-0.5 shrink-0 px-1 text-sm leading-none text-rose-300 transition-colors hover:text-rose-100"
+              className="-mr-1 -mt-0.5 shrink-0 px-1 text-sm leading-none text-warn transition-colors hover:text-ink"
             >
               ×
             </button>
@@ -1632,12 +1632,12 @@ export function App() {
 
       {/* Save Project Modal */}
       {saveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/70 backdrop-blur-sm no-print font-sans">
+          <div className="bg-panel-2 border border-border rounded-[var(--radius-card)] max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
+            <h3 className="text-base font-bold text-ink">
               Save to My Images
             </h3>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-muted">
               Enter a name to save this project layout configuration locally.
             </p>
             <input
@@ -1646,21 +1646,21 @@ export function App() {
               value={saveProjectName}
               onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
               placeholder="e.g. Sunset Beach"
-              className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="bg-panel border border-border rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-accent"
               autoFocus
             />
             <div className="flex gap-2.5 mt-2">
               <button
                 id="save-project-submit"
                 onClick={() => handleSaveProject(saveProjectName)}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+                className="flex-1 bg-accent text-on-accent text-xs font-semibold py-2 rounded-[var(--radius-control)] cursor-pointer transition-all hover:brightness-110"
               >
                 Save
               </button>
               <button
                 id="save-project-cancel"
                 onClick={() => setSaveModalOpen(false)}
-                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+                className="flex-1 bg-panel border border-border text-ink text-xs font-semibold py-2 rounded-[var(--radius-control)] cursor-pointer transition-colors hover:bg-panel-2"
               >
                 Cancel
               </button>
