@@ -111,6 +111,35 @@ describe('Fixed-bag cost is mapping-aware (WR-02)', () => {
 // `src/engine/__tests__/bagPlanner.test.ts` (packColor / planColorSupply), and the
 // estimate == cart property is asserted there against `compileShopifyCartLink`.
 
+// D-03/WR-01: a plain Ctrl+P must print the canvas grid from EVERY step, not just
+// Refine. The single-mount canvas <main> composes `print:block` unconditionally, so
+// off-Refine its className is `hidden print:block` (display:none on screen, block in
+// print). jsdom applies no CSS, so assert the className carries `print:block` while on
+// a non-Refine step (App boots on step 1 / Upload). The dedicated report/legend print
+// modes still hide <main> via CSS `!important`, so no double-print conflict here.
+describe('Canvas <main> prints from every step (D-03/WR-01)', () => {
+  let container: HTMLDivElement;
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('carries print:block on a non-Refine step (Upload / step 1)', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    render(<App />, container);
+
+    // App boots on step 1 (Upload) — the canvas <main> is display:none on screen.
+    const main = container.querySelector('main') as HTMLElement;
+    expect(main).toBeTruthy();
+    // Off-Refine: hidden on screen, but print:block so a plain Ctrl+P still prints it.
+    expect(main.className).toContain('hidden');
+    expect(main.className).toContain('print:block');
+  });
+});
+
 // BAG-03/BAG-02 · D-08/D-10: the redesigned printable "GemPixel Supply Plan
 // Report" (the "Print Supply Report" button's output, isolated via
 // print-only-report-mode) must be self-contained: a static savings/why banner,

@@ -1532,9 +1532,14 @@ export function App() {
           {/* Single-mount canvas preview — an always-rendered frame sibling shown only
               on Refine (step 2) and display:none otherwise, so the CanvasViewer element
               is NEVER unmounted on a step change (D-14). A step-2 useEffect re-fits it
-              because it measures 0 while hidden. Kept a <main> so the print-mode CSS
-              (which hides `main`) treats it exactly as before. */}
-          <main className={wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col print:block @max-[640px]:sticky @max-[640px]:top-0 @max-[640px]:h-[45dvh] @max-[640px]:flex-none @max-[640px]:z-10' : 'hidden'}>
+              because it measures 0 while hidden. `print:block` is composed
+              UNCONDITIONALLY (D-03/WR-01): off-Refine the class is `hidden print:block`
+              — display:none on screen, block in print — so a plain Ctrl+P prints the
+              canvas grid from ANY step, not just Refine. The beforeprint hook re-fits the
+              backing store even while display:none. The dedicated report/legend print
+              modes still `display:none !important` this <main>, so there is no
+              double-print conflict (those modes win via !important). */}
+          <main className={`print:block ${wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col @max-[640px]:sticky @max-[640px]:top-0 @max-[640px]:h-[45dvh] @max-[640px]:flex-none @max-[640px]:z-10' : 'hidden'}`}>
             <CanvasWorkspace
               canvasRef={canvasRef}
               image={image}
