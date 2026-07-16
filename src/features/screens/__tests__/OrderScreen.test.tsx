@@ -7,15 +7,18 @@ import type { OrderQuote } from '../../../engine/quote';
 import { formatUSD } from '../../../engine/money';
 
 /**
- * OrderScreen render contract (23-05, ORDER-01/02, D-08/D-09). Props-driven jsdom
- * render proving the honest handoff: the CTA is "Download order packet" (never
- * "Place order", no price in the label); the price total renders the stub
- * `quote.totalCents` VERBATIM (single source, D-07); the LOCKED spec Pill is
- * present; the two finish cards select via `onFinishChange`; and the terminal
- * confirmation appears ONLY on `packetDownloaded` with NO order number / receipt /
- * payment text (D-09). Ship-to renders as plain inputs (no dangerouslySetInnerHTML).
+ * OrderScreen render contract (26-02, ORDER-01/02/04/05, D-06/D-07/D-09). Props-driven
+ * jsdom render proving the honest TWO-vendor handoff: section ① "Get your canvas made"
+ * offers four downloads (grid PNG, grid+legend PNG, legend PNG, JSON packet), each calling
+ * its App handler; section ② "Order your drills" offers the single Diamond Drills USA cart
+ * CTA (`onCartCheckout`). The two done-states are INDEPENDENT per-task booleans replacing the
+ * old single `packetDownloaded`: `canvasDownloaded` surfaces the "Downloaded ✓" sub-terminal
+ * (`order-canvas-terminal`), `cartOpened` surfaces the "Cart opened ↗" sub-terminal
+ * (`order-cart-terminal`). Honesty guardrails (D-06/D-09): the cart terminal is "Cart opened",
+ * NEVER "Ordered"/"Purchased"/"Complete"; nowhere a "Place order", receipt, order number, or
+ * payment control. The price total renders `quote.totalCents` VERBATIM (single source, D-07).
  */
-describe('OrderScreen — honest handoff (locked spec + finish + ship-to + quote + terminal)', () => {
+describe('OrderScreen — two honest task sections (canvas downloads + drill cart, independent done-states)', () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
@@ -62,8 +65,13 @@ describe('OrderScreen — honest handoff (locked spec + finish + ship-to + quote
     shipTo: makeShipTo(),
     onShipToChange: vi.fn(),
     quote: makeQuote(),
+    onDownloadCanvasGrid: vi.fn(),
+    onDownloadGridLegend: vi.fn(),
+    onDownloadLegend: vi.fn(),
     onDownloadPacket: vi.fn(),
-    packetDownloaded: false,
+    onCartCheckout: vi.fn(),
+    canvasDownloaded: false,
+    cartOpened: false,
     ...overrides,
   });
 
@@ -72,6 +80,9 @@ describe('OrderScreen — honest handoff (locked spec + finish + ship-to + quote
     render(<OrderScreen {...props} />, container);
     return props;
   };
+
+  const q = <T extends HTMLElement = HTMLElement>(testid: string) =>
+    container.querySelector(`[data-testid="${testid}"]`) as T | null;
 
   it('renders the LOCKED spec: Rolled Canvas + LOCKED pill, size, and finish', () => {
     setup();
@@ -122,38 +133,87 @@ describe('OrderScreen — honest handoff (locked spec + finish + ship-to + quote
     expect(total.textContent).not.toBe('$30.39');
   });
 
-  it('has a "Download order packet" CTA (no price, never "Place order") that calls onDownloadPacket', () => {
+  it('section ① renders four labeled download CTAs, each invoking its own handler', () => {
     const props = setup();
-    const cta = container.querySelector('[data-testid="order-download-cta"]') as HTMLButtonElement;
-    expect(cta).toBeTruthy();
-    expect(cta.textContent).toBe('Download order packet');
-    // No price baked into the label (no implied charge).
-    expect(cta.textContent).not.toMatch(/\$/);
-    // The mock's "Place order" is explicitly NOT shipped (D-09).
-    expect(container.textContent).not.toMatch(/place order/i);
 
-    cta.click();
+    const grid = q<HTMLButtonElement>('order-download-canvas-cta')!;
+    expect(grid).toBeTruthy();
+    expect(grid.textContent).toBe('Download canvas (grid)');
+    grid.click();
+    expect(props.onDownloadCanvasGrid).toHaveBeenCalledTimes(1);
+
+    const combined = q<HTMLButtonElement>('order-download-grid-legend-cta')!;
+    expect(combined).toBeTruthy();
+    expect(combined.textContent).toBe('Download grid + legend');
+    combined.click();
+    expect(props.onDownloadGridLegend).toHaveBeenCalledTimes(1);
+
+    const legend = q<HTMLButtonElement>('order-download-legend-cta')!;
+    expect(legend).toBeTruthy();
+    expect(legend.textContent).toBe('Download legend');
+    legend.click();
+    expect(props.onDownloadLegend).toHaveBeenCalledTimes(1);
+
+    const packet = q<HTMLButtonElement>('order-download-cta')!;
+    expect(packet).toBeTruthy();
+    expect(packet.textContent).toBe('Download order packet');
+    // No price baked into any download label (no implied charge).
+    expect(packet.textContent).not.toMatch(/\$/);
+    packet.click();
     expect(props.onDownloadPacket).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the honest terminal state ONLY on packetDownloaded — no order number/receipt/payment', () => {
-    // Before download: no terminal state, CTA present.
-    const c = container;
-    setup({ packetDownloaded: false });
-    expect(c.querySelector('[data-testid="order-terminal"]')).toBeNull();
-    expect(c.querySelector('[data-testid="order-download-cta"]')).toBeTruthy();
+  it('section ② renders one Diamond Drills USA cart CTA calling onCartCheckout', () => {
+    const props = setup();
+    const cart = q<HTMLButtonElement>('order-cart-cta')!;
+    expect(cart).toBeTruthy();
+    expect(cart.textContent).toBe('Open drill cart at Diamond Drills USA ↗');
+    cart.click();
+    expect(props.onCartCheckout).toHaveBeenCalledTimes(1);
+  });
 
-    // After download: honest confirmation, CTA gone.
-    setup({ packetDownloaded: true });
-    const terminal = c.querySelector('[data-testid="order-terminal"]') as HTMLElement;
-    expect(terminal).toBeTruthy();
-    expect(terminal.textContent?.toLowerCase()).toContain('packet downloaded');
-    expect(terminal.textContent?.toLowerCase()).toContain('vendor');
-    // The price-bearing CTA is gone in the terminal state.
-    expect(c.querySelector('[data-testid="order-download-cta"]')).toBeNull();
+  it('the download CTAs stay available even after canvasDownloaded (done panel is additive)', () => {
+    setup({ canvasDownloaded: true });
+    // All four downloads remain clickable so the user can keep grabbing artifacts.
+    expect(q('order-download-canvas-cta')).toBeTruthy();
+    expect(q('order-download-grid-legend-cta')).toBeTruthy();
+    expect(q('order-download-legend-cta')).toBeTruthy();
+    expect(q('order-download-cta')).toBeTruthy();
+  });
 
-    // Honesty (D-09): no fake receipt, no order number, no payment UI anywhere.
-    const text = c.textContent ?? '';
+  it('surfaces the two sub-terminals INDEPENDENTLY (canvas done ≠ cart done)', () => {
+    // Neither done → no terminals.
+    setup({ canvasDownloaded: false, cartOpened: false });
+    expect(q('order-canvas-terminal')).toBeNull();
+    expect(q('order-cart-terminal')).toBeNull();
+
+    // Only canvas done → only the canvas terminal.
+    setup({ canvasDownloaded: true, cartOpened: false });
+    expect(q('order-canvas-terminal')).toBeTruthy();
+    expect(q('order-cart-terminal')).toBeNull();
+    expect(q('order-canvas-terminal')!.textContent?.toLowerCase()).toContain('downloaded');
+
+    // Only cart done → only the cart terminal.
+    setup({ canvasDownloaded: false, cartOpened: true });
+    expect(q('order-canvas-terminal')).toBeNull();
+    expect(q('order-cart-terminal')).toBeTruthy();
+
+    // Both done → both terminals.
+    setup({ canvasDownloaded: true, cartOpened: true });
+    expect(q('order-canvas-terminal')).toBeTruthy();
+    expect(q('order-cart-terminal')).toBeTruthy();
+  });
+
+  it('the cart sub-terminal reads "Cart opened" — never Ordered/Purchased/Complete (D-06)', () => {
+    setup({ cartOpened: true });
+    const cartTerminal = q('order-cart-terminal')!;
+    expect(cartTerminal.textContent).toMatch(/cart opened/i);
+    expect(cartTerminal.textContent).not.toMatch(/ordered|purchased|complete/i);
+  });
+
+  it('preserves the D-09 honesty guardrails — no place-order / receipt / order-number / payment UI', () => {
+    setup({ canvasDownloaded: true, cartOpened: true });
+    const text = container.textContent ?? '';
     expect(text).not.toMatch(/place order/i);
     expect(text).not.toMatch(/receipt/i);
     expect(text).not.toMatch(/order\s*(number|#|no\.)/i);

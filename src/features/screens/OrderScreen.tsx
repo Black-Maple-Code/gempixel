@@ -14,11 +14,14 @@ import { cn } from '../../ui/cn';
  * size derived from the grid, finish), a finish selector, a client-only ship-to,
  * and the SAME single-source `buildOrderQuote` result Supplies renders (D-07).
  *
- * The flow COMPLETES by DOWNLOADING a versioned, self-contained JSON packet
- * (`onDownloadPacket`, wired in App to buildOrderPacket + a Blob download). The
- * terminal state is an honest "Packet downloaded — take this to the vendor"
- * confirmation: NO order number, NO receipt, NO payment UI (D-09). The mock's
- * "Place order · $57.00" is deliberately NOT shipped.
+ * The Order step is TWO honest errands to TWO vendors (D-06/D-07). Section ①
+ * "Get your canvas made" offers four downloads (grid PNG, grid+legend PNG,
+ * legend PNG, and the versioned JSON packet); section ② "Order your drills"
+ * opens the single Diamond Drills USA cart in a new tab (`onCartCheckout`). The
+ * two done-states are INDEPENDENT per-task booleans (`canvasDownloaded`,
+ * `cartOpened`): the canvas sub-terminal reads "Downloaded ✓", the drills
+ * sub-terminal reads "Cart opened ↗" — NEVER "Ordered"/"Purchased"/"Complete".
+ * NO order number, NO receipt, NO payment UI, NO single "Place order" (D-09).
  */
 
 /** The two locked finish options (fixed enum, no price impact — RESEARCH Q3). */
@@ -60,10 +63,24 @@ export interface OrderScreenProps {
   onShipToChange: (patch: Partial<OrderPacketShipTo>) => void;
   /** The single-source customer quote (the SAME object Supplies renders, D-07). */
   quote: OrderQuote;
-  /** Build + download the versioned JSON packet (App handler). */
+  /** Section ① — download the grid-only canvas PNG (App handler). */
+  onDownloadCanvasGrid: () => void;
+  /** Section ① — download the combined grid + legend PNG (App handler). */
+  onDownloadGridLegend: () => void;
+  /** Section ① — download the legend-only PNG (App handler, 26-01 drawLegendOnly). */
+  onDownloadLegend: () => void;
+  /** Section ① — build + download the versioned JSON order packet (App handler). */
   onDownloadPacket: () => void;
-  /** true once the packet has downloaded — drives the honest terminal state. */
-  packetDownloaded: boolean;
+  /** Section ② — open the Diamond Drills USA cart permalink in a new tab (App handler). */
+  onCartCheckout: () => void;
+  /**
+   * true once ANY section-① download has fired (any of the three PNGs OR the JSON
+   * packet) — drives the honest "Downloaded ✓" sub-terminal (D-07; see the plan's
+   * UI-SPEC deviation note). Independent from `cartOpened`.
+   */
+  canvasDownloaded: boolean;
+  /** true once the drill cart has opened — drives the "Cart opened ↗" sub-terminal. */
+  cartOpened: boolean;
 }
 
 export function OrderScreen(props: OrderScreenProps) {
@@ -76,8 +93,13 @@ export function OrderScreen(props: OrderScreenProps) {
     shipTo,
     onShipToChange,
     quote,
+    onDownloadCanvasGrid,
+    onDownloadGridLegend,
+    onDownloadLegend,
     onDownloadPacket,
-    packetDownloaded,
+    onCartCheckout,
+    canvasDownloaded,
+    cartOpened,
   } = props;
 
   const finishLabel = FINISH_OPTIONS.find((o) => o.value === finish)?.label ?? finish;
@@ -254,27 +276,88 @@ export function OrderScreen(props: OrderScreenProps) {
           <p className="font-mono text-[10px] text-faint">rates as of {quote.ratesAsOf}</p>
         </div>
 
-        {/* PRIMARY ACTION / honest terminal state (D-09) */}
-        {packetDownloaded ? (
-          <div
-            data-testid="order-terminal"
-            className="flex flex-col gap-1 rounded-[var(--radius-card)] border border-accent bg-[#EAF2EF] p-4"
-          >
-            <span className="text-sm font-semibold text-accent">Packet downloaded.</span>
-            <span className="text-xs leading-relaxed text-muted">
-              Take this file to your vendor to place the order.
-            </span>
+        {/* ── SECTION ① — Get your canvas made (four honest downloads, D-07) ── */}
+        <div className="flex flex-col gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+            Get your canvas made
+          </span>
+          <p className="text-xs leading-relaxed text-muted">
+            Download your artwork and spec, then send them to your canvas maker.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="primary"
+              data-testid="order-download-canvas-cta"
+              className="w-full py-2.5 text-sm"
+              onClick={onDownloadCanvasGrid}
+            >
+              Download canvas (grid)
+            </Button>
+            <Button
+              variant="primary"
+              data-testid="order-download-grid-legend-cta"
+              className="w-full py-2.5 text-sm"
+              onClick={onDownloadGridLegend}
+            >
+              Download grid + legend
+            </Button>
+            <Button
+              variant="primary"
+              data-testid="order-download-legend-cta"
+              className="w-full py-2.5 text-sm"
+              onClick={onDownloadLegend}
+            >
+              Download legend
+            </Button>
+            <Button
+              variant="primary"
+              data-testid="order-download-cta"
+              className="w-full py-2.5 text-sm"
+              onClick={onDownloadPacket}
+            >
+              Download order packet
+            </Button>
           </div>
-        ) : (
+          {/* Additive done-panel — the downloads stay available so the user can keep
+              grabbing the other artifacts (see the plan's UI-SPEC deviation note). */}
+          {canvasDownloaded && (
+            <div
+              data-testid="order-canvas-terminal"
+              className="flex flex-col gap-1 rounded-[var(--radius-card)] border border-accent bg-[#EAF2EF] p-4"
+            >
+              <span className="text-sm font-semibold text-accent">Downloaded ✓</span>
+              <span className="text-xs leading-relaxed text-muted">
+                Your canvas files are on your device — send them to your canvas maker.
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION ② — Order your drills (single Diamond Drills USA cart, D-01/D-06) ── */}
+        <div className="flex flex-col gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+            Order your drills
+          </span>
           <Button
             variant="primary"
-            data-testid="order-download-cta"
+            data-testid="order-cart-cta"
             className="w-full py-2.5 text-sm"
-            onClick={onDownloadPacket}
+            onClick={onCartCheckout}
           >
-            Download order packet
+            Open drill cart at Diamond Drills USA ↗
           </Button>
-        )}
+          {cartOpened && (
+            <div
+              data-testid="order-cart-terminal"
+              className="flex flex-col gap-1 rounded-[var(--radius-card)] border border-accent bg-[#EAF2EF] p-4"
+            >
+              <span className="text-sm font-semibold text-accent">Cart opened ↗</span>
+              <span className="text-xs leading-relaxed text-muted">
+                Finish your order on Diamond Drills USA.
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
