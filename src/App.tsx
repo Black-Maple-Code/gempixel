@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
-import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
+import { drawCanvasOnly, drawCombinedCanvasSheet, drawLegendOnly, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { buildOrderQuote } from './engine/quote';
 import { gridToInches, formatInches } from './engine/density';
@@ -211,11 +211,14 @@ export function App() {
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
   const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
 
-  // ORDER-01/02 (D-08/D-09): Order-screen-only state. App stays sole state owner
-  // (D-01); the pure OrderScreen reads these via props. `finish` is a fixed UI enum
-  // with NO price impact (RESEARCH Q3); `shipTo` is CLIENT-SIDE only — embedded in
-  // the downloaded packet and NEVER transmitted (D-08). `packetDownloaded` drives
-  // the honest terminal confirmation (no order number / receipt / payment — D-09).
+  // ORDER-01/02/04/05 (D-06/D-07/D-08/D-09): Order-screen-only state. App stays sole
+  // state owner (D-01/D-02); the pure OrderScreen reads these via props. `finish` is a
+  // fixed UI enum with NO price impact (RESEARCH Q3); `shipTo` is CLIENT-SIDE only —
+  // embedded in the downloaded packet and NEVER transmitted (D-08). The two INDEPENDENT
+  // per-task done-states replace the old single `packetDownloaded` (D-07): `canvasDownloaded`
+  // turns true on ANY section-① canvas download (any of the three PNGs OR the JSON packet —
+  // the honest "files really on disk" trigger); `cartOpened` turns true when the drill cart
+  // opens. Two vendors, two honest sub-terminals — no order number / receipt / payment (D-09).
   const [finish, setFinish] = useState<OrderFinish>('trimmed');
   const [shipTo, setShipTo] = useState<OrderPacketShipTo>({
     name: '',
@@ -225,7 +228,8 @@ export function App() {
     postalCode: '',
     country: '',
   });
-  const [packetDownloaded, setPacketDownloaded] = useState(false);
+  const [canvasDownloaded, setCanvasDownloaded] = useState(false);
+  const [cartOpened, setCartOpened] = useState(false);
 
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
@@ -381,11 +385,12 @@ export function App() {
 
     // WR-01: Order state is per-workspace and must NOT leak across a project load.
     // Reset the finish, the client-entered ship-to (PII — never carry one project's
-    // address into another's form), and the packet-downloaded terminal flag (a false
-    // "already downloaded" state for a project the user never downloaded).
+    // address into another's form), and BOTH per-task fulfillment flags (a false
+    // "already downloaded" / "cart opened" state for a project the user never touched).
     setFinish('trimmed');
     setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
-    setPacketDownloaded(false);
+    setCanvasDownloaded(false);
+    setCartOpened(false);
 
     if (project.pricesPerBagSize) {
       setPriceDb(project.pricesPerBagSize);
@@ -434,11 +439,12 @@ export function App() {
       2000: 3.20
     });
     // WR-01: clear per-workspace Order state on reset too (finish + client-entered
-    // ship-to PII + the packet-downloaded terminal flag) — a fresh workspace must
-    // never inherit the previous one's address or a stale "downloaded" state.
+    // ship-to PII + BOTH per-task fulfillment flags) — a fresh workspace must never
+    // inherit the previous one's address or a stale "downloaded" / "cart opened" state.
     setFinish('trimmed');
     setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
-    setPacketDownloaded(false);
+    setCanvasDownloaded(false);
+    setCartOpened(false);
     restore(null);
     wizard.reset();
   };
@@ -1018,6 +1024,8 @@ export function App() {
       
       const baseName = saveProjectName.trim() || 'gempixel-layout';
       await triggerCanvasDownload(canvas, `${baseName}-canvas.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
     } catch (err) {
       console.error('Failed to download canvas grid:', err);
       setActionError('Could not generate the download. Please try again.');
@@ -1045,8 +1053,36 @@ export function App() {
       
       const baseName = saveProjectName.trim() || 'gempixel-layout';
       await triggerCanvasDownload(canvas, `${baseName}-grid-legend.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
     } catch (err) {
       console.error('Failed to download canvas grid + legend:', err);
+      setActionError('Could not generate the download. Please try again.');
+    }
+  };
+
+  // ORDER-04 (D-03/D-05): download the legend band ALONE as its own PNG — the third
+  // canvas artifact alongside `-canvas.png` and `-grid-legend.png`. Mirrors the
+  // handleDownloadCanvasOnly template exactly (guard, setActionError(null), try/catch,
+  // same error copy); builds via the additive drawLegendOnly (26-01) from the same
+  // left/right legend colors + symbolMap the combined sheet uses, so the standalone
+  // legend can never diverge from the grid+legend sheet.
+  const handleDownloadLegend = async () => {
+    if (!matchResult) return;
+    setActionError(null);
+    try {
+      const canvas = drawLegendOnly({
+        leftLegendColors,
+        rightLegendColors,
+        symbolMap,
+      });
+
+      const baseName = saveProjectName.trim() || 'gempixel-layout';
+      await triggerCanvasDownload(canvas, `${baseName}-legend.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
+    } catch (err) {
+      console.error('Failed to download legend:', err);
       setActionError('Could not generate the download. Please try again.');
     }
   };
@@ -1255,6 +1291,8 @@ export function App() {
       setCheckoutWarning(result);
     } else {
       window.open(result.url, '_blank', 'noopener,noreferrer');
+      // Honest section-② done-state: the cart was OPENED (never "ordered", D-06).
+      setCartOpened(true);
     }
   };
 
@@ -1353,16 +1391,19 @@ export function App() {
   const orderSizeLabel = `${formatInches(orderWidthIn)} × ${formatInches(orderHeightIn)} in`;
   const orderGridLabel = `${matchCols}×${matchRows}`;
 
-  // ORDER-01: editing the finish or ship-to invalidates the just-downloaded packet,
-  // so re-surface the CTA (clear the honest terminal state) — the user can download
-  // an updated file. Never a silent no-op after an edit.
+  // ORDER-01: editing the finish or ship-to invalidates the just-downloaded artifacts,
+  // so clear BOTH per-task done-states — the downloaded canvas files and the packet no
+  // longer reflect the edited spec, and the drill cart reflected the prior plan. The
+  // user can re-download / re-open. Never a silent no-op after an edit (WR-01 discipline).
   const handleFinishChange = (next: OrderFinish) => {
     setFinish(next);
-    setPacketDownloaded(false);
+    setCanvasDownloaded(false);
+    setCartOpened(false);
   };
   const handleShipToChange = (patch: Partial<OrderPacketShipTo>) => {
     setShipTo(prev => ({ ...prev, ...patch }));
-    setPacketDownloaded(false);
+    setCanvasDownloaded(false);
+    setCartOpened(false);
   };
 
   // ORDER-02 (D-08/D-09): complete the flow by DOWNLOADING a versioned,
@@ -1408,7 +1449,8 @@ export function App() {
       // Defer revocation so the download thread has started (export.ts idiom).
       setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
 
-      setPacketDownloaded(true);
+      // Honest section-① done-state: the JSON packet counts as a canvas download (D-07).
+      setCanvasDownloaded(true);
     } catch (err) {
       console.error('Failed to build the order packet:', err);
       setActionError('Couldn’t build the order packet. Please try again.');
@@ -1427,8 +1469,15 @@ export function App() {
     shipTo,
     onShipToChange: handleShipToChange,
     quote: orderQuote,
+    // Section ① — four canvas downloads (handlers KEEP their App home, D-02; only the
+    // call site is now OrderScreen). Section ② — the single Diamond Drills USA cart (D-01).
+    onDownloadCanvasGrid: handleDownloadCanvasOnly,
+    onDownloadGridLegend: handleDownloadCombinedCanvasSheet,
+    onDownloadLegend: handleDownloadLegend,
     onDownloadPacket: handleDownloadOrderPacket,
-    packetDownloaded,
+    onCartCheckout: handleShopifyCheckout,
+    canvasDownloaded,
+    cartOpened,
   };
 
   return (

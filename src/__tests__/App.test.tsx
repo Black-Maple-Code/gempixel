@@ -4,6 +4,8 @@ import { render } from 'preact';
 import { App } from '../App';
 import { planOrderSupply } from '../engine/bagPlanner';
 import { DMC_PALETTE } from '../engine/palette';
+import { triggerCanvasDownload } from '../engine/export';
+import { compileShopifyCartLink } from '../engine/checkout';
 
 // ERR-01: force the canvas download to fail so the action-error banner path is
 // exercised deterministically (jsdom has no 2D context, but this guarantees the
@@ -897,13 +899,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       }
 
       expect(container.textContent).toMatch(/build the order packet/i);
-      // Honest: the "packet downloaded" terminal state must NOT appear on failure.
-      expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
+      // Honest: the section-① "Downloaded ✓" terminal must NOT appear on a failed download.
+      expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeNull();
     });
   });
 });
 
-describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does not leak across load/reset', () => {
+describe('WR-01 — Order state (finish · ship-to PII · canvasDownloaded · cartOpened) does not leak across load/reset', () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
@@ -952,7 +954,7 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     await new Promise(r => setTimeout(r, 10));
   };
 
-  // Fill ship-to PII on Step 4 and download the packet so packetDownloaded=true.
+  // Fill ship-to PII on Step 4 and download the packet so canvasDownloaded=true.
   const fillShipToAndDownload = async () => {
     for (let s = 1; s < 4; s++) {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
@@ -966,7 +968,7 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('Alice Private');
 
     // jsdom lacks a real object-URL impl; stub it so the download SUCCEEDS and the
-    // honest terminal state (packetDownloaded=true) is set.
+    // honest section-① terminal state (canvasDownloaded=true) is set.
     const origCreate = (URL as unknown as { createObjectURL?: unknown }).createObjectURL;
     const origRevoke = (URL as unknown as { revokeObjectURL?: unknown }).revokeObjectURL;
     (URL as unknown as { createObjectURL: () => string }).createObjectURL = () => 'blob:wr01';
@@ -980,7 +982,7 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
       (URL as unknown as { createObjectURL: unknown }).createObjectURL = origCreate;
       (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = origRevoke;
     }
-    expect(container.querySelector('[data-testid="order-terminal"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeTruthy();
   };
 
   it('re-loading a project clears the previous ship-to PII and the downloaded terminal state', async () => {
@@ -994,10 +996,11 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     // Re-load the same project (chip stays mounted) — loadProject must reset Order state.
     await loadRow();
 
-    // Panel-4 (OrderScreen) is always-mounted: its ship-to input is cleared and the
-    // terminal state is gone (download CTA is back).
+    // Panel-4 (OrderScreen) is always-mounted: its ship-to input is cleared and BOTH
+    // per-task sub-terminals are gone (the download CTAs are always present).
     expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('');
-    expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-cart-terminal"]')).toBeNull();
     expect(container.querySelector('[data-testid="order-download-cta"]')).toBeTruthy();
   });
 
@@ -1016,7 +1019,90 @@ describe('WR-01 — Order state (finish · ship-to PII · packetDownloaded) does
     // The always-mounted OrderScreen panel reflects the cleared state even though the
     // wizard is back on Step 1.
     expect((container.querySelector('[data-shipto="name"]') as HTMLInputElement).value).toBe('');
-    expect(container.querySelector('[data-testid="order-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-cart-terminal"]')).toBeNull();
+  });
+
+  // D-07 honest trigger + independence: the section-① done-state is set by ANY canvas
+  // download (not packet-only), and the canvas vs. cart done-states are independent.
+  // The file-level export mock makes triggerCanvasDownload THROW by default; override it
+  // to RESOLVE once so the grid-PNG handler reaches its success set. jsdom has no real 2D
+  // context, so stub getContext for drawCanvasOnly (it runs before triggerCanvasDownload).
+  it('sets canvasDownloaded from a PNG download (not just the packet) — cart stays independent', async () => {
+    seedProject();
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+
+    await loadRow();
+    for (let s = 1; s < 4; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    // Neither task is done yet.
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-cart-terminal"]')).toBeNull();
+
+    const ctxStub = new Proxy(
+      {},
+      {
+        get: (_t, prop) => (prop === 'measureText' ? () => ({ width: 0 }) : () => {}),
+        set: () => true,
+      },
+    );
+    const proto = HTMLCanvasElement.prototype as unknown as { getContext: unknown };
+    const origGetContext = proto.getContext;
+    proto.getContext = () => ctxStub;
+    vi.mocked(triggerCanvasDownload).mockResolvedValueOnce(undefined);
+    try {
+      // Click the grid-PNG CTA (NOT the packet).
+      (container.querySelector('[data-testid="order-download-canvas-cta"]') as HTMLButtonElement).click();
+      // Flush the handler's await triggerCanvasDownload(...) → setCanvasDownloaded(true).
+      await new Promise(r => setTimeout(r, 20));
+    } finally {
+      proto.getContext = origGetContext;
+    }
+
+    // A PNG download alone surfaces the canvas terminal — proving the trigger is ANY
+    // section-① download, not packet-only — while the cart terminal stays absent.
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="order-cart-terminal"]')).toBeNull();
+  });
+
+  it('opening the drill cart surfaces order-cart-terminal independently (canvas terminal absent)', async () => {
+    seedProject();
+    render(<App />, container);
+    await new Promise(r => setTimeout(r, 10));
+
+    await loadRow();
+    for (let s = 1; s < 4; s++) {
+      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    // The file-level checkout mock returns an UNMAPPED item by default (→ warning branch,
+    // no open). Override it once to a clean, in-length cart link so handleShopifyCheckout
+    // reaches window.open and flips cartOpened. Stub window.open (jsdom can't navigate).
+    vi.mocked(compileShopifyCartLink).mockReturnValueOnce({
+      url: 'https://diamonddrillsusa.com/cart/clean',
+      isUrlTooLong: false,
+      unmappedItems: [],
+    });
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    try {
+      (container.querySelector('[data-testid="order-cart-cta"]') as HTMLButtonElement).click();
+      await new Promise(r => setTimeout(r, 10));
+      // Assert the reverse-tabnabbing-safe open BEFORE restoring the spy (T-26-04):
+      // mockRestore() clears the recorded calls, so assert inside the guarded block.
+      expect(openSpy).toHaveBeenCalledWith(expect.any(String), '_blank', 'noopener,noreferrer');
+    } finally {
+      openSpy.mockRestore();
+    }
+
+    // The cart opens (no unmapped/too-long warning) and cartOpened flips — independently
+    // of the canvas terminal, which stays absent because no canvas file was downloaded.
+    expect(container.querySelector('[data-testid="order-cart-terminal"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="order-canvas-terminal"]')).toBeNull();
   });
 });
 
