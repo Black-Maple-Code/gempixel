@@ -1422,14 +1422,49 @@ export function App() {
         setSaveModalOpen(true);
       }}
       canSave={!!matchResult}
+      bottomBar={
+        /* Relocated wizard nav footer (D-05) — Back/Next re-homed to the shell's
+           fixed Zone 3 so Next stays hittable without page scroll (SC9). Ids and
+           handlers preserved verbatim so navigation + reset tests pass unchanged:
+           #wizard-back-btn / #wizard-next-btn; Next is disabled purely by
+           !canEnter(step+1); the final step hides Next. StepBar + wizard.goTo own
+           navigation (D-02 retired the stale forward-nav block). The inner row is
+           width-capped to the 1180px card frame so Back/Next align with content. */
+        <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between">
+          {wizard.step > 1 ? (
+            <button
+              id="wizard-back-btn"
+              onClick={wizard.back}
+              className="cursor-pointer text-xs font-bold text-muted transition-colors hover:text-ink"
+            >
+              &lt; Back
+            </button>
+          ) : (
+            <div className="w-[42px] select-none">&nbsp;</div>
+          )}
+
+          {wizard.step < 4 ? (
+            <button
+              id="wizard-next-btn"
+              onClick={wizard.next}
+              disabled={!wizard.canEnter(wizard.step + 1)}
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next Step →
+            </button>
+          ) : (
+            <div className="w-[72px] select-none">&nbsp;</div>
+          )}
+        </div>
+      }
     >
     {/* Centered Atelier viewport frame (UI-SPEC A1-A4) — the four screens are the
-        shell's PRIMARY content, hosted in a scroll container whose inner content is
-        centered and width-capped at the fixed 1180px card frame, on the cream
-        Atelier background. This replaces the retired dark 3-column shell (the
-        bg-slate-950 wrapper + 320px left "My Images" aside + center <main> + right
-        Color-Legend/DMC aside). UAT Test 26 gap closed. */}
-    <div className="relative flex-1 min-h-0 overflow-y-auto bg-bg print:overflow-visible print:h-auto">
+        shell's PRIMARY content, hosted in AtelierShell's Zone 2 scroll region
+        (D-05); this wrapper centers + width-caps the inner content at the fixed
+        1180px card frame on the cream Atelier background. This replaces the retired
+        dark 3-column shell (the bg-slate-950 wrapper + 320px left "My Images" aside
+        + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
+    <div className="relative min-h-full bg-bg print:h-auto">
       <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-4 print:p-0">
 
         {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
@@ -1586,38 +1621,6 @@ export function App() {
         </div>
 
 
-        </div>
-
-        {/* Relocated wizard nav footer — Back/Next re-homed to frame scope. Ids and
-            handlers preserved verbatim so navigation + reset tests pass unchanged:
-            #wizard-back-btn / #wizard-next-btn; Next is disabled purely by
-            !canEnter(step+1); the final step hides Next. StepBar + wizard.goTo own
-            navigation (D-02 retired the stale forward-nav block). */}
-        <div className="no-print mt-4 flex items-center justify-between border-t border-border pt-4">
-          {wizard.step > 1 ? (
-            <button
-              id="wizard-back-btn"
-              onClick={wizard.back}
-              className="cursor-pointer text-xs font-bold text-muted transition-colors hover:text-ink"
-            >
-              &lt; Back
-            </button>
-          ) : (
-            <div className="w-[42px] select-none">&nbsp;</div>
-          )}
-
-          {wizard.step < 4 ? (
-            <button
-              id="wizard-next-btn"
-              onClick={wizard.next}
-              disabled={!wizard.canEnter(wizard.step + 1)}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next Step →
-            </button>
-          ) : (
-            <div className="w-[72px] select-none">&nbsp;</div>
-          )}
         </div>
 
       </div>

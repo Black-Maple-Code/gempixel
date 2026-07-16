@@ -25,6 +25,13 @@ export interface AtelierShellProps {
   onSave: () => void;
   /** Whether Save is currently allowed (pill disabled when false). */
   canSave: boolean;
+  /**
+   * Fixed bottom action bar (Zone 3) — the relocated Back/Next footer. Rendered
+   * in a `shrink-0 no-print` bar below the internally-scrolling content so it
+   * stays hittable without page scroll no matter how long the step content is
+   * (D-05 / SC9). Optional so the shell degrades gracefully if omitted.
+   */
+  bottomBar?: ComponentChildren;
 }
 
 // The 3×3 pixel-logo tile reuses the pure-CSS `.gem-logo` mark (src/index.css);
@@ -41,8 +48,13 @@ const GEM_LOGO_CELLS = [
   '--gem-pink',
 ] as const;
 
-export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave }: AtelierShellProps) {
+export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, bottomBar }: AtelierShellProps) {
   return (
+    // Fixed 3-zone shell (D-05): Zone 1 top step-bar (shrink-0) → Zone 2 the
+    // internally-scrolling content (flex-1 min-h-0 overflow-y-auto — `min-h-0` is
+    // the load-bearing detail that lets the scroll region shrink inside a flex
+    // column) → Zone 3 the fixed bottom action bar (shrink-0). Long lists scroll
+    // INSIDE Zone 2 while the step bar and the Back/Next stay pinned (SC9).
     <div className="@container flex flex-col h-dvh overflow-hidden print:h-auto print:overflow-visible">
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-panel no-print shrink-0">
         {/* Left: pixel-logo tile + Newsreader wordmark (21/600) */}
@@ -70,7 +82,20 @@ export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave }
         </button>
       </header>
 
-      {children}
+      {/* Zone 2 — internally-scrolling content. `min-h-0` lets it shrink so the
+          overflow scroll is bounded to this zone (never pushing Zone 3 off-screen).
+          Print reveals the full content (the plain @media print path). */}
+      <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible print:h-auto">
+        {children}
+      </div>
+
+      {/* Zone 3 — fixed bottom action bar (relocated Back/Next). `px-4 py-3`
+          matches the header; `no-print` because the wizard chrome never prints. */}
+      {bottomBar && (
+        <div className="no-print shrink-0 border-t border-border bg-panel px-4 py-3">
+          {bottomBar}
+        </div>
+      )}
     </div>
   );
 }
