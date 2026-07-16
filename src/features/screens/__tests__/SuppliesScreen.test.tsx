@@ -148,4 +148,27 @@ describe('SuppliesScreen — single-source summary + supply table + honesty', ()
     expect(details).toBeTruthy();
     expect(details!.textContent).toContain(props.dyeLotWhy);
   });
+
+  it('pins the order-summary panel md:sticky on desktop while keeping mobile natural flow (GAP-2/SC9)', () => {
+    setup();
+    // The order-summary panel is the closest ancestor <div> of the est-total that
+    // also carries the "Order summary" heading (jsdom computes no layout, so — like
+    // print.test.tsx — assert on className tokens).
+    const total = container.querySelector('[data-testid="supplies-est-total"]') as HTMLElement;
+    let panel: HTMLElement | null = total.parentElement;
+    while (panel && !panel.textContent?.includes('Order summary')) {
+      panel = panel.parentElement;
+    }
+    expect(panel).toBeTruthy();
+
+    const cls = panel!.className;
+    // Desktop pin: sticky, pinned to the Zone 2 scroll viewport top, content-height.
+    expect(cls).toContain('md:sticky');
+    expect(cls).toContain('md:top-0');
+    expect(cls).toContain('md:self-start');
+    // Mobile stays natural single-column flow — the pin is md:-gated, never a bare
+    // unprefixed `sticky`/`self-start` token.
+    expect(cls).not.toMatch(/(^|\s)sticky(\s|$)/);
+    expect(cls).not.toMatch(/(^|\s)self-start(\s|$)/);
+  });
 });
