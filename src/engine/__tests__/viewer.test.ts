@@ -363,6 +363,74 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
     });
   });
 
+  describe('Fit-mode tracking (D-04 isFitMode)', () => {
+    it('should report fit mode by default before any zoom', () => {
+      // A freshly constructed viewer rests in fit-to-container mode.
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should stay in fit mode after fitToContainer', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.fitToContainer();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should leave fit mode on an explicit zoomIn', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should leave fit mode on an explicit zoomOut', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      viewer.zoomOut();
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should leave fit mode on a wheel zoom', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      canvas.dispatchEvent('wheel', { clientX: 210, clientY: 220, deltaY: -100 });
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should re-enter fit mode when fitToContainer runs after a user zoom', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+
+      viewer.fitToContainer();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should re-enter fit mode via resetZoom (delegates to fitToContainer)', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+
+      viewer.resetZoom();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should keep the fit flag orthogonal to the resulting scale/offset math', () => {
+      // The wheel-zoom math asserted elsewhere must be unchanged by the flag.
+      canvas.dispatchEvent('wheel', { clientX: 210, clientY: 220, deltaY: -100 });
+      const state = viewer.getViewportState();
+      expect(state.scale).toBeCloseTo(1.1);
+      expect(state.offsetX).toBeCloseTo(-20);
+      expect(state.offsetY).toBeCloseTo(-20);
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+  });
+
   describe('Multi-touch pinch + touch-action', () => {
     it('should set touch-action:none on the canvas element (D-06)', () => {
       // Constructed in beforeEach. The viewer must declare the canvas as gesture-owned
