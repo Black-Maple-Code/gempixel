@@ -5,7 +5,7 @@
 - ✅ **v2.0** — Phases 1–9 (shipped 2026-07-10): color engine → worker pipeline → canvas viewer → supply planning → partnerships → commission UX → symbols → multi-vendor export → viewport HUD.
 - ✅ **v2.1 Post-Review Remediation** — Phases 10–14 (shipped 2026-07-12): active scope **Phases 11 + 13** (storage robustness + off-main-thread decode). Phases **10, 12, 14 deferred** — see Backlog.
 - ⚠️ **v3.0 Two-Mode Viewport Experience (partial)** — Phases 15–19 (force-closed 2026-07-13 at 40%): shipped the correctness foundation only — **Phases 15 + 16** (trustworthy pricing/data + optimized supply plan & savings). Phases **17, 18, 19 never built** — the viewport-native wizard, the Customer/Artist mode split, and the service-fee/order-packet flow are deferred. See Backlog.
-- 🔨 **v4.0 Canvas-First Redesign (active)** — Phases 20–25 (opened 2026-07-13): a **frontend-only, 100% client-side** rebuild of the customer experience — Atelier light design system + canvas-first 4-step shell → shared UI primitives → additive engine (density / color reducer / single-source quote) → the four screens (Upload → Refine → Supplies → Order) → mobile + touch → strangler cleanup. Fulfillment backend deferred to v5.0.
+- 🔨 **v4.0 Canvas-First Redesign (active)** — Phases 20–26 (opened 2026-07-13): a **frontend-only, 100% client-side** rebuild of the customer experience — Atelier light design system + canvas-first 4-step shell → shared UI primitives → additive engine (density / color reducer / single-source quote) → the four screens (Upload → Refine → Supplies → Order) → mobile + touch → strangler cleanup → interim client-side customer fulfillment (canvas PNG packet + Diamond Drills USA drill order). Fulfillment backend deferred to v5.0.
 
 Full phase details for shipped milestones are archived in `milestones/v2.1-ROADMAP.md` and `milestones/v3.0-ROADMAP.md`.
 
@@ -57,7 +57,7 @@ Full success criteria for all five phases preserved in `milestones/v3.0-ROADMAP.
 
 </details>
 
-### 🔨 v4.0 Canvas-First Redesign — Phases 20–25 (ACTIVE, opened 2026-07-13)
+### 🔨 v4.0 Canvas-First Redesign — Phases 20–26 (ACTIVE, opened 2026-07-13)
 
 Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state owner, screen children stay pure/props-only, `engine/*` signatures change only inside the isolated engine phase (never in a UI phase), and the 240+ Vitest baseline stays green at every commit — the app ships green at every phase.
 
@@ -267,6 +267,19 @@ Plans:
 > All four are desktop-web layout/zoom fixes; they ride alongside the strangler close in Phase 25's
 > Refine re-touch and do not alter the cleanup scope.
 
+> **Scope added 2026-07-16 (Phase 24 walkthrough, cont. — static wizard + a strangler guardrail).**
+> 10. **Static wizard chrome (never scroll to reach "Next")** — in a normal-size browser window the
+>     user must never have to scroll the page to find the primary Next/advance CTA. The wizard shell
+>     (step bar + Next button) stays fixed; only the step's content area scrolls internally — e.g. on
+>     the drill-order/supply list, the list scrolls but Next stays hittable at any point.
+> 11. **Guardrail — do NOT orphan the still-live fulfillment path.** The legacy `Step3Canvas.tsx`
+>     currently hosts the ONLY live wiring for the canvas/legend PNG export (`engine/export.ts`
+>     `drawCanvasOnly`/`drawCombinedCanvasSheet`) and the Diamond Drills USA drill cart
+>     (`engine/checkout.ts` `compileShopifyCartLink` → `diamonddrillsusa.com/cart/`). These are
+>     still-live features, not dead code — the strangler deletion must NOT remove them until they are
+>     re-homed into the new Order step. That re-homing is **Phase 26** (below); sequence Phase 25's
+>     `Step3Canvas` deletion to run after Phase 26, or to explicitly preserve the export/cart calls.
+
 **Goal**: With the new journey validated in UAT, the remaining `Step1..4` component files, theme remnants, and any leftover dead preset state are grep-cleaned — the strangler is complete and the codebase carries no dual UI.
 **Depends on**: Phase 24
 **Requirements**: (none — strangler close; carries no v4.0 REQ-ID by design)
@@ -280,6 +293,33 @@ Plans:
   6. **Print (WR-01):** a plain Ctrl+P produces the canvas grid from every step where it is meaningful — not just Refine — or the intent is made explicit; the dedicated Supply-Report/legend print paths remain intact.
   7. The real-photo end-to-end journey (UAT Test 29: Upload → Refine → Supplies → Order) is re-verified against the final in-viewport layout with the above UX fixes in place.
   8. **Web viewport/zoom (from Phase 24 walkthrough):** the canvas defaults to fit-to-container and only leaves "fit" on explicit user zoom in/out; changing the canvas size via SizeCards does not jump the preview zoom (re-fits cleanly instead); the Refine rail fits the browser width without encroaching on the canvas viewport; and the Grid / Grid+Symbols / Original view switcher snaps to the bottom of the viewport without ever obstructing the canvas.
+  9. **Static wizard (from Phase 24 walkthrough):** in a normal-size browser window the primary Next/advance CTA is always reachable without scrolling the page — the wizard chrome is fixed and only the step content scrolls internally (long lists scroll; Next stays hittable).
+  10. **No orphaned functionality:** the strangler close does not delete the still-live Diamond Drills USA drill-cart handoff or the canvas/legend PNG export (currently in legacy `Step3Canvas`) until they are re-homed in Phase 26 — no live feature is lost to the cleanup.
+
+**Plans**: TBD
+
+### Phase 26: Interim Customer Fulfillment — Canvas PNG Packet + Diamond Drills USA Order
+
+> **Added 2026-07-16 (Phase 24 walkthrough).** Until the canvas/drill partnerships are finalized,
+> the customer needs a real, self-serve way to get their project made: download the actual canvas
+> artwork (not just the JSON spec packet ORDER-02 ships today) and place the drill order via the
+> existing Diamond Drills USA cart — exactly as the pre-v4.0 software did. The engine machinery
+> already exists (`engine/export.ts` `drawCanvasOnly`/`drawCombinedCanvasSheet`; `engine/checkout.ts`
+> `compileShopifyCartLink` → `diamonddrillsusa.com/cart/`) but is currently wired only into the
+> legacy `Step3Canvas` that Phase 25 retires — this phase re-homes it into the new Order step.
+> **Coupling:** must land before (or alongside) Phase 25's deletion of `Step3Canvas` so the
+> functionality is never orphaned (see Phase 25 guardrail #11).
+
+**Goal**: The v4.0 Order step lets the customer complete their project entirely client-side and vendor-agnostic — download a canvas PNG packet (grid-only, grid+legend combined, and the legend on its own) alongside the existing JSON spec/quote packet, and hand the optimized drill order off to Diamond Drills USA via the compiled cart link — reviving the prior software's fulfillment path as the interim before the v5.0 backend/partnerships.
+**Depends on**: Phase 24 (coordinates with Phase 25 — see coupling note)
+**Requirements**: ORDER-04, ORDER-05
+**Success Criteria** (what must be TRUE):
+
+  1. From the Order step, the customer can download the canvas artwork as PNG(s): the grid-only canvas, the combined grid+legend sheet, and the legend on its own (the "with legend / without legend / legend separately" set), using the existing `engine/export.ts` renderers with no engine signature changes.
+  2. The PNG set is delivered as a coherent packet (individual files or one bundle) alongside the existing ORDER-02 JSON spec/quote packet, so "what you download = what you send to the canvas maker."
+  3. From the Order (or Supplies) step, the customer can send the optimized drill order to Diamond Drills USA via the compiled `compileShopifyCartLink` cart permalink, and the cart's bag choices reconcile exactly with the displayed legend/quote (same `bagPlanner` output — cart and legend cannot diverge).
+  4. The interim nature is honest in the UI (a self-serve handoff, not a GemPixel-fulfilled order and no fake payment), consistent with the v4.0 100%-client-side boundary.
+  5. The legacy `Step3Canvas` export/checkout wiring is fully superseded (single path, no dual UI) and the 240+ Vitest suite stays green.
 
 **Plans**: TBD
 
@@ -304,6 +344,7 @@ Plans:
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
+| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | TBD | Not started | — |
 
 ## Backlog
 

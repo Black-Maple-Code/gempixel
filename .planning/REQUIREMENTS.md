@@ -45,6 +45,8 @@ Committed scope for v4.0 — a **frontend-only, 100% client-side** rebuild of th
 
 - [x] **ORDER-01**: The Order screen presents an auto-filled, **locked** print spec (Rolled Canvas fixed, size from grid, finish) plus a finish selection and a ship-to address and the itemized quote — nothing GemPixel already resolved has to be re-entered.
 - [x] **ORDER-02**: The user completes the flow via an honest client-side handoff — reviewing the summary and **downloading a versioned, self-contained order packet** (design/chart, canvas spec, optimized gem-bag list, integer-cents quote snapshot; schema forward-compatible with the future v5.0 backend) — with no implied payment and no fake receipt (real payment + lab submission are v5.0).
+- [ ] **ORDER-04**: From the Order step the customer can download the actual canvas artwork as PNG(s) — the grid-only canvas, the combined grid+legend sheet, and the legend on its own ("with legend / without legend / legend separately") — via the existing `engine/export.ts` renderers, delivered alongside the ORDER-02 JSON packet so the downloaded files are what gets sent to the canvas maker. Interim self-serve fulfillment until the canvas partnership/backend lands (Phase 26).
+- [ ] **ORDER-05**: From the Order (or Supplies) step the customer can hand the optimized drill order off to Diamond Drills USA via the compiled cart permalink (`engine/checkout.ts` `compileShopifyCartLink`), with cart bag choices reconciling exactly to the displayed legend/quote — reviving the pre-v4.0 drill-cart checkout in the new Order step (Phase 26).
 
 ### Mobile & Touch
 
@@ -90,7 +92,7 @@ Explicitly excluded from v4.0.
 
 ## Traceability
 
-Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step, 2026-07-13). Phase numbering continues from the previous milestone (v3.0 ended at Phase 19 → v4.0 spans Phases 20–25). All 19 v4.0 requirements are mapped to exactly one phase (100% coverage); Phases 21 (shared UI primitives) and 25 (strangler cleanup) are infrastructure/cleanup phases that carry no REQ-ID by design.
+Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step, 2026-07-13). Phase numbering continues from the previous milestone (v3.0 ended at Phase 19 → v4.0 spans Phases 20–26). All 21 v4.0 requirements are mapped to exactly one phase (100% coverage); Phases 21 (shared UI primitives) and 25 (strangler cleanup) are infrastructure/cleanup phases that carry no REQ-ID by design, while the interim-fulfillment Phase 26 adds ORDER-04/05.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -113,11 +115,13 @@ Phase mapping assigned by the roadmapper (`/gsd-new-milestone` → roadmap step,
 | ORDER-02 | Phase 23 | Complete |
 | MOBILE-01 | Phase 24 | Complete |
 | MOBILE-02 | Phase 24 | Complete |
+| ORDER-04 | Phase 26 | Pending |
+| ORDER-05 | Phase 26 | Pending |
 
 **Coverage:**
 
-- Milestone v4.0 requirements: 19 total
-- Mapped to phases: 19 (100%)
+- Milestone v4.0 requirements: 21 total
+- Mapped to phases: 21 (100%)
 - Unmapped: 0
 - Phases carrying no REQ-ID (infrastructure/cleanup, by design): Phase 21 (Shared UI Primitives), Phase 25 (Retire Legacy Steps + Cleanup)
 

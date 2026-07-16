@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.0
-milestone_name: Canvas-First Redesign — Phases 20–25
+milestone_name: Canvas-First Redesign — Phases 20–26
 current_phase: 25
 current_phase_name: Retire Legacy Steps + Cleanup
 status: verifying
