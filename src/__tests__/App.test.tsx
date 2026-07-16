@@ -1326,14 +1326,15 @@ describe('Layout regression — the four screens host the viewport; legacy shell
     );
     expect(colorLegend).toBeUndefined();
 
-    // No element carries the retired dark-shell signature (bg-slate-950 AND
-    // text-slate-100 together). The retained modal backdrops use bare
-    // bg-slate-950/80 (no text-slate-100) and are out of scope — so filtering on
-    // BOTH classes is what pins the deleted shell wrapper specifically.
-    const shellSignature = Array.from(
-      container.querySelectorAll('[class*="bg-slate-950"]'),
-    ).filter(el => el.className.includes('text-slate-100'));
-    expect(shellSignature.length).toBe(0);
+    // Post D-08 re-token: NO live rendered element may carry the dark-slate
+    // 900/950 background family. The two coupled fulfillment modals are deleted
+    // (26-03) and the Save Project Modal now renders Atelier-light (26-04), so
+    // there are no "retained dark backdrops" left to exempt — this render-level
+    // guard now complements the source-level hard grep-gate one-to-one.
+    const darkSlateBg = Array.from(
+      container.querySelectorAll('[class*="bg-slate-950"], [class*="bg-slate-900"]'),
+    );
+    expect(darkSlateBg.length).toBe(0);
   });
 
   it('keeps exactly one persistent canvas node across a step change (D-14 single mount)', async () => {
