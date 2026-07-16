@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: retire-legacy-steps-cleanup
 status: executing
 stopped_at: Phase 25 UI-SPEC approved
-last_updated: "2026-07-16T17:57:41.007Z"
+last_updated: "2026-07-16T18:02:26.485Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 30
+  completed_plans: 31
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 25 (retire-legacy-steps-cleanup) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-07-16 — Phase 25 execution started
 
@@ -112,6 +112,7 @@ Progress: [██████████] 100%
 | Phase 24 P02 | ~5 min | 3 tasks | 3 files |
 | Phase 24 P03 | 1min | 2 tasks | 1 files |
 | Phase 25 P07 | 5 | 3 tasks | 5 files |
+| Phase 25 P08 | ~10m | 2 tasks | 2 files |
 
 ## Risk & Health
 
@@ -159,7 +160,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T17:55:57.914Z
+Last session: 2026-07-16T18:01:53.232Z
 Stopped at: Phase 25 UI-SPEC approved
 Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-UI-SPEC.md
 
@@ -206,6 +207,7 @@ Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-UI-SPEC.md
 - [Phase 24]: Plan 24-02: pinch-zoom reuses handleZoom via activePointers.size===2 gate; touch-action:none on canvas only; isPinching dropped (unused, tsc).
 - [Phase 24]: 24-03 (human-verify APPROVED): regression gate green (build exit 0; full suite 355 passed/12 skipped >> 240 floor); mobile reflow (MOBILE-01) + touch pinch/pan (MOBILE-02) verified live at 300/360/1280px. Gap closure eab212f: StepBar reflowed to compact scrollable pills below 640px (fixes pre-existing overflow vs Success Criterion 1). Pinch gesture + Refine sticky pane verified-by-proxy (jsdom pinch tests + source-confirmed sticky utilities), not a live physical gesture.
 - [Phase 25]: 25-07: Relocated the Refine view-mode switcher + zoom controls off the raster into a pure CanvasControlBar mounted as an in-flow AtelierShell Zone-3 strip (D-05/D-07, GAP-1/SC8); canvas now fills full height.
+- [Phase ?]: 25-08: Pinned the Supplies order-summary panel with md:-prefixed sticky utilities (md:sticky md:top-0 md:self-start) — desktop pins within Zone 2 scroll region (25-05 D-05) while mobile keeps its Phase-24 single-column flow, closing GAP-2/SC9 class-only with zero new deps, contained to SuppliesScreen + its test.
 
 ## Operator Next Steps
 
