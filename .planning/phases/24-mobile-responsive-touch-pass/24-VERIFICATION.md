@@ -1,10 +1,14 @@
 ---
 phase: 24-mobile-responsive-touch-pass
 verified: 2026-07-15T19:44:00Z
-status: human_needed
-score: 10/11 must-haves verified
+status: passed
+score: 10/11 must-haves verified (2 device-only items accepted by user as proxy-verified)
 behavior_unverified: 1
 overrides_applied: 0
+human_acceptance:
+  accepted_by: user
+  accepted: 2026-07-15
+  basis: "User (the human in human_needed) accepted the 2 device-only items as proxy-verified rather than live-device testing. Basis — pinch: 5 passing jsdom pinch/clamp/single-finger tests + reuse of the cursor-anchored handleZoom (0.5-50 clamps) + confirmed canvas-only touch-action:none; Refine sticky pane: @max-[640px]:sticky top-0 h-[45dvh] confirmed present and wired on the step-2 <main>, with the reflow mechanism (flex-col flip, no overflow) already human-verified live at 300/360px. A physical-phone spot-check is recommended when convenient but was not required for completion."
 behavior_unverified_items:
   - truth: "Refine is canvas-first: the canvas + zoom HUD pane stays pinned (sticky ~45dvh) at the top while the full-width controls rail scrolls beneath it."
     test: "Load a real image, let the Web Worker match complete, navigate to Refine, set the container/viewport to ~320px, and scroll the controls rail (SizeCards → custom size → edge cleanup → color count → Advanced)."
@@ -23,7 +27,7 @@ human_verification:
 
 **Phase Goal:** The same 4-step journey works in a single portrait column on a ~300px-wide phone with every control inline, and the chart supports touch zoom/pan without the page scrolling.
 **Verified:** 2026-07-15T19:44:00Z
-**Status:** human_needed
+**Status:** passed (2 device-only items accepted by user as proxy-verified — see `human_acceptance` in frontmatter)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement

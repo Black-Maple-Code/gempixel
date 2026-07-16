@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–25
-current_phase: 24
-current_phase_name: mobile-responsive-touch-pass
+current_phase: 25
+current_phase_name: Retire Legacy Steps + Cleanup
 status: verifying
-stopped_at: Phase 24 complete (3/3 plans) — ready for verification
-last_updated: "2026-07-16T01:39:45.700Z"
-last_activity: 2026-07-15
-last_activity_desc: Phase 24 execution started
+stopped_at: Phase 24 context gathered
+last_updated: "2026-07-16T03:53:48.185Z"
+last_activity: 2026-07-16
+last_activity_desc: Phase 24 complete, transitioned to Phase 25
 progress:
   total_phases: 6
   completed_phases: 5
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 24 (mobile-responsive-touch-pass) — COMPLETE (3/3 plans)
-Plan: 3 of 3
+Phase: 25 — Retire Legacy Steps + Cleanup
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-16 — Phase 24 plan 24-03 completed (regression gate + human-verify approved)
+Last activity: 2026-07-16 — Phase 24 complete, transitioned to Phase 25
 
 Progress: [██████████] 100%
 
@@ -39,7 +39,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 46
+- Total plans completed: 49
 - Average duration: 186s
 - Total execution time: 0.1 hours
 
@@ -62,6 +62,7 @@ Progress: [██████████] 100%
 | 21 | 3 | - | - |
 | 22 | 4 | - | - |
 | 23 | 8 | - | - |
+| 24 | 3 | - | - |
 
 **Recent Trend:**
 
