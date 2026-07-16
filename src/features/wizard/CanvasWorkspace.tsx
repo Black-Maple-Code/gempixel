@@ -78,7 +78,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
   } = props;
 
   return (
-    <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
+    <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-bg viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
       {/* Floating Viewport HUD overlay */}
       {image && (
         <div
@@ -86,7 +86,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="flex bg-slate-950/40 rounded-lg p-0.5 border border-slate-800/40">
+          <div className="flex bg-bg/40 rounded-lg p-0.5 border border-border/40">
             {(['grid', 'symbols', 'reference'] as const).map(mode => {
               const isActive = viewportMode === mode;
               const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
@@ -97,8 +97,8 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
                     onClick={() => setViewportMode(mode)}
                     className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-sky-500 text-white shadow shadow-sky-500/20'
-                        : 'text-slate-400 hover:text-slate-200'
+                        ? 'bg-accent text-on-accent shadow shadow-accent/20'
+                        : 'text-muted hover:text-ink'
                     }`}
                   >
                     {label}
@@ -111,12 +111,12 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
 
           {/* Zoom controls */}
           {(viewportMode === 'grid' || viewportMode === 'symbols') && (
-            <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
+            <div className="flex items-center gap-1 border-l border-border pl-3">
               <div className="tooltip-group">
                 <button
                   onClick={() => onZoomIn()}
-                  aria-label="Zoom In"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  aria-label="Zoom in"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ➕
                 </button>
@@ -126,8 +126,8 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <div className="tooltip-group">
                 <button
                   onClick={() => onZoomOut()}
-                  aria-label="Zoom Out"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  aria-label="Zoom out"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ➖
                 </button>
@@ -137,8 +137,8 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <div className="tooltip-group">
                 <button
                   onClick={() => onFit()}
-                  aria-label="Fit Viewport"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  aria-label="Fit to screen"
+                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
                 >
                   ⛶
                   <span className="hidden">Zoom</span>
@@ -150,7 +150,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
 
           {/* Low zoom warning */}
           {viewportMode === 'symbols' && zoomScale * 16 < 10 && (
-            <div className="tooltip-group flex items-center border-l border-slate-800 pl-3">
+            <div className="tooltip-group flex items-center border-l border-border pl-3">
               <div className="px-2 py-1 rounded bg-warn/15 border border-warn/40 text-warn text-[10px] font-bold select-none cursor-default flex items-center gap-1 whitespace-nowrap animate-pulse">
                 ⚠️ Low Zoom
               </div>
@@ -181,7 +181,7 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               ref={canvasRef}
               width={800}
               height={600}
-              className={`shadow-2xl border border-slate-800 bg-slate-950 print:border-none print:shadow-none ${
+              className={`shadow-2xl border border-border bg-bg print:border-none print:shadow-none ${
                 (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
               }`}
             />
@@ -208,9 +208,9 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <img
                 src={image.src}
                 alt="Original reference full size"
-                className="max-w-full max-h-[75vh] object-contain rounded-lg border border-slate-800 shadow-2xl"
+                className="max-w-full max-h-[75vh] object-contain rounded-lg border border-border shadow-2xl"
               />
-              <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
+              <span className="text-[10px] text-faint font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
             </div>
           )}
         </div>
@@ -231,20 +231,20 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
           {loading && …} so it clears on completion or error and never
           co-displays with the matchError banner below. */}
       {loading && (
-        <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-3">
+        <div className="absolute inset-0 bg-bg/80 flex flex-col items-center justify-center gap-3">
           {loadingPhase === 'preparing' ? (
             <>
-              <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full w-full animate-pulse" />
+              <div className="w-48 bg-border h-2 rounded-full overflow-hidden">
+                <div className="bg-accent h-full w-full animate-pulse" />
               </div>
-              <span className="text-sm font-medium text-slate-300">Preparing image…</span>
+              <span className="text-sm font-medium text-ink">Recomputing…</span>
             </>
           ) : (
             <>
-              <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full transition-all duration-100" style={{ width: `${progress}%` }} />
+              <div className="w-48 bg-border h-2 rounded-full overflow-hidden">
+                <div className="bg-accent h-full transition-all duration-100" style={{ width: `${progress}%` }} />
               </div>
-              <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
+              <span className="text-sm font-medium text-ink">Matching colors: {progress}%</span>
             </>
           )}
         </div>
