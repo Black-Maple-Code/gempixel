@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: retire-legacy-steps-cleanup
 status: executing
 stopped_at: Phase 25 UI-SPEC approved
-last_updated: "2026-07-16T17:40:54.676Z"
+last_updated: "2026-07-16T17:57:41.007Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 30
-  completed_plans: 24
+  total_plans: 32
+  completed_plans: 30
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 25 (retire-legacy-steps-cleanup) — EXECUTING
-Plan: 1 of 6
+Plan: 2 of 8
 Status: Ready to execute
 Last activity: 2026-07-16 — Phase 25 execution started
 
@@ -111,6 +111,7 @@ Progress: [██████████] 100%
 | Phase 24 P01 | 2min | 3 tasks | 4 files |
 | Phase 24 P02 | ~5 min | 3 tasks | 3 files |
 | Phase 24 P03 | 1min | 2 tasks | 1 files |
+| Phase 25 P07 | 5 | 3 tasks | 5 files |
 
 ## Risk & Health
 
@@ -158,7 +159,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T06:41:20.000Z
+Last session: 2026-07-16T17:55:57.914Z
 Stopped at: Phase 25 UI-SPEC approved
 Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-UI-SPEC.md
 
@@ -204,6 +205,7 @@ Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-UI-SPEC.md
 - [Phase 24]: Phase 24-01: mobile reflow uses descendant-only @max-[640px] Tailwind v4 container-query overrides; desktop base flex-row/w-[360px] untouched (provably unregressed)
 - [Phase 24]: Plan 24-02: pinch-zoom reuses handleZoom via activePointers.size===2 gate; touch-action:none on canvas only; isPinching dropped (unused, tsc).
 - [Phase 24]: 24-03 (human-verify APPROVED): regression gate green (build exit 0; full suite 355 passed/12 skipped >> 240 floor); mobile reflow (MOBILE-01) + touch pinch/pan (MOBILE-02) verified live at 300/360/1280px. Gap closure eab212f: StepBar reflowed to compact scrollable pills below 640px (fixes pre-existing overflow vs Success Criterion 1). Pinch gesture + Refine sticky pane verified-by-proxy (jsdom pinch tests + source-confirmed sticky utilities), not a live physical gesture.
+- [Phase 25]: 25-07: Relocated the Refine view-mode switcher + zoom controls off the raster into a pure CanvasControlBar mounted as an in-flow AtelierShell Zone-3 strip (D-05/D-07, GAP-1/SC8); canvas now fills full height.
 
 ## Operator Next Steps
 

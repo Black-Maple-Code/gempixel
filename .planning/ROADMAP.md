@@ -296,7 +296,7 @@ Plans:
   9. **Static wizard (from Phase 24 walkthrough):** in a normal-size browser window the primary Next/advance CTA is always reachable without scrolling the page — the wizard chrome is fixed and only the step content scrolls internally (long lists scroll; Next stays hittable).
   10. **No orphaned functionality:** the strangler close does not delete the still-live Diamond Drills USA drill-cart handoff or the canvas/legend PNG export (currently in legacy `Step3Canvas`) until they are re-homed in Phase 26 — no live feature is lost to the cleanup.
 
-**Plans**: 5/8 plans executed (25-06 UAT gate open; 25-07/25-08 gap closure for UAT Test 29 GAP-1/GAP-2)
+**Plans**: 6/8 plans executed
 **Wave 1**
 
 - [x] 25-01-PLAN.md — Delete legacy Step1/2/4 + collapse panel ternaries + tsc-driven dead-state grep-clean (D-01, SC1/SC2/SC4)
@@ -317,7 +317,7 @@ Plans:
 
 **Wave 5** *(gap closure — UAT Test 29 issues-found; GAP-1 + GAP-2 only; file-disjoint, parallel)*
 
-- [ ] 25-07-PLAN.md — GAP-1 (SC8): relocate the view-mode switcher + zoom controls off the canvas raster into a new CanvasControlBar in AtelierShell Zone 3 (above Back/Next); canvas viewport fills full height (D-05/D-07) [gap_closure]
+- [x] 25-07-PLAN.md — GAP-1 (SC8): relocate the view-mode switcher + zoom controls off the canvas raster into a new CanvasControlBar in AtelierShell Zone 3 (above Back/Next); canvas viewport fills full height (D-05/D-07) [gap_closure]
 - [ ] 25-08-PLAN.md — GAP-2 (SC9): pin the Supplies order-summary panel md:sticky (desktop) so it + Next stay in view while the drill list scrolls; mobile keeps natural flow (D-05) [gap_closure]
 
 ### Phase 26: Interim Customer Fulfillment — Canvas PNG Packet + Diamond Drills USA Order
@@ -365,7 +365,7 @@ Plans:
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
-| 25. Retire Legacy Steps + Cleanup | v4.0 | 5/6 | In Progress|  |
+| 25. Retire Legacy Steps + Cleanup | v4.0 | 6/8 | In Progress|  |
 | 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | TBD | Not started | — |
 
 ## Backlog
