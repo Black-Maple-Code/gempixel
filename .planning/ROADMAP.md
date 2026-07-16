@@ -296,7 +296,13 @@ Plans:
   9. **Static wizard (from Phase 24 walkthrough):** in a normal-size browser window the primary Next/advance CTA is always reachable without scrolling the page — the wizard chrome is fixed and only the step content scrolls internally (long lists scroll; Next stays hittable).
   10. **No orphaned functionality:** the strangler close does not delete the still-live Diamond Drills USA drill-cart handoff or the canvas/legend PNG export (currently in legacy `Step3Canvas`) until they are re-homed in Phase 26 — no live feature is lost to the cleanup.
 
-**Plans**: TBD
+**Plans**: 6 plans (Waves 1–4)
+- [ ] 25-01-PLAN.md — Delete legacy Step1/2/4 + collapse panel ternaries + tsc-driven dead-state grep-clean (D-01, SC1/SC2/SC4)
+- [ ] 25-02-PLAN.md — Re-token dark viewport to Atelier tokens + bottom-snap the view switcher (D-07/D-09, SC8)
+- [ ] 25-03-PLAN.md — viewer.ts persistent isFitMode fit-vs-user-zoom flag (D-04 foundation, SC8)
+- [ ] 25-04-PLAN.md — Auto-recompute on dimension change + clean re-fit + rail width-cap + retire manual stale UX/tests (D-02/D-04/D-06, SC5/SC8)
+- [ ] 25-05-PLAN.md — Fixed 3-zone wizard shell + Ctrl+P canvas-grid print + auto-advance on upload (D-05/D-03/D-08, SC9/SC6/SC5)
+- [ ] 25-06-PLAN.md — Regression gate + real-photo E2E re-verify, UAT Test 29 (SC7, SC10 guardrail check)
 
 ### Phase 26: Interim Customer Fulfillment — Canvas PNG Packet + Diamond Drills USA Order
 
@@ -343,7 +349,7 @@ Plans:
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
-| 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
+| 25. Retire Legacy Steps + Cleanup | v4.0 | 0/6 | Planned | — |
 | 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | TBD | Not started | — |
 
 ## Backlog
