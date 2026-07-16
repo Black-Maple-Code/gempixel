@@ -35,7 +35,7 @@ export interface StepBarProps {
 
 export function StepBar({ step, canEnter, goTo, stale }: StepBarProps) {
   return (
-    <nav aria-label="Progress" className="flex items-center gap-1.5">
+    <nav aria-label="Progress" className="flex items-center gap-1.5 @max-[640px]:min-w-0 @max-[640px]:overflow-x-auto">
       {STEP_META.map((meta, i) => {
         const isCurrent = step === meta.index;
         const isCompleted = meta.index < step;
@@ -54,7 +54,7 @@ export function StepBar({ step, canEnter, goTo, stale }: StepBarProps) {
             {i > 0 && (
               <span
                 aria-hidden="true"
-                className={`w-6 h-px ${connectorPassed ? 'bg-accent' : ''}`}
+                className={`w-6 h-px @max-[640px]:hidden ${connectorPassed ? 'bg-accent' : ''}`}
                 // Ahead-of-progress connector uses the handoff's fixed muted line
                 // color; it has no semantic token (passed connectors use bg-accent).
                 style={connectorPassed ? undefined : { backgroundColor: '#D8D0BC' }}
@@ -71,7 +71,7 @@ export function StepBar({ step, canEnter, goTo, stale }: StepBarProps) {
                 aria-disabled={isLocked ? 'true' : undefined}
                 data-stale={isStale ? 'true' : undefined}
                 tabIndex={isLocked ? -1 : undefined}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 @max-[640px]:px-2 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all ${
                   isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
                 } ${isCurrent ? 'text-ink font-bold' : 'text-muted'}`}
               >
@@ -93,7 +93,7 @@ export function StepBar({ step, canEnter, goTo, stale }: StepBarProps) {
                     />
                   )}
                 </span>
-                {meta.label}
+                <span className="@max-[640px]:sr-only">{meta.label}</span>
                 {isStale && <span className="sr-only"> (out of date)</span>}
               </button>
 
