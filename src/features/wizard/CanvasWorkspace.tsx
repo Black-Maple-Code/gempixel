@@ -4,10 +4,14 @@ import type { ColorSymbolMap } from '../../engine/symbols';
 
 /**
  * CanvasWorkspace — the center-canvas preview region (the `viewport-dots`
- * surface hosting the SINGLE-MOUNT `<canvas>`, the floating viewport HUD,
- * zoom controls, low-zoom warning, print legends, and the loading overlay).
- * The match/action error banners were hoisted to frame scope in App (Plan 08)
- * so they surface on any step, not only while the canvas is visible.
+ * surface hosting the SINGLE-MOUNT `<canvas>`, the reference-mode full-res
+ * image, print legends, the drag/scroll hint pill, and the loading overlay).
+ * The view-mode switcher + zoom controls were relocated to CanvasControlBar
+ * (Plan 25-07, GAP-1/SC8) — an in-flow strip in AtelierShell Zone 3 above
+ * Back/Next — so no chrome floats over the raster and the canvas fills the
+ * full height. The match/action error banners were hoisted to frame scope in
+ * App (Plan 08) so they surface on any step, not only while the canvas is
+ * visible.
  *
  * PURE / props-only (Phase 20 D-01): App.tsx stays the sole state owner. This
  * component owns NO domain state and imports NO engine *value* (only the
@@ -37,15 +41,8 @@ export interface CanvasWorkspaceProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   image: HTMLImageElement | null;
   matchResult: RawMatch | null;
+  /** Drives the canvas hidden/reference toggle + the hint pill. Owned by App. */
   viewportMode: 'grid' | 'symbols' | 'reference';
-  setViewportMode: (mode: 'grid' | 'symbols' | 'reference') => void;
-  /** Wraps `viewerRef.current?.zoomIn()` — the ref stays in App. */
-  onZoomIn: () => void;
-  /** Wraps `viewerRef.current?.zoomOut()`. */
-  onZoomOut: () => void;
-  /** Wraps `viewerRef.current?.fitToContainer()`. */
-  onFit: () => void;
-  zoomScale: number;
   cols: number;
   rows: number;
   symbolMap: ColorSymbolMap;
@@ -62,11 +59,6 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
     image,
     matchResult,
     viewportMode,
-    setViewportMode,
-    onZoomIn,
-    onZoomOut,
-    onFit,
-    zoomScale,
     cols,
     rows,
     symbolMap,
@@ -79,66 +71,9 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
 
   return (
     <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-bg viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
-      {/* Floating Viewport HUD overlay — zoom controls + low-zoom warning.
-          The view-mode switcher moved to a bottom-snapped dock (D-07); this top
-          HUD now only renders in grid/symbols mode where zoom is meaningful, so
-          it never shows as an empty glass box in reference mode. */}
-      {image && (viewportMode === 'grid' || viewportMode === 'symbols') && (
-        <div
-          className="viewport-hud no-print"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {/* Zoom controls */}
-          {(viewportMode === 'grid' || viewportMode === 'symbols') && (
-            <div className="flex items-center gap-1">
-              <div className="tooltip-group">
-                <button
-                  onClick={() => onZoomIn()}
-                  aria-label="Zoom in"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
-                >
-                  ➕
-                </button>
-                <div className="tooltip-box">Zoom In</div>
-              </div>
-
-              <div className="tooltip-group">
-                <button
-                  onClick={() => onZoomOut()}
-                  aria-label="Zoom out"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
-                >
-                  ➖
-                </button>
-                <div className="tooltip-box">Zoom Out</div>
-              </div>
-
-              <div className="tooltip-group">
-                <button
-                  onClick={() => onFit()}
-                  aria-label="Fit to screen"
-                  className="min-h-[44px] min-w-[44px] p-1.5 rounded-lg hover:bg-border text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
-                >
-                  ⛶
-                  <span className="hidden">Zoom</span>
-                </button>
-                <div className="tooltip-box">Fit to Screen</div>
-              </div>
-            </div>
-          )}
-
-          {/* Low zoom warning */}
-          {viewportMode === 'symbols' && zoomScale * 16 < 10 && (
-            <div className="tooltip-group flex items-center border-l border-border pl-3">
-              <div className="px-2 py-1 rounded bg-warn/15 border border-warn/40 text-warn text-[10px] font-bold select-none cursor-default flex items-center gap-1 whitespace-nowrap animate-pulse">
-                ⚠️ Low Zoom
-              </div>
-              <div className="tooltip-box">Zoom in to view symbol overlays (disabled at &lt;10px cell size)</div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* The zoom HUD + view-mode switcher were relocated to CanvasControlBar
+          (Plan 25-07, GAP-1/SC8) — an in-flow strip in AtelierShell Zone 3 — so
+          nothing floats over the raster and the canvas fills the full height. */}
       {(image || matchResult) && (
         <div className="print-canvas-sheet w-full h-full flex items-center justify-center print:grid print:grid-cols-[140px_1fr_140px] print:gap-2">
           {/* Left print legend */}
@@ -193,39 +128,6 @@ export function CanvasWorkspace(props: CanvasWorkspaceProps) {
               <span className="text-[10px] text-faint font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
             </div>
           )}
-        </div>
-      )}
-
-      {/* View-mode switcher — bottom-snapped dock (D-07), horizontally centered,
-          stacked above the hint pill (>=8px clear) and never overlapping the
-          canvas raster. Mirrors the hint-pill glass/positioning idiom. */}
-      {image && (
-        <div
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 no-print flex bg-panel/80 rounded-lg p-0.5 border border-border backdrop-blur"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {(['grid', 'symbols', 'reference'] as const).map(mode => {
-            const isActive = viewportMode === mode;
-            const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
-            const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
-            return (
-              <div key={mode} className="tooltip-group">
-                <button
-                  onClick={() => setViewportMode(mode)}
-                  aria-pressed={isActive}
-                  className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-accent text-on-accent shadow shadow-accent/20'
-                      : 'text-muted hover:text-ink'
-                  }`}
-                >
-                  {label}
-                </button>
-                <div className="tooltip-box">{tooltip}</div>
-              </div>
-            );
-          })}
         </div>
       )}
 
