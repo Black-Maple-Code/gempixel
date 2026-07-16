@@ -360,7 +360,7 @@ Plans:
 
 **Wave 4** *(blocked on 26-03 — D-08 re-token + grep-gate)*
 
-- [ ] 26-04-PLAN.md — Re-token the error banners + Save Project Modal to Atelier light; reword stale shell comment; enforce the hard D-08 grep-gate (ORDER-04, ORDER-05, D-08) [Wave 4]
+- [x] 26-04-PLAN.md — Re-token the error banners + Save Project Modal to Atelier light; reword stale shell comment; enforce the hard D-08 grep-gate (ORDER-04, ORDER-05, D-08) [Wave 4]
 
 ## Progress
 
@@ -383,7 +383,7 @@ Plans:
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | 8/8 | Complete    | 2026-07-16 |
-| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 3/4 | In Progress|  |
+| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 4/4 | Complete    | 2026-07-16 |
 
 ## Backlog
 
