@@ -2,12 +2,12 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
-import { drawCanvasOnly, drawCombinedCanvasSheet, drawLegendOnly, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
+import { drawCanvasOnly, drawCombinedCanvasSheet, drawLegendOnly, triggerCanvasDownload } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
 import { buildOrderQuote } from './engine/quote';
 import { gridToInches, formatInches } from './engine/density';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
+import { toCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
 import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
@@ -16,8 +16,6 @@ import { useWizard } from './features/wizard/useWizard';
 import { AtelierShell } from './features/wizard/AtelierShell';
 import { CanvasWorkspace } from './features/wizard/CanvasWorkspace';
 import { CanvasControlBar } from './features/wizard/CanvasControlBar';
-import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
-import { USE_NEW_SUPPLIES } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
 import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
 import { SuppliesScreen, type SuppliesScreenProps } from './features/screens/SuppliesScreen';
@@ -209,7 +207,6 @@ export function App() {
   const [drillType, setDrillType] = useState<'standard' | 'ab' | 'glow' | 'crystal'>('standard');
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set());
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
-  const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
 
   // ORDER-01/02/04/05 (D-06/D-07/D-08/D-09): Order-screen-only state. App stays sole
   // state owner (D-01/D-02); the pure OrderScreen reads these via props. `finish` is a
@@ -257,8 +254,10 @@ export function App() {
   const [enableReduce, setEnableReduce] = useState(false);
   const [targetColorCount, setTargetColorCount] = useState<number>(256);
   // Lazy-init read migrated onto the guarded hook; the imperative checkout writes
-  // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here.
-  const [unmappedLog, setUnmappedLog] = usePersistentState<string[]>(
+  // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here. The log VALUE
+  // is no longer read on any live surface (its Step3Canvas readout was deleted in
+  // 26-03); only the setter persists the checkout-time unmapped-colors log.
+  const [, setUnmappedLog] = usePersistentState<string[]>(
     'gempixel_unmapped_colors_log', [], codecs.stringArray()
   );
 
@@ -273,10 +272,6 @@ export function App() {
     1000: 1.80,
     2000: 3.20
   });
-
-  const updatePriceDb = (qty: 200 | 500 | 1000 | 2000, val: number) => {
-    setPriceDb(prev => ({ ...prev, [qty]: val }));
-  };
 
   // WR-01: when loadProject restores a project whose drillType differs from the
   // active one, it also restores that project's saved per-bag prices. The
@@ -316,28 +311,6 @@ export function App() {
     }
   }, [widthInput, heightInput, unit, selectedVendor, image, activeProjectId]);
 
-  const sizingAdviceData = useMemo(() => {
-    // Physical size is derived from the grid itself (10 dots per inch => 2.54 cm),
-    // so the advice is always in inches + cm regardless of the sizing mode.
-    const wIn = cols / 10;
-    const hIn = rows / 10;
-    const toCm = (inches: number) => inches * 2.54;
-    const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
-    const wrapIn = 1; // legend/wrap buffer for the combined sheet, each side
-    const framerIn = FRAMER_MARGIN_CELLS / 10; // framer wrap baked into the Canvas Grid PNG, each side
-
-    return {
-      gridIn: `${fmt(wIn)}″ × ${fmt(hIn)}″`,
-      gridCm: `${fmt(toCm(wIn))} × ${fmt(toCm(hIn))} cm`,
-      combinedIn: `${fmt(wIn + wrapIn * 2)}″ × ${fmt(hIn + wrapIn * 2)}″`,
-      combinedCm: `${fmt(toCm(wIn + wrapIn * 2))} × ${fmt(toCm(hIn + wrapIn * 2))} cm`,
-      canvasOnlyIn: `${fmt(wIn + framerIn * 2)}″ × ${fmt(hIn + framerIn * 2)}″`,
-      canvasOnlyCm: `${fmt(toCm(wIn + framerIn * 2))} × ${fmt(toCm(hIn + framerIn * 2))} cm`,
-      framer: `${fmt(framerIn)}″ (${fmt(toCm(framerIn))} cm)`,
-      wrap: `${wrapIn}″ (${fmt(toCm(wrapIn))} cm)`,
-    };
-  }, [cols, rows]);
-
   const loadProject = (id: string) => {
     const project = projectStore.load(id);
     if (!project) return;
@@ -366,9 +339,8 @@ export function App() {
     setHighlightedColor(null);
     // Sanitize money-typed loads to a finite, non-negative NUMBER at the state
     // boundary. `??` only guards null/undefined, so a tampered/imported value
-    // (e.g. the string '1e999') would otherwise reach the always-mounted
-    // Step3Canvas panel (D-14) and throw on `.toFixed()` (CR-01). Clamping here
-    // keeps the eagerly-rendered panel robust without touching the Step body.
+    // (e.g. the string '1e999') would otherwise reach the money math (toCents) in
+    // the render body and throw (CR-01). Clamping here keeps the render robust.
     setCanvasBaseCost(sanitizeMoney(project.kitBaseCost ?? 15.0));
     setDrillPacketCost(sanitizeMoney(project.drillPacketCost ?? 0.25));
     setCanvasTemplate(project.canvasTemplate || '');
@@ -989,23 +961,6 @@ export function App() {
     reader.readAsDataURL(file);
   };
 
-  // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
-  // (header + static savings/why banner + per-color supply table + reconciled
-  // proposed total) via its own print-only mode, mirroring the proven
-  // print-only-legend-mode pattern. The plain @media print path hid the report
-  // (it lived inside <aside>, which @media print sets display:none), so the
-  // button previously printed the canvas grid instead of a report — this mode
-  // reveals ONLY the .supply-report-print-container. Cleanup on afterprint.
-  const printReport = () => {
-    document.body.classList.add('print-only-report-mode');
-    window.print();
-    const cleanup = () => {
-      document.body.classList.remove('print-only-report-mode');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-  };
-
   const handleDownloadCanvasOnly = async () => {
     if (!matchResult) return;
     setActionError(null);
@@ -1085,16 +1040,6 @@ export function App() {
       console.error('Failed to download legend:', err);
       setActionError('Could not generate the download. Please try again.');
     }
-  };
-
-  const printLegendSheetOnly = () => {
-    document.body.classList.add('print-only-legend-mode');
-    window.print();
-    const cleanup = () => {
-      document.body.classList.remove('print-only-legend-mode');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
   };
 
   // BAG-02/D-13: the legend, per-color bags, total bag count and total cost are all
@@ -1185,15 +1130,12 @@ export function App() {
     toCents(sanitizeMoney(canvasBaseCost)) +
     toCents(sanitizeMoney(canvasShippingEstimate)) +
     safetyDrillCostCents;
-  const safetyDrillCost = fromCents(safetyDrillCostCents);
-  const totalCostSafety = fromCents(totalCostSafetyCents);
 
   // BAG-03/D-08: always-on savings headline sourced from the SHARED aggregator's
   // savingsCents/savingsPct (already integer-cents and clamped >= 0 in 16-02) —
   // formatted ONCE here via money.ts formatUSD and never recomputed. This single
-  // string feeds both the on-screen Step3Canvas headline and the static print
-  // mirror (D-10) so the two can never diverge. When there are no bulk savings
-  // (small-color plans), a truthful zero-state line renders rather than hiding.
+  // string feeds the static print-report mirror (D-10). When there are no bulk
+  // savings (small-color plans), a truthful zero-state line renders rather than hiding.
   const savingsHeadline =
     orderPlan.savingsCents > 0
       ? `Save ${formatUSD(orderPlan.savingsCents)} (${orderPlan.savingsPct}%) vs per-color`
@@ -1241,12 +1183,6 @@ export function App() {
     setActionError(current => (current === prevDerived || current === null ? next : current));
   }, [unpricedColorsKey, unmappedShapeKey, drillStyle]);
 
-  const [checkoutWarning, setCheckoutWarning] = useState<{
-    url: string;
-    isUrlTooLong: boolean;
-    unmappedItems: Array<{ dmcCode: string; handle: string }>;
-  } | null>(null);
-
   const handleShopifyCheckout = () => {
     if (!matchResult) return;
     setActionError(null);
@@ -1260,7 +1196,12 @@ export function App() {
     });
 
     const result = compileShopifyCartLink(items, affiliateTag, affiliateApp, priceDb);
-    
+
+    // D-08: the too-long / unmapped condition surfaces as honest, text-only notes on
+    // the shared actionError banner (the deleted dark-slate Checkout Warning modal's
+    // replacement) — never a modal. The cart still opens for the mapped colors.
+    const notes: string[] = [];
+
     if (result.unmappedItems.length > 0) {
       // Guard the stored-log read (W4 / T-11-06): a corrupt value (another tab or a
       // manual edit) must not throw and silently kill checkout. On parse failure we
@@ -1277,7 +1218,7 @@ export function App() {
           if (!Array.isArray(parsed)) throw new Error('not an array');
           return parsed as string[];
         } catch {
-          setActionError('Could not read the saved unmapped-colors log; continuing without it.');
+          notes.push('Could not read the saved unmapped-colors log; continuing without it.');
           return [];
         }
       })();
@@ -1285,15 +1226,30 @@ export function App() {
       const updatedLog = Array.from(new Set([...savedLog, ...newCodes]));
       safeStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(updatedLog));
       setUnmappedLog(updatedLog);
+
+      // Name the unmapped colors on the banner — they can't be direct-added to the
+      // cart and must be added manually at Diamond Drills USA (D-08).
+      notes.push(
+        `Some colors aren’t in the direct-add catalog and must be added manually at Diamond Drills USA: ${newCodes.join(', ')}.`
+      );
     }
-    
-    if (result.isUrlTooLong || result.unmappedItems.length > 0) {
-      setCheckoutWarning(result);
-    } else {
-      window.open(result.url, '_blank', 'noopener,noreferrer');
-      // Honest section-② done-state: the cart was OPENED (never "ordered", D-06).
-      setCartOpened(true);
+
+    if (result.isUrlTooLong) {
+      notes.push(
+        'The cart link is very long — if it doesn’t open, order the drills in a smaller batch.'
+      );
     }
+
+    if (notes.length > 0) {
+      setActionError(notes.join(' '));
+    }
+
+    // Always open the cart for the mapped colors and mark it opened (D-06/D-08): no
+    // modal gate — the banner carries any caveat while the cart still opens. Preserve
+    // the reverse-tabnabbing-safe flags verbatim (T-26-07).
+    window.open(result.url, '_blank', 'noopener,noreferrer');
+    // Honest section-② done-state: the cart was OPENED (never "ordered", D-06).
+    setCartOpened(true);
   };
 
   // ── Refine screen props (23-03, D-03..D-06) ────────────────────────────────
@@ -1661,38 +1617,7 @@ export function App() {
         </div>
 
         <div data-step-panel="3" className={wizard.step === 3 ? 'contents no-print' : 'hidden'}>
-          {USE_NEW_SUPPLIES ? (
-            <SuppliesScreen {...suppliesProps} />
-          ) : (
-          <Step3Canvas
-            selectedVendor={selectedVendor}
-            setSelectedVendor={setSelectedVendor}
-            canvasBaseCost={canvasBaseCost}
-            setCanvasBaseCost={setCanvasBaseCost}
-            canvasShippingEstimate={canvasShippingEstimate}
-            setCanvasShippingEstimate={setCanvasShippingEstimate}
-            priceDb={priceDb}
-            updatePriceDb={updatePriceDb}
-            totalSafetyDrills={totalSafetyDrills}
-            totalPackets={totalPackets}
-            safetyDrillCost={safetyDrillCost}
-            totalCostSafety={totalCostSafety}
-            savingsHeadline={savingsHeadline}
-            matchResult={matchResult}
-            sizingAdviceData={sizingAdviceData}
-            affiliateTag={affiliateTag}
-            setAffiliateTag={setAffiliateTag}
-            affiliateApp={affiliateApp}
-            setAffiliateApp={setAffiliateApp}
-            unmappedLog={unmappedLog}
-            setUnmappedLog={setUnmappedLog}
-            handleShopifyCheckout={handleShopifyCheckout}
-            handleDownloadCanvasOnly={handleDownloadCanvasOnly}
-            handleDownloadCombinedCanvasSheet={handleDownloadCombinedCanvasSheet}
-            printLegendSheetOnly={printLegendSheetOnly}
-            printReport={printReport}
-          />
-          )}
+          <SuppliesScreen {...suppliesProps} />
         </div>
 
         <div data-step-panel="4" className={wizard.step === 4 ? 'contents no-print' : 'hidden'}>
@@ -1705,200 +1630,6 @@ export function App() {
       </div>
     </div>
 
-      {/* Artist Resources Modal */}
-      {resourcesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            {/* Top Close Button */}
-            <button
-              onClick={() => setResourcesModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer transition-colors p-1 rounded-full hover:bg-slate-800/60"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Artist Resource Directory</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Curated links to print custom canvas layouts and purchase bulk DMC replacement drills.</p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {/* Category 1: Printing Custom Canvas */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Custom Canvas Printing</span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">ADiamondPainting Custom Prints</span>
-                      <span className="text-[10px] text-slate-500">Factory-direct printing with poured glue and drop-shipping support.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                  
-                  <a
-                    href="https://pandacraftysteam.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">Panda Crafty Sourcing</span>
-                      <span className="text-[10px] text-slate-500">High-quality OEM factory manufacturing for custom canvases and kits.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* Category 2: Bulk replacement drills */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bulk replacement drills</span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="https://diamonddrillsusa.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">Diamond Drills USA</span>
-                      <span className="text-[10px] text-slate-500">Fast US shipping for round and square DMC replacement drill bags.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                  
-                  <a
-                    href="https://www.aliexpress.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">AliExpress Replacement Outlets</span>
-                      <span className="text-[10px] text-slate-500">Inexpensive wholesale source for large quantity orders.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setResourcesModalOpen(false)}
-              className="mt-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
-            >
-              Close Directory
-            </button>
-          </div>
-        </div>
-      )}
-
-
-      {/* Checkout Warning Modal */}
-      {checkoutWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            {/* Top Close Button */}
-            <button
-              onClick={() => setCheckoutWarning(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer transition-colors p-1 rounded-full hover:bg-slate-800/60"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-white bg-gradient-to-r from-red-400 to-amber-400 bg-clip-text text-transparent">
-                Checkout Warnings & Fallbacks
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Review issues before proceeding to checkout at Diamond Drills USA.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
-              {checkoutWarning.isUrlTooLong && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-200">
-                  <span className="font-bold block mb-1">⚠️ Cart Link Too Long</span>
-                  The compiled cart permalink exceeds 2,000 characters. Shopify's server may reject it with a "414 URI Too Long" error. You can still try the link, or order colors individually using the links below.
-                </div>
-              )}
-
-              {checkoutWarning.unmappedItems.length > 0 && (
-                <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-850 flex flex-col gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Unmapped Colors ({checkoutWarning.unmappedItems.length})
-                  </span>
-                  <p className="text-[11px] text-slate-400">
-                    These colors are not mapped in the database. Please search or add them manually:
-                  </p>
-                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-                    {checkoutWarning.unmappedItems.map((item) => (
-                      <div key={item.dmcCode} className="flex items-center justify-between bg-slate-900/60 p-2 rounded border border-slate-800 text-xs">
-                        <span className="font-mono font-bold text-slate-200">DMC {item.dmcCode}</span>
-                        <div className="flex gap-2 items-center flex-wrap">
-                          <a
-                            href={`https://diamonddrillsusa.com/products/${item.handle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            DiamondDrillsUSA ↗
-                          </a>
-                          <span className="text-slate-700">|</span>
-                          <a
-                            href={`https://www.aliexpress.com/wholesale?SearchText=dmc+${item.dmcCode}+diamond+painting+drills`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            AliExpress ↗
-                          </a>
-                          <span className="text-slate-700">|</span>
-                          <a
-                            href={`https://www.temu.com/search_result.html?search_key=dmc+${item.dmcCode}+diamond+painting+drills`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            Temu ↗
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2.5 mt-2 border-t border-slate-850 pt-3">
-              <button
-                onClick={() => {
-                  window.open(checkoutWarning.url, '_blank', 'noopener,noreferrer');
-                  setCheckoutWarning(null);
-                }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors text-center"
-              >
-                Proceed to Shopify Cart anyway
-              </button>
-              <button
-                onClick={() => setCheckoutWarning(null)}
-                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Save Project Modal */}
       {saveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
