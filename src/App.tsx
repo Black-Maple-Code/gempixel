@@ -16,7 +16,7 @@ import { useWizard } from './features/wizard/useWizard';
 import { AtelierShell } from './features/wizard/AtelierShell';
 import { CanvasWorkspace } from './features/wizard/CanvasWorkspace';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
-import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from './features/screens/flags';
+import { USE_NEW_SUPPLIES } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
 import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
 import { SuppliesScreen, type SuppliesScreenProps } from './features/screens/SuppliesScreen';
@@ -169,22 +169,18 @@ export function App() {
   const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => projectStore.list());
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   // Unified one-shot action-error banner (ERR-01). Surfaces imperative failures —
   // save quota-full (CR-02/B3, folded in from the former saveErrorMsg), download
   // generation failures, and a corrupt checkout unmapped-colors log. Each action
   // handler clears it at its start (clear-then-act) and it is dismissible.
   const [actionError, setActionError] = useState<string | null>(null);
-  // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
-  // ingestion settings sit near the top without scrolling; user can reopen it.
-  const [imageSourceOpen, setImageSourceOpen] = useState(true);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');
   const [heightInput, setHeightInput] = useState<string>('53');
-  const [selectedPreset, setSelectedPreset] = useState<string>('custom');
-  const [excludeListOpen, setExcludeListOpen] = useState(false);
-  const [recsOpen, setRecsOpen] = useState(true);
+  // selectedPreset is no longer read by any live screen (legacy Step1Ingest showed it);
+  // the setter is retained because live size-change handlers still reset it to 'custom'.
+  const [, setSelectedPreset] = useState<string>('custom');
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
@@ -201,10 +197,7 @@ export function App() {
   const [sortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<RecentImage[]>(() => projectStore.recents.list());
 
-  const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
-
   // wizardStep state now lives in useWizard (wired below, after the match hook).
-  const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain'>('cover');
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
   const [drillType, setDrillType] = useState<'standard' | 'ab' | 'glow' | 'crystal'>('standard');
@@ -231,11 +224,11 @@ export function App() {
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
   // Default ON — auto-substitute low-count colors unless the user opted out.
-  const [enableSubstitution, setEnableSubstitution] = usePersistentState(
+  const [enableSubstitution] = usePersistentState(
     'gempixel_enable_substitution', true, codecs.bool
   );
   // Default threshold 15 — colors with a count of 15 and below are substituted.
-  const [substitutionThreshold, setSubstitutionThreshold] = usePersistentState(
+  const [substitutionThreshold] = usePersistentState(
     'gempixel_substitution_threshold', 15, codecs.int(15)
   );
   // Default ON (Light) — clean orphan drills / blotchy edges unless opted out.
@@ -410,7 +403,6 @@ export function App() {
   const resetWorkspace = () => {
     setActiveProjectId(null);
     setImage(null);
-    setImageSourceOpen(true);
     setImageName('');
     setCols(80);
     setRows(53);
@@ -511,13 +503,6 @@ export function App() {
     setActiveProjectId(projectId);
     setSaveModalOpen(false);
     return true;
-  };
-
-  const showSaveSuccess = () => {
-    setSaveSuccessMsg('Saved successfully!');
-    setTimeout(() => {
-      setSaveSuccessMsg('');
-    }, 3000);
   };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -776,22 +761,6 @@ export function App() {
     }
   }, [drillType, drillBagSize]);
 
-  // Handle changes to unit selector
-  const handleUnitChange = (newUnit: 'cm' | 'inch' | 'grid') => {
-    setUnit(newUnit);
-    setSelectedPreset('custom');
-    if (newUnit === 'grid') {
-      setWidthInput(cols.toString());
-      setHeightInput(rows.toString());
-    } else if (newUnit === 'cm') {
-      setWidthInput((cols / 4).toString());
-      setHeightInput((rows / 4).toString());
-    } else if (newUnit === 'inch') {
-      setWidthInput((cols / 10).toString());
-      setHeightInput((rows / 10).toString());
-    }
-  };
-
   const handleWidthChange = (valStr: string) => {
     setWidthInput(valStr);
     setSelectedPreset('custom');
@@ -864,30 +833,6 @@ export function App() {
     }
   };
 
-  const handlePresetChange = (e: Event) => {
-    const val = (e.target as HTMLSelectElement).value;
-    setSelectedPreset(val);
-    if (val === 'custom') return;
-
-    const preset = STANDARD_SIZES.find(s => s.value === val);
-    if (preset && preset.width && preset.height && preset.unit) {
-      setUnit(preset.unit as any);
-      setWidthInput(preset.width.toString());
-      setHeightInput(preset.height.toString());
-      if (preset.unit === 'cm') {
-        setCols(Math.max(1, Math.round(preset.width * 4)));
-        setRows(Math.max(1, Math.round(preset.height * 4)));
-      } else if (preset.unit === 'inch') {
-        setCols(Math.max(1, Math.round(preset.width * 10)));
-        setRows(Math.max(1, Math.round(preset.height * 10)));
-      } else if (preset.unit === 'grid') {
-        setCols(preset.width);
-        setRows(preset.height);
-      }
-    }
-  };
-
-
   // Toggle exclusion for a color
   const toggleColorExclusion = (dmc: string) => {
     setExcludedColors(prev => {
@@ -904,26 +849,6 @@ export function App() {
       }
       return next;
     });
-  };
-
-  const handleSelectAll = () => {
-    setExcludedColors(new Set());
-  };
-
-  const handleDeselectAll = () => {
-    if (baseCandidates.length > 0) {
-      const allOthers = baseCandidates.slice(1).map(c => c.dmc);
-      setExcludedColors(new Set(allOthers));
-    }
-  };
-
-  // Handle color row clicks in supply table for highlighting
-  const handleRowClick = (code: string) => {
-    const nextHighlight = highlightedColor === code ? null : code;
-    setHighlightedColor(nextHighlight);
-    if (viewerRef.current) {
-      viewerRef.current.setHighlightedColor(nextHighlight);
-    }
   };
 
   // Image loading helpers
@@ -981,7 +906,6 @@ export function App() {
         }
         setRows(newRows);
         setImage(img);
-        setImageSourceOpen(false);
         // D-13: the FIRST upload commits (a match computes); a re-upload after a
         // match already exists stays uncommitted → stale, so the worker never
         // silently re-fires — the user applies it via the "Recompute match" CTA.
@@ -1010,49 +934,6 @@ export function App() {
       img.src = dataUrlStr;
     };
     reader.readAsDataURL(file);
-  };
-
-  const loadRecentImage = (entry: { name: string; dataUrl: string; width: number; height: number }) => {
-    const img = new Image();
-    img.onload = () => {
-      setHighlightedColor(null);
-      setActiveProjectId(null);
-      setImageName(entry.name || 'Recent Image');
-
-      const ar = img.naturalWidth / img.naturalHeight;
-      let newRows = rows;
-      if (unit === 'grid') {
-        newRows = Math.max(1, Math.round(cols / ar));
-        setHeightInput(newRows.toString());
-      } else if (unit === 'cm') {
-        const currentWidthCm = cols / 4;
-        const newHeightCm = currentWidthCm / ar;
-        newRows = Math.max(1, Math.round(newHeightCm * 4));
-        setHeightInput(newHeightCm.toFixed(1));
-      } else if (unit === 'inch') {
-        const currentWidthInch = cols / 10;
-        const newHeightInch = currentWidthInch / ar;
-        newRows = Math.max(1, Math.round(newHeightInch * 10));
-        setHeightInput(newHeightInch.toFixed(1));
-      }
-      setRows(newRows);
-      setImage(img);
-      setImageSourceOpen(false);
-      // D-13: same fresh-vs-stale commit rule as a file upload (see loadImageFile).
-      // ME-02: reset the palette filters (exclusions + preset) only on the committing
-      // path, so re-selecting a recent image while stale doesn't re-fire the worker.
-      if (!matchResult) {
-        setExcludedColors(new Set());
-        setSelectedPreset('custom');
-        setMatchInputs({ image: img, cols, rows: newRows });
-      }
-    };
-    img.src = entry.dataUrl;
-  };
-
-  const deleteRecentImage = (id: string, e: Event) => {
-    e.stopPropagation();
-    setRecentImages(prev => prev.filter(x => x.id !== id));
   };
 
   // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
