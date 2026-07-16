@@ -297,11 +297,22 @@ Plans:
   10. **No orphaned functionality:** the strangler close does not delete the still-live Diamond Drills USA drill-cart handoff or the canvas/legend PNG export (currently in legacy `Step3Canvas`) until they are re-homed in Phase 26 — no live feature is lost to the cleanup.
 
 **Plans**: 6 plans (Waves 1–4)
+**Wave 1**
+
 - [ ] 25-01-PLAN.md — Delete legacy Step1/2/4 + collapse panel ternaries + tsc-driven dead-state grep-clean (D-01, SC1/SC2/SC4)
 - [ ] 25-02-PLAN.md — Re-token dark viewport to Atelier tokens + bottom-snap the view switcher (D-07/D-09, SC8)
 - [ ] 25-03-PLAN.md — viewer.ts persistent isFitMode fit-vs-user-zoom flag (D-04 foundation, SC8)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 25-04-PLAN.md — Auto-recompute on dimension change + clean re-fit + rail width-cap + retire manual stale UX/tests (D-02/D-04/D-06, SC5/SC8)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 25-05-PLAN.md — Fixed 3-zone wizard shell + Ctrl+P canvas-grid print + auto-advance on upload (D-05/D-03/D-08, SC9/SC6/SC5)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 25-06-PLAN.md — Regression gate + real-photo E2E re-verify, UAT Test 29 (SC7, SC10 guardrail check)
 
 ### Phase 26: Interim Customer Fulfillment — Canvas PNG Packet + Diamond Drills USA Order

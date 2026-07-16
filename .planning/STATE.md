@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Canvas-First Redesign — Phases 20–26
 current_phase: 25
 current_phase_name: Retire Legacy Steps + Cleanup
-status: verifying
-stopped_at: Phase 25 context gathered
-last_updated: "2026-07-16T06:27:28.644Z"
+status: executing
+stopped_at: Phase 25 UI-SPEC approved
+last_updated: "2026-07-16T07:32:26.756Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 24 complete, transitioned to Phase 25
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 25 — Retire Legacy Steps + Cleanup
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-16 — Phase 24 complete, transitioned to Phase 25
 
 Progress: [██████████] 100%
@@ -158,9 +158,9 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T06:27:28.634Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-CONTEXT.md
+Last session: 2026-07-16T06:41:20.000Z
+Stopped at: Phase 25 UI-SPEC approved
+Resume file: .planning/phases/25-retire-legacy-steps-cleanup/25-UI-SPEC.md
 
 ## Decisions
 
