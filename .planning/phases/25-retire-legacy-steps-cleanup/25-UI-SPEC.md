@@ -1,10 +1,11 @@
 ---
 phase: 25
 slug: retire-legacy-steps-cleanup
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-07-16
+reviewed_at: 2026-07-16
 ---
 
 # Phase 25 — UI Design Contract
@@ -84,8 +85,9 @@ Fonts are locked (self-hosted via Fontaine). Roles in active use:
 | Small label / pill / uppercase eyebrow | 12px (`text-xs`) | 700 (bold), `uppercase tracking-wide` | 1.4 | Archivo |
 | Micro / hint / tooltip / legend | 10px (`text-[10px]`) | 500–700, `uppercase tracking-wider` on switch labels | 1.5 | Archivo / JetBrains Mono (counts) |
 
-**Weights:** two-weight discipline for text — **regular (400)** for body, **semibold/bold (600–700)** for
-emphasis, labels, and CTAs. No new weights introduced this phase.
+**Weights:** the shipped weight set is **400 / 500 / 600 / 700** — regular (400) for body, medium (500) for
+control-label emphasis, semibold (600) for the display wordmark, bold (700) for pills / uppercase eyebrows /
+CTAs. No new weights are introduced this phase.
 
 **Phase-25 note:** the view-switcher segment labels ("Grid Colors" / "Grid + Symbols" / "Original Photo")
 and the drills hint stay at the 10px uppercase micro role. The "recomputing…" pending label reuses the
@@ -133,6 +135,14 @@ Step1/2/4 deletions are code-level; removing the manual Recompute button is a si
 > The remap shim currently makes these render "correctly" already; the requirement is to stop **depending**
 > on the shim (D-01 removes the theme remnants that motivated it). Visual result is unchanged-or-better;
 > the checker validates by class name, not just rendered color.
+
+**Accessibility (Visuals) — emoji-glyph buttons must stay labelled.** The zoom/HUD controls render as bare
+emoji glyphs (`➕ ➖ ⛶`, plus the `⚠️` low-zoom badge), which are not reliable accessible names on their own.
+During the D-09 re-token sweep the three zoom/HUD buttons MUST retain (or gain) explicit `aria-label`s —
+**"Zoom in" / "Zoom out" / "Fit to screen"** — and the re-token must not strip them. The existing
+`CanvasWorkspace.tsx` markup already carries `aria-label="Zoom In"`, `aria-label="Zoom Out"`, and
+`aria-label="Fit Viewport"` on these buttons; verify they survive the class-name churn (align the strings to
+"Zoom in" / "Zoom out" / "Fit to screen" if touched) and are never replaced by glyph-only buttons.
 
 ---
 
