@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
 import { App } from '../App';
-import { projectStore } from '../engine/projectStore';
 import { planOrderSupply } from '../engine/bagPlanner';
 import { DMC_PALETTE } from '../engine/palette';
 
@@ -181,13 +180,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   // UI and the case no longer applies. Grid ↔ inch derivation is covered by density.ts
   // unit tests (gridToInches/formatInches) and the SizeCard inch-string assertions.
 
-  // TODO(25): the editable pricing config grid (canvas cost, est. shipping, per-bag
+  // TODO(26): the editable pricing config grid (canvas cost, est. shipping, per-bag
   // 200/500/1k/2k prices) lived in the legacy Step3Canvas body. Flipping
   // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which is a
   // read-only supply table + single-source order summary (D-07) — price EDITING has
   // no canvas-first home yet (an Order/vendor concern). The underlying priceDb still
   // feeds planOrderSupply/buildOrderQuote; only its input UI left panel-3. Un-skip
-  // when a price-config surface is re-homed, or retire in the Phase 25 cleanup.
+  // when a price-config surface is re-homed, or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
   it.skip('calculates supply costing commission quotes correctly in quote tab', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
@@ -224,50 +223,14 @@ describe('App Component Mounting and Basic UI Inputs', () => {
   // strangler retirement of deleted chrome, pulled forward from Phase 25. Canvas-first
   // navigation is covered by the StepBar/#wizard-*-btn tests, which survive the flip.
 
-  // TODO(25): the legacy drill-TYPE select (standard/ab/glow/crystal) lived in
-  // Step2Palette; flipping USE_NEW_REFINE (23-03) swaps in RefineScreen, whose Advanced
-  // disclosure holds kit / color-exclude / drill-SHAPE (REFINE-05) — not drill type.
-  // drill type has no canvas-first home yet (a Supplies/Order pricing concern deferred to
-  // the Phase 25 strangler cleanup). The underlying priceDb-preset effect still runs; only
-  // its UI driver moved out of panel-2. Un-skip when drill type gets a new home / is retired.
-  it.skip('updates the per-bag-size price presets when drill type changes', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
+  // RETIRED(25-01): the legacy drill-TYPE select (standard/ab/glow/crystal) lived in the
+  // deleted Step2Palette panel-2 body. The priceDb drill-type preset effect still runs;
+  // drill type has no canvas-first UI home this milestone.
 
-    // D-14: both the Refine (step 2) and Supplies (step 3) panels are always
-    // mounted, so the drill-type select and the price grid are asserted directly
-    // by scoping to their panels — no navigation required.
-    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
-    expect(step2).toBeTruthy();
-    const drillTypeSelect = step2.querySelectorAll('select')[1] as HTMLSelectElement; // [0]=DMC kit, [1]=drill type
-    expect(drillTypeSelect).toBeTruthy();
-
-    // Select 'ab' drill type
-    drillTypeSelect.value = 'ab';
-    drillTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-    // Single-plan UI (D-11): the per-bag-size price grid is the sole cost control.
-    // Switching to 'ab' loads the AB preset via the drillType effect (App.tsx ~L618),
-    // which is a two-phase async update: setDrillType -> re-render -> effect ->
-    // setPriceDb -> re-render. Poll for the 200-qty input to reflect the AB preset
-    // rather than assuming a fixed settle time — a fixed 10ms wait was intermittently
-    // too short under load and read the pre-effect standard default ('0.6').
-    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
-    let price200Input = step3.querySelectorAll('input[type="number"]')[2] as HTMLInputElement;
-    for (let i = 0; i < 50 && price200Input?.value !== '0.7'; i++) {
-      await new Promise(r => setTimeout(r, 10));
-      price200Input = step3.querySelectorAll('input[type="number"]')[2] as HTMLInputElement;
-    }
-
-    const inputs = step3.querySelectorAll('input[type="number"]');
-    expect(inputs.length).toBe(6);
-    expect(price200Input.value).toBe('0.7'); // AB 200-qty preset
-  });
-
-  // TODO(25): as above — the per-bag-size price grid was the legacy Step3Canvas
+  // TODO(26): as above — the per-bag-size price grid was the legacy Step3Canvas
   // price-config UI, which has no canvas-first home after the USE_NEW_SUPPLIES flip
   // (SuppliesScreen is a read-only supply table + order summary). Un-skip on re-home
-  // or retire in the Phase 25 strangler cleanup.
+  // or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
   it.skip('renders the 4 per-bag-size price inputs unconditionally (single-plan UI, D-11)', async () => {
     render(<App />, container);
     await new Promise(r => setTimeout(r, 0));
@@ -624,95 +587,16 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(viewerConstructions.count).toBe(constructionsAtMount);
     });
 
-    // TODO(25): the auto-substitution checkbox + threshold slider lived in Step2Palette;
-    // flipping USE_NEW_REFINE (23-03) swaps in RefineScreen, whose color-count slider
-    // (REFINE-04) is the canvas-first color-merge control. The legacy substitution UI has
-    // no panel-2 home (its enableSubstitution/substitutionThreshold state still defaults ON
-    // and runs in the pipeline). Un-skip when/if a substitution control is re-homed, or
-    // retire with the legacy Step bodies in the Phase 25 strangler cleanup.
-    it.skip('supports auto-substitution UI toggles and threshold settings in Step 4', async () => {
-      const mockProjectSummary = {
-        id: 'test-project-sub',
-        name: 'Substitution Project',
-        thumbnail: '',
-        dateModified: new Date().toISOString(),
-        dateCreated: new Date().toISOString()
-      };
-      const mockProjectData = {
-        id: 'test-project-sub',
-        name: 'Substitution Project',
-        dateCreated: new Date().toISOString(),
-        dateModified: new Date().toISOString(),
-        dimensions: { cols: 80, rows: 53 },
-        unit: 'grid',
-        excludedColors: [],
-        drillStyle: 'square',
-        selectedBaseKit: 'all',
-        drillType: 'standard',
-        canvasBaseCost: 15,
-        drillPacketCost: 0.25,
-        drillBagSize: 200,
-        laborFee: 25,
-        markupType: 'fixed',
-        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
-        gridData: [0, 1]
-      };
+    // RETIRED(25-01): the auto-substitution checkbox + threshold slider lived in the
+    // deleted Step2Palette panel-2 body. RefineScreen's color-count slider (REFINE-04) is
+    // the canvas-first color-merge control; enableSubstitution still defaults ON in the pipeline.
 
-      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
-      localStorage.setItem('gempixel_project_test-project-sub', JSON.stringify(mockProjectData));
-
-      render(<App />, container);
-      await new Promise(r => setTimeout(r, 10));
-
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click to load project
-      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(rowBtn).toBeTruthy();
-      rowBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Progress to Step 4
-      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtn).toBeTruthy();
-      expect(nextBtn.disabled).toBe(false);
-
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
-      await new Promise(r => setTimeout(r, 10));
-
-      // Auto-substitute is ON by default; its threshold controls render immediately.
-      const subCheckbox = container.querySelector('#substitute-colors-checkbox') as HTMLInputElement;
-      expect(subCheckbox).toBeTruthy();
-      expect(subCheckbox.checked).toBe(true); // Default ON (count of 15 and below)
-
-      // Threshold input should render with the default of 15
-      const thresholdInput = Array.from(container.querySelectorAll('input[type="range"]')).find(i => (i as HTMLInputElement).value === '15') as HTMLInputElement;
-      expect(thresholdInput).toBeTruthy();
-
-      // Change threshold
-      thresholdInput.value = '50';
-      thresholdInput.dispatchEvent(new Event('input', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 10));
-
-      expect(thresholdInput.value).toBe('50');
-
-      // Toggling the checkbox off hides the threshold controls. Scope to the
-      // substitution slider (max=500); the smoothing slider (max=3) is separate.
-      subCheckbox.click();
-      await new Promise(r => setTimeout(r, 10));
-      expect(subCheckbox.checked).toBe(false);
-      expect(container.querySelector('input[type="range"][max="500"]')).toBeNull();
-    });
-
-    // TODO(25): the "Affiliate & Partner Settings" expander + unmapped-colors log +
+    // TODO(26): the "Affiliate & Partner Settings" expander + unmapped-colors log +
     // "Clear Log" control lived in the legacy Step3Canvas body. Flipping
     // USE_NEW_SUPPLIES (23-04) swaps in the canvas-first SuppliesScreen, which has no
     // affiliate/unmapped-log surface (an Order/vendor + diagnostics concern). The
     // underlying unmappedLog state + persistence still run; only their panel-3 UI
-    // driver left. Un-skip on re-home, or retire in the Phase 25 strangler cleanup.
+    // driver left. Un-skip on re-home, or retire in Phase 26 (D-01: Step3Canvas preserved this phase).
     it.skip('renders logged unmapped colors lists and handles clear action in settings', async () => {
       // Pre-seed local storage log & project
       localStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(['939', '3843']));
@@ -790,169 +674,13 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual([]);
     });
 
-    // TODO(25): the inline project save / Update / Save-as-Copy controls lived in the
-    // legacy Step4Export panel-4 body. Flipping USE_NEW_ORDER (23-05) swaps in the
-    // honest OrderScreen handoff (download packet — D-08/D-09), which has NO
-    // project-save UI; project-save is not part of the four-screen customer flow and
-    // has no canvas-first home this milestone. handleSaveProject + the workspace
-    // registry logic are UNCHANGED — only the panel-4 driver moved. Un-skip if a
-    // save affordance is re-homed, or retire with the legacy Step body in Phase 25.
-    it.skip('supports inline project save, update, and copy actions on Step 5', async () => {
-      const mockProjectSummary = {
-        id: 'test-project-save',
-        name: 'Initial Project Name',
-        thumbnail: '',
-        dateModified: new Date().toISOString(),
-        dateCreated: new Date().toISOString()
-      };
-      const mockProjectData = {
-        id: 'test-project-save',
-        name: 'Initial Project Name',
-        dateCreated: new Date().toISOString(),
-        dateModified: new Date().toISOString(),
-        dimensions: { cols: 80, rows: 53 },
-        unit: 'grid',
-        excludedColors: [],
-        drillStyle: 'square',
-        selectedBaseKit: 'all',
-        drillType: 'standard',
-        canvasBaseCost: 15,
-        drillPacketCost: 0.25,
-        drillBagSize: 200,
-        laborFee: 25,
-        markupType: 'fixed',
-        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
-        gridData: [0, 1]
-      };
+    // RETIRED(25-01): the inline project save / Update / Save-as-Copy controls lived in
+    // the deleted Step4Export panel-4 body. handleSaveProject + the workspace registry
+    // logic are unchanged; project-save is not part of the four-screen customer flow.
 
-      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
-      localStorage.setItem('gempixel_project_test-project-save', JSON.stringify(mockProjectData));
-
-      render(<App />, container);
-      await new Promise(r => setTimeout(r, 10));
-
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click to load project
-      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(rowBtn).toBeTruthy();
-      rowBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Advance to Step 4
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
-      await new Promise(r => setTimeout(r, 10));
-
-      // Locate inline name input in Step 4
-      const nameInput = container.querySelector('#step4-save-name-input') as HTMLInputElement;
-      expect(nameInput).toBeTruthy();
-      expect(nameInput.value).toBe('Initial Project Name');
-
-      // Edit name
-      nameInput.value = 'Updated Project Name';
-      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click Update button
-      const updateBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Update') as HTMLButtonElement;
-      expect(updateBtn).toBeTruthy();
-      updateBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Check updated name in local storage
-      const registry = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
-      expect(registry[0].name).toBe('Updated Project Name');
-
-      // Click Save as Copy button
-      const copyBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Save as Copy') as HTMLButtonElement;
-      expect(copyBtn).toBeTruthy();
-      copyBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Check registry now has 2 projects
-      const registryAfterCopy = JSON.parse(localStorage.getItem('gempixel_workspace_registry') || '[]');
-      expect(registryAfterCopy.length).toBe(2);
-    });
-
-    // TODO(25): the "Start New Image / Reset" button lived in the legacy Step4Export
-    // panel-4 body, now displaced by the OrderScreen (USE_NEW_ORDER). resetWorkspace
-    // is UNCHANGED and still reachable elsewhere; the panel-4 trigger is gone. Reset
-    // has no canvas-first home in the four-screen flow this milestone. Un-skip if a
-    // reset affordance is re-homed, or retire with the legacy Step body in Phase 25.
-    it.skip('returns to Step 1 and resets workspace configuration when Start New Commission button is clicked on Step 5', async () => {
-      const mockProjectSummary = {
-        id: 'test-project-reset',
-        name: 'Reset Test Project',
-        thumbnail: '',
-        dateModified: new Date().toISOString(),
-        dateCreated: new Date().toISOString()
-      };
-      const mockProjectData = {
-        id: 'test-project-reset',
-        name: 'Reset Test Project',
-        dateCreated: new Date().toISOString(),
-        dateModified: new Date().toISOString(),
-        dimensions: { cols: 40, rows: 30 },
-        unit: 'grid',
-        excludedColors: [],
-        drillStyle: 'square',
-        selectedBaseKit: 'all',
-        drillType: 'standard',
-        canvasBaseCost: 15,
-        drillPacketCost: 0.25,
-        drillBagSize: 200,
-        laborFee: 25,
-        markupType: 'fixed',
-        pricesPerBagSize: { 200: 0.6, 500: 1.1, 1000: 1.8, 2000: 3.2 },
-        gridData: [0, 1]
-      };
-
-      localStorage.setItem('gempixel_workspace_registry', JSON.stringify([mockProjectSummary]));
-      localStorage.setItem('gempixel_project_test-project-reset', JSON.stringify(mockProjectData));
-
-      render(<App />, container);
-      await new Promise(r => setTimeout(r, 10));
-
-      // Toggle Commissions drawer open
-      const toggleBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('My Images'));
-      toggleBtn?.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click to load project
-      const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-      expect(rowBtn).toBeTruthy();
-      rowBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Advance to Step 4
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 2
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 3
-      await new Promise(r => setTimeout(r, 10));
-      (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click(); // to Step 4
-      await new Promise(r => setTimeout(r, 10));
-
-      // Click Start New Commission / Reset button
-      const resetBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start New Image / Reset') as HTMLButtonElement;
-      expect(resetBtn).toBeTruthy();
-      resetBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      // Verify we are back on Step 1 (Upload element exists)
-      expect(container.querySelector('#upload-file-input')).toBeTruthy();
-
-      // Next button should be disabled because image and project ID are reset
-      const nextBtnAfterReset = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtnAfterReset).toBeTruthy();
-      expect(nextBtnAfterReset.disabled).toBe(true);
-    });
+    // RETIRED(25-01): the "Start New Image / Reset" button lived in the deleted
+    // Step4Export panel-4 body. resetWorkspace is unchanged; it has no panel-4 trigger
+    // in the four-screen flow this milestone (no canvas-first home).
 
     // Re-homed from the legacy aspect-ratio "Recommended Canvas Sizes" recs (23-03):
     // canvas-size preset selection is now the RefineScreen SizeCards (curated grid dims,
@@ -1056,12 +784,12 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       localStorage.clear();
     });
 
-    // TODO(25): the "Download Canvas Grid (PNG)" trigger lived in the legacy
+    // TODO(26): the "Download Canvas Grid (PNG)" trigger lived in the legacy
     // Step3Canvas body (displaced by USE_NEW_SUPPLIES, 23-04). The generic
     // download-error → actionError affordance is now RE-HOMED to the OrderScreen
     // packet download ("surfaces the banner when the order-packet download fails",
     // above), so no coverage is dropped. This specific legacy PNG-download trigger
-    // + handleDownloadCanvasOnly stay for the dormant Step body; retire in Phase 25.
+    // + handleDownloadCanvasOnly stay for the dormant Step body; retire in Phase 26 (D-01).
     it.skip('shows the actionError banner when a canvas download fails (W5)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1079,11 +807,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(container.textContent).toMatch(/could not generate the download/i);
     });
 
-    // TODO(25): the "Order Drills" Shopify-checkout trigger lived in the legacy
+    // TODO(26): the "Order Drills" Shopify-checkout trigger lived in the legacy
     // Step3Canvas body. The canvas-first Order screen (23-05) is the HONEST handoff
     // (download packet, D-09) and deliberately has NO Shopify checkout / payment UI,
     // so this trigger has no canvas-first home. handleShopifyCheckout + its
-    // corrupt-log guard are UNCHANGED for the dormant Step body; retire in Phase 25.
+    // corrupt-log guard are UNCHANGED for the dormant Step body; retire in Phase 26 (D-01).
     it.skip('guards a corrupt unmapped-colors log during checkout and still proceeds (W4)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1108,9 +836,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    // TODO(25): same as the W4 case above — the honest Order screen (D-09) ships NO
+    // TODO(26): same as the W4 case above — the honest Order screen (D-09) ships NO
     // Shopify checkout, so the "Order Drills" trigger has no canvas-first home; the
-    // wrong-type-log guard in handleShopifyCheckout is unchanged. Retire in Phase 25.
+    // wrong-type-log guard in handleShopifyCheckout is unchanged. Retire in Phase 26 (D-01).
     it.skip('guards a valid-JSON-but-wrong-type unmapped-colors log during checkout (WR-02)', async () => {
       seedProject();
       await loadProjectToStep(3);
@@ -1134,28 +862,9 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(JSON.parse(localStorage.getItem('gempixel_unmapped_colors_log') ?? '[]')).toEqual(['939']);
     });
 
-    // TODO(25): the save-quota banner is triggered by the project "Update"/save button
-    // in the legacy Step4Export panel-4 body, now displaced by the OrderScreen
-    // (USE_NEW_ORDER). handleSaveProject + its quota→actionError catch are UNCHANGED;
-    // only the panel-4 save trigger moved. The Order screen's OWN download-error
-    // affordance IS re-homed below ("surfaces the banner when the order-packet
-    // download fails"). Un-skip if project-save is re-homed, or retire in Phase 25.
-    it.skip('surfaces the banner when a save hits the storage quota (B3 regression, folded into actionError)', async () => {
-      seedProject();
-      await loadProjectToStep(4);
-
-      // Force a quota failure through the unified banner (formerly saveErrorMsg).
-      vi.spyOn(projectStore, 'save').mockReturnValue({ ok: false, reason: 'quota' } as ReturnType<typeof projectStore.save>);
-
-      const updateBtn = Array.from(container.querySelectorAll('button')).find(
-        b => b.textContent === 'Update'
-      ) as HTMLButtonElement;
-      expect(updateBtn).toBeTruthy();
-      updateBtn.click();
-      await new Promise(r => setTimeout(r, 10));
-
-      expect(container.textContent).toMatch(/storage is full/i);
-    });
+    // RETIRED(25-01): the save-quota-via-Update test drove the deleted Step4Export
+    // panel-4 save form. handleSaveProject + its quota→actionError catch are unchanged;
+    // the OrderScreen packet-download-error banner (below) covers the surviving surface.
 
     // Re-homed from the W5 canvas-PNG download-error skip (23-04): the download-error
     // affordance now lives on the OrderScreen (the honest packet download, D-08). The
