@@ -6,14 +6,14 @@ current_phase: 26
 current_phase_name: interim-customer-fulfillment-canvas-png-packet-diamond-drill
 status: executing
 stopped_at: Phase 26 UI-SPEC approved
-last_updated: "2026-07-16T23:06:07.138Z"
+last_updated: "2026-07-16T23:20:29.384Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 26 execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 26 (interim-customer-fulfillment-canvas-png-packet-diamond-drill) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-16 — Phase 26 execution started
 
@@ -115,6 +115,7 @@ Progress: [██████████] 100%
 | Phase 25 P07 | 5 | 3 tasks | 5 files |
 | Phase 25 P08 | ~10m | 2 tasks | 2 files |
 | Phase 26 P02 | 15min | 2 tasks | 4 files |
+| Phase 26 P3 | 30min | 2 tasks | 6 files |
 
 ## Risk & Health
 
@@ -162,7 +163,7 @@ Items acknowledged and deferred at the v3.0 **force-close** (override closeout) 
 
 ## Session Continuity
 
-Last session: 2026-07-16T23:05:34.228Z
+Last session: 2026-07-16T23:20:01.416Z
 Stopped at: Phase 26 UI-SPEC approved
 Resume file: .planning/phases/26-interim-customer-fulfillment-canvas-png-packet-diamond-drill/26-UI-SPEC.md
 
@@ -212,6 +213,8 @@ Resume file: .planning/phases/26-interim-customer-fulfillment-canvas-png-packet-
 - [Phase ?]: 25-08: Pinned the Supplies order-summary panel with md:-prefixed sticky utilities (md:sticky md:top-0 md:self-start) — desktop pins within Zone 2 scroll region (25-05 D-05) while mobile keeps its Phase-24 single-column flow, closing GAP-2/SC9 class-only with zero new deps, contained to SuppliesScreen + its test.
 - [Phase ?]: 26-02: canvasDownloaded flips on ANY section-1 download, not packet-only (D-07)
 - [Phase 26]: 26-02: Order step is two independent honest task sections (canvas downloads + Diamond Drills USA cart) with per-task done-states replacing packetDownloaded
+- [Phase ?]: 26-03: strangler CLOSE — deleted Step3Canvas.tsx + flags.ts; panel-3 renders SuppliesScreen unconditionally (single UI tree, SC5/D-02)
+- [Phase ?]: 26-03: too-long/unmapped cart branch surfaces via the actionError banner (D-08); cart still opens for mapped colors
 
 ## Operator Next Steps
 
