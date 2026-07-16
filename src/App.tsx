@@ -15,10 +15,7 @@ import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
 import { AtelierShell } from './features/wizard/AtelierShell';
 import { CanvasWorkspace } from './features/wizard/CanvasWorkspace';
-import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
-import { Step2Palette } from './features/wizard/steps/Step2Palette';
 import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
-import { Step4Export } from './features/wizard/steps/Step4Export';
 import { USE_NEW_UPLOAD, USE_NEW_REFINE, USE_NEW_SUPPLIES, USE_NEW_ORDER } from './features/screens/flags';
 import { UploadScreen } from './features/screens/UploadScreen';
 import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
@@ -1639,99 +1636,28 @@ export function App() {
           </main>
 
         <div data-step-panel="1" className={wizard.step === 1 ? 'contents no-print' : 'hidden'}>
-          {USE_NEW_UPLOAD ? (
-            <UploadScreen
-              dropZoneRef={dropZoneRef}
-              isDragOver={isDragOver}
-              handleFileChange={handleFileChange}
-              handleDragOver={handleDragOver}
-              handleDragLeave={handleDragLeave}
-              handleDrop={handleDrop}
-              projectsRegistry={projectsRegistry}
-              loadProject={loadProject}
-              onDeleteProject={(id) => {
-                projectStore.remove(id);
-                setProjectsRegistry(projectStore.list());
-                if (activeProjectId === id) {
-                  setActiveProjectId(null);
-                  restore(null);
-                }
-              }}
-            />
-          ) : (
-          <Step1Ingest
-            image={image}
-            imageName={imageName}
+          <UploadScreen
             dropZoneRef={dropZoneRef}
             isDragOver={isDragOver}
-            imageSourceOpen={imageSourceOpen}
-            setImageSourceOpen={setImageSourceOpen}
-            recentImages={recentImages}
-            recentUploadsOpen={recentUploadsOpen}
-            setRecentUploadsOpen={setRecentUploadsOpen}
-            imageFitMode={imageFitMode}
-            setImageFitMode={setImageFitMode}
-            standardSizes={STANDARD_SIZES}
-            selectedPreset={selectedPreset}
-            setSelectedPreset={setSelectedPreset}
-            unit={unit}
-            setUnit={setUnit}
-            widthInput={widthInput}
-            heightInput={heightInput}
-            setWidthInput={setWidthInput}
-            setHeightInput={setHeightInput}
-            cols={cols}
-            rows={rows}
-            setCols={setCols}
-            setRows={setRows}
-            drillStyle={drillStyle}
-            setDrillStyle={setDrillStyle}
-            recsOpen={recsOpen}
-            setRecsOpen={setRecsOpen}
             handleFileChange={handleFileChange}
             handleDragOver={handleDragOver}
             handleDragLeave={handleDragLeave}
             handleDrop={handleDrop}
-            loadRecentImage={loadRecentImage}
-            deleteRecentImage={deleteRecentImage}
-            handlePresetChange={handlePresetChange}
-            handleUnitChange={handleUnitChange}
-            handleWidthChange={handleWidthChange}
-            handleHeightChange={handleHeightChange}
+            projectsRegistry={projectsRegistry}
+            loadProject={loadProject}
+            onDeleteProject={(id) => {
+              projectStore.remove(id);
+              setProjectsRegistry(projectStore.list());
+              if (activeProjectId === id) {
+                setActiveProjectId(null);
+                restore(null);
+              }
+            }}
           />
-          )}
         </div>
 
         <div data-step-panel="2" className={wizard.step === 2 ? 'contents no-print' : 'hidden'}>
-          {USE_NEW_REFINE ? (
-            <RefineScreen {...refineProps} />
-          ) : (
-          <Step2Palette
-            selectedBaseKit={selectedBaseKit}
-            setSelectedBaseKit={setSelectedBaseKit}
-            setExcludedColors={setExcludedColors}
-            drillType={drillType}
-            setDrillType={setDrillType}
-            enableSubstitution={enableSubstitution}
-            setEnableSubstitution={setEnableSubstitution}
-            substitutionThreshold={substitutionThreshold}
-            setSubstitutionThreshold={setSubstitutionThreshold}
-            enableSmoothing={enableSmoothing}
-            setEnableSmoothing={setEnableSmoothing}
-            smoothingStrength={smoothingStrength}
-            setSmoothingStrength={setSmoothingStrength}
-            excludeListOpen={excludeListOpen}
-            setExcludeListOpen={setExcludeListOpen}
-            excludedColors={excludedColors}
-            baseCandidates={baseCandidates}
-            handleSelectAll={handleSelectAll}
-            handleDeselectAll={handleDeselectAll}
-            toggleColorExclusion={toggleColorExclusion}
-            sortedMatches={sortedMatches}
-            highlightedColor={highlightedColor}
-            handleRowClick={handleRowClick}
-          />
-          )}
+          <RefineScreen {...refineProps} />
         </div>
 
         <div data-step-panel="3" className={wizard.step === 3 ? 'contents no-print' : 'hidden'}>
@@ -1770,27 +1696,7 @@ export function App() {
         </div>
 
         <div data-step-panel="4" className={wizard.step === 4 ? 'contents no-print' : 'hidden'}>
-          {USE_NEW_ORDER ? (
-            <OrderScreen {...orderProps} />
-          ) : (
-          <Step4Export
-            cols={cols}
-            rows={rows}
-            unit={unit}
-            matchResult={matchResult}
-            drillStyle={drillStyle}
-            drillType={drillType}
-            totalSafetyDrills={totalSafetyDrills}
-            totalCostSafety={totalCostSafety}
-            saveProjectName={saveProjectName}
-            setSaveProjectName={setSaveProjectName}
-            activeProjectId={activeProjectId}
-            saveSuccessMsg={saveSuccessMsg}
-            handleSaveProject={handleSaveProject}
-            showSaveSuccess={showSaveSuccess}
-            resetWorkspace={resetWorkspace}
-          />
-          )}
+          <OrderScreen {...orderProps} />
         </div>
 
 
