@@ -65,7 +65,7 @@ Frontend-only, 100% client-side. Strangler discipline: App.tsx stays the state o
 - [x] **Phase 21: Shared UI Primitives** - Hand-built StepNav / SegmentedControl / Slider / SizeCard / Pill / Button in `src/ui/` (browser-native + Tailwind, zero new deps) that every screen composes. (completed 2026-07-14)
 - [x] **Phase 22: Additive Engine — Density, Color Reducer & Single-Source Quote** - One 2.5mm/dot density helper, `detectedColorCount` + target-N `reduceToColorCount`, and an integer-cents `engine/quote.ts` selector — landed in engine-only commits. (completed 2026-07-14)
 - [x] **Phase 23: The Four Screens in Flow Order** - Upload → Refine (keystone) → Supplies → Order, each pure/props-only, swapped in one at a time behind the strangler flag. (completed 2026-07-15)
-- [ ] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart.
+- [x] **Phase 24: Mobile Responsive + Touch Pass** - The same 4-step journey in a single portrait column at ~300px via container queries, plus pinch-zoom + `touch-action: none` on the chart. (completed 2026-07-16)
 - [ ] **Phase 25: Retire Legacy Steps + Cleanup** - Final grep-clean of residual `Step1..4` component files, theme remnants, and leftover dead preset state. **Narrowed (2026-07-15, Phase 23 UAT Test 26 gap fix, Plans 06–08):** the legacy dark 3-column shell, the left "My Images" menu, and the right Color-Legend/DMC aside are ALREADY retired in Phase 23 — Phase 25 is no longer a from-scratch strangler close.
 
 ## Phase Details
@@ -213,7 +213,7 @@ Plans:
   2. On a touch device the user can pinch-to-zoom and pan the chart, aided by on-screen zoom buttons, with `touch-action: none` on the canvas so the page never scrolls under the gesture.
   3. Desktop layout is unregressed and the 240+ Vitest suite stays green.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 24-01-PLAN.md — MOBILE-01: container-query reflow to a single portrait column + canvas-first sticky Refine pane + delete dead drawer CSS (Wave 1)
@@ -221,7 +221,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 24-03-PLAN.md — Verification: full build + 240+ Vitest suite green + desktop-unregressed proof + human-verify mobile reflow & touch (Wave 2)
+- [x] 24-03-PLAN.md — Verification: full build + 240+ Vitest suite green + desktop-unregressed proof + human-verify mobile reflow & touch (Wave 2)
 
 **UI hint**: yes
 
@@ -280,7 +280,7 @@ Plans:
 | 21. Shared UI Primitives | v4.0 | 3/3 | Complete    | 2026-07-14 |
 | 22. Additive Engine — Density, Color Reducer & Single-Source Quote | v4.0 | 4/4 | Complete    | 2026-07-14 |
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
-| 24. Mobile Responsive + Touch Pass | v4.0 | 2/3 | In Progress|  |
+| 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete   | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | TBD | Not started | — |
 
 ## Backlog
