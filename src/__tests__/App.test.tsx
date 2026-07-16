@@ -1099,7 +1099,7 @@ describe('BAG-02 / SC2 — the total bag count is user-visibly rendered from pla
   });
 });
 
-describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step after a match)', () => {
+describe('SC4 / D-02 — auto-recompute (editing an upstream step after a match)', () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
@@ -1117,7 +1117,7 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
   const projectId = 'test-project-d13';
 
   // A project with gridData so App rebuilds a matchResult on load (no worker run,
-  // MatcherClient.match is a no-op) — the "computed match" starting state for D-13.
+  // MatcherClient.match is a no-op) — the "computed match" starting state for D-02.
   const seedProject = () => {
     const nowStr = new Date().toISOString();
     const summary = { id: projectId, name: 'D13 Project', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
@@ -1163,9 +1163,8 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
   const nextBtn = () => container.querySelector('#wizard-next-btn') as HTMLButtonElement;
 
   // Changes the canvas size via a RefineScreen SizeCard (the worker-tier control that
-  // now owns size, D-03/D-10). Selecting a card sets live cols/rows in App; divergence
-  // from the committed matchInputs drives the soft-invalidate. The seed is 80×53, so the
-  // "Large" (110×73) card is a genuine size change.
+  // now owns size, D-02/D-10). Selecting a card sets live cols/rows in App AND auto-fires
+  // the recompute. The seed is 80×53, so the "Large" (110×73) card is a genuine size change.
   const changeSize = async () => {
     const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
     const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
@@ -1175,68 +1174,55 @@ describe('SC4 / D-13 — soft-invalidate + recompute (editing an upstream step a
     await new Promise(r => setTimeout(r, 10));
   };
 
-  // Re-homed from the legacy Upload width edit (23-03): size selection now lives on the
-  // RefineScreen SizeCards (D-10/SC1). The soft-invalidate/Recompute machinery (Phase 20
-  // D-13) is unchanged — a size change diverges live cols/rows from the committed
-  // matchInputs → stale banner + Recompute CTA, no per-click worker re-fire (D-04).
-  it('marks downstream stale, keeps last-good match, blocks advancing; imageless Recompute prompts re-upload (ME-01)', async () => {
+  // Retargeted for D-02 (25-04): size selection on a RefineScreen SizeCard now AUTO-fires
+  // the recompute — there is no manual "Recompute match" CTA, no page-level stale banner,
+  // no StepBar amber marker, and no forward-nav block. This project loads WITHOUT its
+  // source image (GemPixel never persists the upload), so the auto-recompute hits the
+  // ME-01 imageless guard: it prompts a re-upload and retains the last-good grid rather
+  // than stranding a size-mismatched one. The prompt appearing WITHOUT any button click is
+  // the positive proof that the recompute auto-fired on the size change itself.
+  it('auto-recomputes on a size change (no manual CTA); imageless auto-recompute prompts re-upload and keeps the last-good grid (ME-01)', async () => {
     seedProject();
     await loadProject();
 
-    // Starting state: a match exists, nothing is stale — the banner is absent and
-    // forward navigation is allowed.
+    // Starting state: a match exists, no stale surfaces, forward navigation allowed.
     expect(container.querySelector('canvas')).toBeTruthy();
     expect(container.textContent).not.toContain('This step is out of date');
-    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
     expect(nextBtn()).toBeTruthy();
     expect(nextBtn().disabled).toBe(false);
 
-    // Edit a completed upstream step (change the canvas size via a Refine SizeCard).
+    // Change the canvas size via a Refine SizeCard — this AUTO-fires the recompute.
     await changeSize();
 
-    // (1) The soft-invalidate banner + CTA appear.
-    await pollFor(() => container.textContent!.includes('This step is out of date'));
-    expect(container.textContent).toContain('This step is out of date');
-    const recomputeBtn = Array.from(container.querySelectorAll('button')).find(
-      b => b.textContent?.trim() === 'Recompute match'
-    ) as HTMLButtonElement;
-    expect(recomputeBtn).toBeTruthy();
-
-    // (1b) The StepBar shows the out-of-date marker on downstream steps.
-    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeTruthy();
-
-    // (2) The last-good match is retained on screen (no data loss / no silent
-    //     worker re-fire): the canvas is still mounted.
-    expect(container.querySelector('canvas')).toBeTruthy();
-
-    // (3) Advancing past the stale step is blocked.
-    expect(nextBtn().disabled).toBe(true);
-
-    // (4) This project was loaded from storage WITHOUT its source image (GemPixel never
-    //     persists the uploaded image), so the match cannot actually be recomputed.
-    //     Recompute must NOT silently clear the stale state — doing so would strand a
-    //     grid whose size no longer matches its data (ME-01). It keeps the banner,
-    //     prompts a re-upload, and leaves the last-good match on screen.
-    recomputeBtn.click();
+    // (1) The auto-recompute fired: with no source image it surfaces the ME-01 re-upload
+    //     prompt. No button was clicked, so the prompt proves the recompute auto-fired.
     await pollFor(() => container.textContent!.includes('Re-upload the source image'));
     expect(container.textContent).toContain('Re-upload the source image to recompute the match.');
-    expect(container.textContent).toContain('This step is out of date');
-    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeTruthy();
-    expect(nextBtn().disabled).toBe(true);
-    // The last-good match is retained (no data loss).
+
+    // (2) No manual stale surfaces exist: no page-level banner and no Recompute CTA.
+    expect(container.textContent).not.toContain('This step is out of date');
+    expect(
+      Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent?.trim() === 'Recompute match',
+      ),
+    ).toBeUndefined();
+
+    // (3) The last-good match is retained on screen (no data loss): the canvas stays mounted.
     expect(container.querySelector('canvas')).toBeTruthy();
+
+    // (4) Forward navigation is NEVER blocked by staleness (the block is retired).
+    expect(nextBtn().disabled).toBe(false);
   });
 
-  it('does not enter the stale state on a fresh linear load (no false positives)', async () => {
+  it('shows no stale surfaces on a fresh linear load, and linear forward nav works', async () => {
     seedProject();
     await loadProject();
 
-    // A freshly loaded project is coherent: no stale banner, no marker, Next works.
+    // A freshly loaded project is coherent: no stale banner, Next works.
     expect(container.textContent).not.toContain('This step is out of date');
-    expect(container.querySelector('nav[aria-label="Progress"] [data-stale="true"]')).toBeNull();
     expect(nextBtn().disabled).toBe(false);
 
-    // Linear forward navigation is unaffected by the D-13 gating.
+    // Linear forward navigation is unaffected.
     nextBtn().click();
     await new Promise(r => setTimeout(r, 10));
     const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;

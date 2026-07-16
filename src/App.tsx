@@ -160,11 +160,11 @@ export function App() {
   const [cols, setCols] = useState(80);
   const [rows, setRows] = useState(53);
 
-  // D-13 soft-invalidate: the COMMITTED match inputs the worker actually consumes.
-  // Live image/cols/rows drive the editing UI; these advance only on an intentional
-  // commit (fresh upload, project load, reset, or the "Recompute match" CTA). Editing
-  // size/image after a match therefore diverges live-vs-committed → "stale" WITHOUT a
-  // silent worker re-fire (the expensive/abort-race-prone match runs once, on click).
+  // D-02: the COMMITTED match inputs the worker actually consumes. Live image/cols/rows
+  // drive the editing UI; these advance only on an intentional commit (fresh upload,
+  // project load, reset, or an auto-fired recompute — SizeCard-immediate / custom-size
+  // debounced). Keeping a separate committed snapshot means the expensive/abort-race-prone
+  // match runs once per commit, and the last-good grid renders until the fresh one lands.
   const [matchInputs, setMatchInputs] = useState<{ image: HTMLImageElement | null; cols: number; rows: number }>(
     { image: null, cols: 80, rows: 53 }
   );
@@ -933,12 +933,13 @@ export function App() {
         }
         setRows(newRows);
         setImage(img);
-        // D-13: the FIRST upload commits (a match computes); a re-upload after a
-        // match already exists stays uncommitted → stale, so the worker never
-        // silently re-fires — the user applies it via the "Recompute match" CTA.
-        // ME-02: excludedColors + selectedPreset feed candidatesKey, which the match
-        // hook keys on. Resetting them while stale would silently re-fire the worker on
-        // the OLD committed image, so reset them only on the committing (fresh) path.
+        // The FIRST upload commits (a match computes); a re-upload after a match already
+        // exists stays uncommitted so the worker never silently re-fires — the new image
+        // is committed by the next dimension-change auto-recompute (D-02 is scoped to
+        // dimension changes; image-swap commit is the ingest/D-08 domain).
+        // ME-02: excludedColors + selectedPreset feed candidatesKey, which the match hook
+        // keys on. Resetting them on the uncommitted re-upload path would silently re-fire
+        // the worker on the OLD committed image, so reset them only on the committing path.
         if (!matchResult) {
           setExcludedColors(new Set());
           setSelectedPreset('custom');
