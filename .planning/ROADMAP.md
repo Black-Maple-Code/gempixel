@@ -343,12 +343,12 @@ Plans:
   4. The interim nature is honest in the UI (a self-serve handoff, not a GemPixel-fulfilled order and no fake payment), consistent with the v4.0 100%-client-side boundary.
   5. The legacy `Step3Canvas` export/checkout wiring is fully superseded (single path, no dual UI) and the 240+ Vitest suite stays green.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 26-01-PLAN.md — Additive `drawLegendOnly` renderer in `engine/export.ts` + test; frozen renderer signatures untouched (ORDER-04, D-05) [Wave 1]
+- [x] 26-01-PLAN.md — Additive `drawLegendOnly` renderer in `engine/export.ts` + test; frozen renderer signatures untouched (ORDER-04, D-05) [Wave 1]
 
 **Wave 2** *(blocked on 26-01 — re-home before delete)*
 
@@ -383,7 +383,7 @@ Plans:
 | 23. The Four Screens in Flow Order | v4.0 | 8/8 | Complete    | 2026-07-15 |
 | 24. Mobile Responsive + Touch Pass | v4.0 | 3/3 | Complete    | 2026-07-16 |
 | 25. Retire Legacy Steps + Cleanup | v4.0 | 8/8 | Complete    | 2026-07-16 |
-| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 0/4 | Planned | — |
+| 26. Interim Customer Fulfillment — PNG Packet + Diamond Drills USA Order | v4.0 | 1/4 | In Progress|  |
 
 ## Backlog
 
