@@ -93,6 +93,64 @@ export function drawCanvasOnly(options: ExportCanvasOnlyOptions): HTMLCanvasElem
   return canvas;
 }
 
+/** Options for the additive standalone-legend renderer (Phase-26 D-05). */
+interface LegendOnlyOptions {
+  leftLegendColors: { dmc: string; hex: string }[];
+  rightLegendColors: { dmc: string; hex: string }[];
+  symbolMap: Record<string, string>;
+  cellScale?: number; // accepted for call-site symmetry; the legend band is grid-independent
+}
+
+/**
+ * Shared per-item legend draw: color swatch backing, black stroke, contrast symbol,
+ * and 9px monospace DMC label. Called by BOTH `drawCombinedCanvasSheet` and
+ * `drawLegendOnly` so the two legend renderings stay in sync. Internal only — not
+ * exported and does not alter any exported signature (Phase-22 freeze / D-05).
+ */
+function drawLegendItems(
+  ctx: CanvasRenderingContext2D,
+  legendColors: { dmc: string; hex: string }[],
+  symbolMap: Record<string, string>,
+  metrics: {
+    itemsPerCol: number;
+    itemHeight: number;
+    topPadding: number;
+    startX: number;
+    colSpacing: number;
+    legendOffsetY: number;
+  }
+): void {
+  const { itemsPerCol, itemHeight, topPadding, startX, colSpacing, legendOffsetY } = metrics;
+
+  legendColors.forEach((item, index) => {
+    const colIdx = Math.floor(index / itemsPerCol);
+    const rowIdx = index % itemsPerCol;
+
+    const x = startX + 10 + colIdx * colSpacing;
+    const y = legendOffsetY + topPadding + rowIdx * itemHeight + itemHeight / 2;
+    const symbol = symbolMap[item.dmc] || '';
+
+    // Draw Swatch Border & Color Backing
+    ctx.fillStyle = item.hex;
+    ctx.fillRect(x, Math.round(y - 5), 10, 10);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, Math.round(y - 5), 10, 10);
+
+    // Center Symbol inside swatch
+    ctx.fillStyle = getContrastColor(item.hex);
+    ctx.font = `bold ${symbolFontPx(8, symbol)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(symbol, x + 5, y);
+
+    // Render DMC color label next to swatch
+    ctx.fillStyle = '#000000';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.dmc, x + 18, y);
+  });
+}
+
 /**
  * Creates combined print canvas with layout margins, vertical guidelines, and swatches.
  */
@@ -184,32 +242,13 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
   const startX = outerMargin + marginWidth + gridWidth + legendGap;
   const colSpacing = Math.floor((marginWidth - 25) / numCols); // distribute columns
 
-  allLegendColors.forEach((item, index) => {
-    const colIdx = Math.floor(index / itemsPerCol);
-    const rowIdx = index % itemsPerCol;
-
-    const x = startX + 10 + colIdx * colSpacing;
-    const y = legendOffsetY + topPadding + rowIdx * itemHeight + itemHeight / 2;
-    const symbol = symbolMap[item.dmc] || '';
-
-    // Draw Swatch Border & Color Backing
-    ctx.fillStyle = item.hex;
-    ctx.fillRect(x, Math.round(y - 5), 10, 10);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, Math.round(y - 5), 10, 10);
-
-    // Center Symbol inside swatch
-    ctx.fillStyle = getContrastColor(item.hex);
-    ctx.font = `bold ${symbolFontPx(8, symbol)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(symbol, x + 5, y);
-
-    // Render DMC color label next to swatch
-    ctx.fillStyle = '#000000';
-    ctx.font = '9px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(item.dmc, x + 18, y);
+  drawLegendItems(ctx, allLegendColors, symbolMap, {
+    itemsPerCol,
+    itemHeight,
+    topPadding,
+    startX,
+    colSpacing,
+    legendOffsetY
   });
 
   // 3. Draw Symmetrical Folding dashed guidelines around the grid
@@ -250,6 +289,59 @@ export function drawCombinedCanvasSheet(options: CombinedSheetOptions): HTMLCanv
 
   // Reset dashboard configurations
   ctx.setLineDash([]);
+
+  return canvas;
+}
+
+/**
+ * Renders ONLY the color legend band as its own borderless HTMLCanvasElement — the
+ * same swatch / symbol / label the combined sheet draws, sized to the legend alone
+ * (no grid, no margins, no folding guides). Additive export (Phase-26 D-05); it does
+ * not touch any Phase-22-frozen renderer signature and downloads through
+ * `triggerCanvasDownload` unchanged.
+ */
+export function drawLegendOnly(options: LegendOnlyOptions): HTMLCanvasElement {
+  const { leftLegendColors, rightLegendColors, symbolMap } = options;
+
+  // Combine both legend arrays into a single list (identical to the combined sheet).
+  const allLegendColors = [...leftLegendColors, ...rightLegendColors];
+  const totalColors = allLegendColors.length;
+
+  // Legend column metrics — SAME rules as drawCombinedCanvasSheet.
+  const numCols = totalColors > 40 ? 3 : 2;
+  const itemsPerCol = Math.ceil(totalColors / numCols);
+  const itemHeight = 18;
+  const topPadding = 15;
+
+  // Band geometry: swatch (10px) sits at x+10, DMC label at x+18. A 70px column
+  // comfortably fits a 4-digit "9px monospace" code; 10px padding on each side.
+  const colSpacing = 70;
+  const sidePadding = 10;
+
+  // Size the canvas to the legend band ONLY — never the grid-inclusive width.
+  const canvasWidth = numCols * colSpacing + sidePadding * 2;
+  const canvasHeight = itemsPerCol * itemHeight + topPadding * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not retrieve 2D drawing context');
+
+  // Paint white backing (print designs require an opaque white ground).
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  ctx.textBaseline = 'middle';
+  drawLegendItems(ctx, allLegendColors, symbolMap, {
+    itemsPerCol,
+    itemHeight,
+    topPadding,
+    startX: 0,
+    colSpacing,
+    legendOffsetY: 0
+  });
 
   return canvas;
 }
