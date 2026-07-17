@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 Phase: 26
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-16 — Phase 26 complete
+Last activity: 2026-07-17 — Completed quick task 260716-tlu: wizard layout fixes (header New+Save, flush-right panel, tighter top spacing)
 
 Progress: [██████████] 100%
 
@@ -136,6 +136,7 @@ Progress: [██████████] 100%
 | 260712-qa1 | Fix WR-02 estimate-vs-cart pricing divergence: fixed-bag branch now mapping-aware ($0 line for unmapped-shape colors, matching the cart) | 2026-07-13 | 9feed49..c1c3ff8 | [260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver](./quick/260712-qa1-fix-wr-02-estimate-vs-cart-pricing-diver/) |
 | 260712-wep | Fix prod Web Worker regression: Vite shipped matcher.worker as raw .ts (image matching silently failed in prod); inline `new Worker(new URL())` in MatcherClient so Vite bundles it to hashed .js | 2026-07-13 | d7fe6fb | [260712-wep-fix-prod-web-worker-regression-vite-ship](./quick/260712-wep-fix-prod-web-worker-regression-vite-ship/) |
 | 260713-01y | Redesign grid+symbols allocation: symbols-first (105 distinct shape-glyphs lead), digits removed entirely, unambiguous capitals (excl. B G I O Q S Z) as last resort; killed the confusing letter/number iconography + glyph+digit combos. Pruned 17 confusable glyphs (rotations/interior twins) so every mark is easily distinguishable. | 2026-07-13 | 2978605..db586e3 | [260713-01y-redesign-grid-symbols-allocation-distinc](./quick/260713-01y-redesign-grid-symbols-allocation-distinc/) |
+| 260716-tlu | Fix three wizard layout issues: move New+Save into the header (delete floating action row), full-bleed frame so the right config panel is flush-right, and tighten the top spacing under the step bar | 2026-07-17 | e2726bf..d32aef5 | [260716-tlu-fix-three-gempixel-wizard-layout-issues-](./quick/260716-tlu-fix-three-gempixel-wizard-layout-issues-/) |
 
 ## Continuity & Handoff
 
