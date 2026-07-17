@@ -32,18 +32,23 @@ should be run to confirm no regression and to add coverage for the new reset/ban
 ### WR-01: Done-state terminals go stale on upstream design edits
 
 **Files modified:** `src/App.tsx`
-**Commit:** 42d6393
-**Status:** fixed: requires human verification
-**Applied fix:** Added a reset effect keyed on `[matchResult, drillStyle]` that clears
-both `canvasDownloaded` and `cartOpened` whenever the committed grid or the drill plan
-changes. Rather than enumerating each design-mutating handler (size, kit, exclusions,
-reduce, smoothing) as the review suggested, the fix keys on `matchResult` identity — the
-hook's memo output that already re-derives on every grid-affecting input — so the
-invalidation cannot drift as new inputs are added; `drillStyle` covers the drill-cart
-plan. Resetting to `false` when already `false` (initial mount / pre-download edits) is a
-React no-op, so no explicit initial-mount guard is needed. Flagged for human verification
-because it is state-reset behavior: confirm the reset fires on each Refine edit and does
-not spuriously clear a fresh download.
+**Commits:** 42d6393 (initial), 6ed7b54 (regression correction)
+**Status:** fixed — verified by test suite (385/385 pass)
+**Applied fix:** Added a reset effect that clears both `canvasDownloaded` and `cartOpened`
+whenever the committed design changes.
+
+The initial fix (42d6393) keyed the effect on `[matchResult, drillStyle]`. This regressed
+4 Order-state tests in `src/__tests__/App.test.tsx`: `matchResult` is the async worker
+output whose object identity churns on every match settle independent of a user edit, so
+the effect fired the instant the match re-settled after a download — clearing a fresh
+"Downloaded ✓" / "Cart opened ↗" (all 4 failures were `expected null to be truthy`).
+
+Corrected (6ed7b54) to key on the committed design inputs the review actually enumerated:
+`[matchInputs, drillStyle, selectedBaseKit, targetColorCount, enableReduce, excludedColors,
+enableSmoothing, smoothingStrength]`. Each is state that changes only on a genuine design
+edit or a project load, so the terminals invalidate on real size/kit/exclusion/reduce/
+smoothing/shape changes but persist across the async re-settle. `tsc --noEmit` clean; full
+suite 385/385 green (previously-failing Order-state tests now pass).
 
 ### WR-02: `cartOpened` reset by canvas-finish and ship-to edits though the cart is independent of both
 
@@ -56,7 +61,7 @@ pricing, so editing finish (a no-price enum) or ship-to (embedded only in the JS
 no longer erases a valid "Cart opened" confirmation. `setCanvasDownloaded(false)` is
 retained in both handlers because the JSON packet embeds finish + ship-to and does go
 stale on those edits. The cart's done-state is now invalidated only by the WR-01
-`matchResult`/`drillStyle` effect.
+committed-design-inputs effect.
 
 ### WR-03: Imperative `setActionError(null)` permanently drops an active derived warning
 
