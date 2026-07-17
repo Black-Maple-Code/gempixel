@@ -376,7 +376,7 @@ describe('Integration Match Triggering and Palette Toggles', () => {
   // loadImageFile now derives its default dims via aspectAwareGrid on the Medium (BEST) tier,
   // so the default grid equals the Medium RefineScreen card exactly — its selected-highlight
   // lands immediately on upload (exactly one card highlighted), still crop-free.
-  it('a 2:3 portrait upload defaults to the Medium tier (53×80) and highlights the Medium card on load', async () => {
+  it('a 2:3 portrait upload defaults to the Medium tier (73×110) and highlights the Medium card on load', async () => {
     const mockReader = {
       readAsDataURL: vi.fn().mockImplementation(function(this: any) {
         if (this.onload) {
@@ -438,8 +438,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
     const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
-    expect(widthEl.value).toBe('53');
-    expect(heightEl.value).toBe('80');
+    expect(widthEl.value).toBe('73');
+    expect(heightEl.value).toBe('110');
 
     // Exactly one card highlighted: Medium aria-pressed true, Small/Large false.
     const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
@@ -453,7 +453,7 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('an exact-3:2 upload keeps the 80×53 default (byte-identical) and highlights Medium', async () => {
+  it('an exact-3:2 upload keeps the 110×73 default (byte-identical) and highlights Medium', async () => {
     const mockReader = {
       readAsDataURL: vi.fn().mockImplementation(function(this: any) {
         if (this.onload) {
@@ -515,8 +515,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
     const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
-    expect(widthEl.value).toBe('80');
-    expect(heightEl.value).toBe('53');
+    expect(widthEl.value).toBe('110');
+    expect(heightEl.value).toBe('73');
 
     const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
     const mediumCard = cards.find(c => c.textContent?.includes('Medium'))!;
@@ -546,18 +546,18 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     const widthEl = () => step2().querySelector('#refine-width') as HTMLInputElement;
     const heightEl = () => step2().querySelector('#refine-height') as HTMLInputElement;
 
-    // Select "Small" (60×40).
-    cards().find(c => c.textContent?.includes('60×40 grid'))!.click();
+    // Select "Small" (80×53).
+    cards().find(c => c.textContent?.includes('80×53 grid'))!.click();
     await vi.waitFor(() => {
-      expect(widthEl().value).toBe('60');
-      expect(heightEl().value).toBe('40');
+      expect(widthEl().value).toBe('80');
+      expect(heightEl().value).toBe('53');
     });
 
-    // Select "Extra large" (140×93).
-    cards().find(c => c.textContent?.includes('140×93 grid'))!.click();
+    // Select "Extra large" (190×127).
+    cards().find(c => c.textContent?.includes('190×127 grid'))!.click();
     await vi.waitFor(() => {
-      expect(widthEl().value).toBe('140');
-      expect(heightEl().value).toBe('93');
+      expect(widthEl().value).toBe('190');
+      expect(heightEl().value).toBe('127');
     });
   });
 

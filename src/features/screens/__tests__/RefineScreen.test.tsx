@@ -51,6 +51,8 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     heightInput: '53',
     onWidthChange: vi.fn(),
     onHeightChange: vi.fn(),
+    unit: 'grid',
+    onUnitChange: vi.fn(),
     edgeCleanup: 1,
     onEdgeCleanupChange: vi.fn(),
     colorTarget: 26,
@@ -99,6 +101,25 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     const large = sizeCards().find(c => c.textContent?.includes('110×73 grid'))!;
     large.click();
     expect(props.onSelectSize).toHaveBeenCalledWith(110, 73);
+  });
+
+  it('custom-size entry exposes a swappable units selector (grid/inch/cm) that calls onUnitChange', async () => {
+    const props = setup({ unit: 'grid' });
+    // Reveal the custom-size entry (toggles a useState — await the re-render).
+    const customBtn = Array.from(container.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size',
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 0));
+
+    const unitSelect = container.querySelector('#refine-unit') as HTMLSelectElement;
+    expect(unitSelect).toBeTruthy();
+    expect(Array.from(unitSelect.options).map(o => o.value)).toEqual(['grid', 'inch', 'cm']);
+    expect(unitSelect.value).toBe('grid');
+
+    unitSelect.value = 'inch';
+    unitSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(props.onUnitChange).toHaveBeenCalledWith('inch');
   });
 
   it('renders the color Slider with max === detectedColorCount and reports numeric input', () => {

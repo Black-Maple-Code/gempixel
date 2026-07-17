@@ -162,8 +162,8 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       heightInput = step2.querySelector('#refine-height') as HTMLInputElement;
       expect(widthInput).toBeTruthy();
       expect(heightInput).toBeTruthy();
-      expect(widthInput.value).toBe('80');
-      expect(heightInput.value).toBe('53');
+      expect(widthInput.value).toBe('110');
+      expect(heightInput.value).toBe('73');
     });
 
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -177,11 +177,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
     await vi.waitFor(() => expect(heightInput.value).toBe('45'));
   });
 
-  // DELETED (23-03): "allows changing physical sizing units" — the cm/inch/grid unit
-  // switcher was a legacy Upload/Step control. The canvas-first RefineScreen custom-size
-  // entry is grid-native (D-05: cols/rows), so the unit switcher has no home in the new
-  // UI and the case no longer applies. Grid ↔ inch derivation is covered by density.ts
-  // unit tests (gridToInches/formatInches) and the SizeCard inch-string assertions.
+  // NOTE (260717-fxo): a swappable grid/inch/cm units selector was RE-ADDED to the
+  // RefineScreen custom-size entry (user request). Its render + onUnitChange wiring is
+  // covered in RefineScreen.test ("custom-size entry exposes a swappable units selector");
+  // the underlying cols/rows ↔ inch/cm conversion is covered by density.ts unit tests
+  // (gridToInches/formatInches) and the handleWidthChange/handleHeightChange logic.
 
   // RETIRED(26-03): "calculates supply costing commission quotes correctly in quote tab"
   // asserted the editable pricing-config grid (canvas cost, est. shipping, per-bag
@@ -578,11 +578,11 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       expect(cards().length).toBe(4);
 
       // Cards show true derived inches + a live drill count (never a mock label).
-      const mediumCard = cards().find(c => c.textContent?.includes('80×53 grid'))!;
+      const mediumCard = cards().find(c => c.textContent?.includes('110×73 grid'))!;
       expect(mediumCard).toBeTruthy();
-      expect(mediumCard.textContent).toContain('8 × 5.3 in'); // gridToInches(80,53) → /10
-      expect(mediumCard.textContent).toContain('4240'); // 80 × 53 drills
-      // Medium (80×53) is the default selection.
+      expect(mediumCard.textContent).toContain('11 × 7.3 in'); // gridToInches(110,73) → /10
+      expect(mediumCard.textContent).toContain('8030'); // 110 × 73 drills
+      // Medium (110×73) is the default selection.
       expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
 
       // Reveal the custom entry to read back the applied dims.
@@ -592,16 +592,16 @@ describe('App Component Mounting and Basic UI Inputs', () => {
       customBtn.click();
       await new Promise(r => setTimeout(r, 10));
 
-      // Select the "Large" (110×73) card → live cols/rows update; Medium deselects.
-      const largeCard = cards().find(c => c.textContent?.includes('110×73 grid'))!;
+      // Select the "Large" (140×93) card → live cols/rows update; Medium deselects.
+      const largeCard = cards().find(c => c.textContent?.includes('140×93 grid'))!;
       expect(largeCard).toBeTruthy();
       largeCard.click();
       await new Promise(r => setTimeout(r, 10));
 
       expect(largeCard.getAttribute('aria-pressed')).toBe('true');
-      expect(cards().find(c => c.textContent?.includes('80×53 grid'))!.getAttribute('aria-pressed')).toBe('false');
-      expect((step2().querySelector('#refine-width') as HTMLInputElement).value).toBe('110');
-      expect((step2().querySelector('#refine-height') as HTMLInputElement).value).toBe('73');
+      expect(cards().find(c => c.textContent?.includes('110×73 grid'))!.getAttribute('aria-pressed')).toBe('false');
+      expect((step2().querySelector('#refine-width') as HTMLInputElement).value).toBe('140');
+      expect((step2().querySelector('#refine-height') as HTMLInputElement).value).toBe('93');
     });
   });
 
