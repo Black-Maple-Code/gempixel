@@ -552,16 +552,31 @@ export function App() {
   // on-disk artifacts and the opened cart reflect the CURRENT design. So any upstream
   // edit that changes the committed grid OR the drill plan must invalidate both
   // per-task done-states — otherwise a user can download / open the cart, go back to
-  // Refine, change the size / kit / exclusions / reduce / smoothing (all of which
-  // re-derive matchResult) or the drill shape (drillStyle), and return to a stale
-  // "done" claim. Keying on matchResult identity captures EVERY grid-affecting input
-  // precisely (it is the hook's memo output), so this can never drift as inputs are
-  // added; drillStyle covers the drill-cart plan. Resetting to false when already
+  // Refine, change the size / kit / exclusions / reduce / smoothing or the drill shape,
+  // and return to a stale "done" claim.
+  //
+  // Key on the COMMITTED design inputs, NOT on matchResult. matchResult is the async
+  // worker output whose object identity churns on every settle/re-derive independent of
+  // a user edit — keying on it would spuriously clear a fresh "Downloaded ✓" the instant
+  // the match re-settles after the download (a real regression against the Order-state
+  // test contract). Each dep below is state that changes ONLY on a genuine design edit or
+  // a project load: matchInputs (size/image commit), drillStyle, selectedBaseKit,
+  // targetColorCount + enableReduce (color reduce), excludedColors, and
+  // enableSmoothing + smoothingStrength (edge cleanup). Resetting to false when already
   // false (initial mount, or an edit before any download) is a no-op in React.
   useEffect(() => {
     setCanvasDownloaded(false);
     setCartOpened(false);
-  }, [matchResult, drillStyle]);
+  }, [
+    matchInputs,
+    drillStyle,
+    selectedBaseKit,
+    targetColorCount,
+    enableReduce,
+    excludedColors,
+    enableSmoothing,
+    smoothingStrength,
+  ]);
 
   // D-02 auto-recompute: commit the given (or current live) inputs. Committing makes
   // the match hook — which keys on matchInputs — fire the EXISTING match effect exactly
