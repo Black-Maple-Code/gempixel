@@ -1541,7 +1541,7 @@ export function App() {
         dark 3-column shell (the dark full-bleed wrapper + 320px left "My Images" aside
         + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
     <div className="relative min-h-full bg-bg print:h-auto">
-      <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-4 print:p-0">
+      <div className="flex min-h-full w-full flex-col pl-4 pr-0 pt-2 pb-4 print:p-0">
 
         {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
             the canvas is visible (they moved out of CanvasWorkspace in Plan 08).
