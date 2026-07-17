@@ -35,15 +35,17 @@ const FINISH_OPTIONS: Array<{
   { value: 'wrap', label: 'Image wrap', blurb: '1½″ wraps around a stretched frame.' },
 ];
 
-/** One editable ship-to field descriptor (client-only free text). */
-const SHIP_TO_FIELDS: Array<{ key: keyof OrderPacketShipTo; label: string; autocomplete: string }> = [
-  { key: 'name', label: 'Full name', autocomplete: 'name' },
-  { key: 'addressLine1', label: 'Address', autocomplete: 'address-line1' },
-  { key: 'addressLine2', label: 'Apt / suite (optional)', autocomplete: 'address-line2' },
-  { key: 'city', label: 'City', autocomplete: 'address-level2' },
-  { key: 'state', label: 'State / region', autocomplete: 'address-level1' },
-  { key: 'postalCode', label: 'Postal code', autocomplete: 'postal-code' },
-  { key: 'country', label: 'Country', autocomplete: 'country-name' },
+/** One editable ship-to field descriptor (client-only free text). `span` is the
+ * column span within the 6-col grid, packing the 7 fields into 4 compact rows so
+ * the Order step fits one screen: name / address+apt / city+state+postal / country. */
+const SHIP_TO_FIELDS: Array<{ key: keyof OrderPacketShipTo; label: string; autocomplete: string; span: string }> = [
+  { key: 'name', label: 'Full name', autocomplete: 'name', span: 'sm:col-span-6' },
+  { key: 'addressLine1', label: 'Address', autocomplete: 'address-line1', span: 'sm:col-span-4' },
+  { key: 'addressLine2', label: 'Apt / suite', autocomplete: 'address-line2', span: 'sm:col-span-2' },
+  { key: 'city', label: 'City', autocomplete: 'address-level2', span: 'sm:col-span-2' },
+  { key: 'state', label: 'State / region', autocomplete: 'address-level1', span: 'sm:col-span-2' },
+  { key: 'postalCode', label: 'Postal code', autocomplete: 'postal-code', span: 'sm:col-span-2' },
+  { key: 'country', label: 'Country', autocomplete: 'country-name', span: 'sm:col-span-6' },
 ];
 
 export interface OrderScreenProps {
@@ -107,10 +109,14 @@ export function OrderScreen(props: OrderScreenProps) {
   return (
     <section
       data-screen="order"
-      className="flex w-full max-w-full flex-col gap-6 text-ink md:flex-row"
+      className="flex w-full max-w-full flex-col text-ink"
     >
+      {/* ── Top row: LOCKED spec (left) · finish + ship-to inputs (right).
+          Actions + price live in the full-width strip below so the whole step
+          fits one screen without scrolling. ─────────────────────────────── */}
+      <div className="flex flex-col md:flex-row">
       {/* ── Left: the auto-filled, LOCKED spec (ORDER-01) ─────────────── */}
-      <div className="flex min-w-0 flex-col gap-4 border-border bg-panel p-6 md:w-[470px] md:shrink-0 md:border-r">
+      <div className="flex min-w-0 flex-col gap-3 border-border bg-panel p-4 md:w-[380px] md:shrink-0 md:border-r">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
             Your canvas proof
@@ -130,12 +136,12 @@ export function OrderScreen(props: OrderScreenProps) {
 
           <dl className="flex flex-col divide-y divide-[var(--border-2)] text-sm">
             {/* IMAGE */}
-            <div className="flex items-baseline justify-between gap-3 py-2">
+            <div className="flex items-baseline justify-between gap-3 py-1.5">
               <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">Image</dt>
               <dd className="text-right text-ink">Finished chart · print-ready</dd>
             </div>
             {/* PRODUCT — LOCKED */}
-            <div data-spec-row="product" className="flex items-center justify-between gap-3 py-2">
+            <div data-spec-row="product" className="flex items-center justify-between gap-3 py-1.5">
               <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">Product</dt>
               <dd className="flex items-center gap-2 text-right text-ink">
                 <span>{product}</span>
@@ -145,14 +151,14 @@ export function OrderScreen(props: OrderScreenProps) {
               </dd>
             </div>
             {/* SIZE */}
-            <div data-spec-row="size" className="flex items-baseline justify-between gap-3 py-2">
+            <div data-spec-row="size" className="flex items-baseline justify-between gap-3 py-1.5">
               <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">Size</dt>
               <dd className="text-right font-mono text-ink">
                 {sizeLabel} · from {gridLabel} grid
               </dd>
             </div>
             {/* FINISH */}
-            <div data-spec-row="finish" className="flex items-baseline justify-between gap-3 py-2">
+            <div data-spec-row="finish" className="flex items-baseline justify-between gap-3 py-1.5">
               <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">Finish</dt>
               <dd className="text-right text-ink">{finishLabel}</dd>
             </div>
@@ -164,11 +170,11 @@ export function OrderScreen(props: OrderScreenProps) {
         </div>
       </div>
 
-      {/* ── Right: finish · ship-to · price · download ────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col gap-6 bg-panel-2 p-6">
+      {/* ── Right: finish + ship-to inputs ─────────────────────────────── */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 bg-panel-2 p-4">
         {/* CANVAS FINISH — two selectable cards */}
         <fieldset className="flex flex-col gap-2 border-0 p-0">
-          <legend className="mb-1 font-mono text-[10px] uppercase tracking-wider text-faint">
+          <legend className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">
             Canvas finish
           </legend>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -182,7 +188,7 @@ export function OrderScreen(props: OrderScreenProps) {
                   aria-pressed={selected}
                   onClick={() => onFinishChange(opt.value)}
                   className={cn(
-                    'flex flex-1 cursor-pointer flex-col gap-1 rounded-[var(--radius-card)] border p-3 text-left transition-all',
+                    'flex flex-1 cursor-pointer flex-col gap-1 rounded-[var(--radius-card)] border p-2.5 text-left transition-all',
                     selected
                       ? 'border-2 border-accent bg-[#EAF2EF]'
                       : 'border border-border bg-panel hover:border-accent',
@@ -201,18 +207,14 @@ export function OrderScreen(props: OrderScreenProps) {
 
         {/* SHIP TO — client-side only, embedded in the packet, never sent */}
         <fieldset className="flex flex-col gap-2 border-0 p-0">
-          <legend className="mb-1 font-mono text-[10px] uppercase tracking-wider text-faint">
+          <legend className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">
             Ship to
           </legend>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-2 gap-y-1.5 sm:grid-cols-6">
             {SHIP_TO_FIELDS.map((field) => (
               <label
                 key={field.key}
-                className={cn(
-                  'flex flex-col gap-1 text-xs text-muted',
-                  (field.key === 'name' || field.key === 'addressLine1' || field.key === 'addressLine2') &&
-                    'sm:col-span-2',
-                )}
+                className={cn('flex flex-col gap-0.5 text-xs text-muted', field.span)}
               >
                 <span>{field.label}</span>
                 <input
@@ -223,20 +225,27 @@ export function OrderScreen(props: OrderScreenProps) {
                   onInput={(e) =>
                     onShipToChange({ [field.key]: (e.target as HTMLInputElement).value })
                   }
-                  className="rounded-[var(--radius-control)] border border-border bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                  className="rounded-[var(--radius-control)] border border-border bg-panel px-2 py-0.5 text-sm text-ink outline-none focus:border-accent"
                 />
               </label>
             ))}
           </div>
-          <p className="text-[10px] leading-relaxed text-faint">
-            Stays on your device — embedded in the downloaded file only, never sent anywhere.
+          <p className="text-[10px] leading-tight text-faint">
+            Stays on your device — embedded in the download only, never sent.
           </p>
         </fieldset>
 
-        {/* PRICE — the SAME single-source quote, rendered VERBATIM (D-07) */}
+      </div>
+      </div>
+
+      {/* ── Bottom strip (full width): Price · Get canvas made · Order drills.
+          The read-only price and the two honest errands sit below the inputs as
+          three columns so the whole step fits one screen without scrolling. ─── */}
+      <div className="grid grid-cols-1 gap-5 border-t border-border bg-panel-2 p-4 md:grid-cols-3">
+        {/* PRICE — the SAME single-source quote rendered VERBATIM (D-07). */}
         <div className="flex flex-col gap-3">
           <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Price</span>
-          <dl className="flex flex-col gap-1.5 font-mono text-sm">
+          <dl className="flex flex-col gap-1 font-mono text-sm">
             {quote.lineItems.map((li) => {
               const unavailable = li.key === 'canvas' && !quote.canvasPriced;
               return (
@@ -281,14 +290,11 @@ export function OrderScreen(props: OrderScreenProps) {
           <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
             Get your canvas made
           </span>
-          <p className="text-xs leading-relaxed text-muted">
-            Download your artwork and spec, then send them to your canvas maker.
-          </p>
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant="primary"
               data-testid="order-download-canvas-cta"
-              className="w-full py-2.5 text-sm"
+              className="w-full py-1.5 text-sm"
               onClick={onDownloadCanvasGrid}
             >
               Download canvas (grid)
@@ -296,7 +302,7 @@ export function OrderScreen(props: OrderScreenProps) {
             <Button
               variant="primary"
               data-testid="order-download-grid-legend-cta"
-              className="w-full py-2.5 text-sm"
+              className="w-full py-1.5 text-sm"
               onClick={onDownloadGridLegend}
             >
               Download grid + legend
@@ -304,7 +310,7 @@ export function OrderScreen(props: OrderScreenProps) {
             <Button
               variant="primary"
               data-testid="order-download-legend-cta"
-              className="w-full py-2.5 text-sm"
+              className="w-full py-1.5 text-sm"
               onClick={onDownloadLegend}
             >
               Download legend
@@ -312,7 +318,7 @@ export function OrderScreen(props: OrderScreenProps) {
             <Button
               variant="primary"
               data-testid="order-download-cta"
-              className="w-full py-2.5 text-sm"
+              className="w-full py-1.5 text-sm"
               onClick={onDownloadPacket}
             >
               Download order packet
@@ -341,7 +347,7 @@ export function OrderScreen(props: OrderScreenProps) {
           <Button
             variant="primary"
             data-testid="order-cart-cta"
-            className="w-full py-2.5 text-sm"
+            className="w-full py-1.5 text-sm"
             onClick={onCartCheckout}
           >
             Open drill cart at Diamond Drills USA ↗
