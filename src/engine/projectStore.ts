@@ -49,6 +49,15 @@ export interface ProjectData {
    * at load time.
    */
   selectedVendor?: CanvasVendor;
+  /**
+   * The source image as a downscaled JPEG data URL, so a reloaded project fully
+   * rehydrates (the canvas AND the ability to re-match on a size change) instead
+   * of demanding a re-upload. Optional/additive: legacy blobs saved without it load
+   * exactly as before (grid restored from `gridData`, recompute still prompts a
+   * re-upload). Downscaled + JPEG-encoded via {@link imageToStorableDataUrl} to keep
+   * the localStorage footprint bounded (quota is still surfaced, never silently lost).
+   */
+  imageDataUrl?: string;
 }
 
 export interface RecentImage {
@@ -81,6 +90,34 @@ export function generateUUID(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
   const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0'));
   return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
+}
+
+/**
+ * Serialize a source image to a downscaled JPEG data URL for durable project
+ * storage. Caps the longest edge at `maxDim` (default 1600px) — far more than any
+ * grid needs (box-sampling to ≤200 cells) while keeping the localStorage blob
+ * small. Returns '' on any failure so the caller degrades to a legacy no-image
+ * save rather than throwing.
+ */
+export function imageToStorableDataUrl(img: HTMLImageElement, maxDim = 1600): string {
+  try {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return '';
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    const cw = Math.max(1, Math.round(w * scale));
+    const ch = Math.max(1, Math.round(h * scale));
+    const c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    const ctx = c.getContext('2d');
+    if (!ctx) return '';
+    ctx.drawImage(img, 0, 0, cw, ch);
+    return c.toDataURL('image/jpeg', 0.9);
+  } catch (err) {
+    console.error('Failed to serialize source image for project storage', err);
+    return '';
+  }
 }
 
 export function generateThumbnail(canvas: HTMLCanvasElement): string {
