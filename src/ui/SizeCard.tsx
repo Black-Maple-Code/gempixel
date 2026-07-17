@@ -55,7 +55,7 @@ export function SizeCard({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        'flex flex-col gap-1 p-6 text-left rounded-[var(--radius-card)] border-2 transition-all cursor-pointer',
+        'flex flex-col gap-1 px-4 py-3 text-left rounded-[var(--radius-card)] border-2 transition-all cursor-pointer',
         selected ? 'border-accent bg-[#EAF2EF]' : 'border-border bg-panel-2',
         className,
       )}
@@ -67,9 +67,10 @@ export function SizeCard({
           <span class="text-[10px] font-mono uppercase tracking-wider text-faint">{tag}</span>
         ) : null}
       </span>
-      <span class="text-xs text-muted">{gridDims}</span>
-      <span class="text-xs text-muted">{inches}</span>
-      <span class="font-mono text-sm text-ink">{drillCount}</span>
+      <span class="flex items-baseline justify-between gap-2">
+        <span class="text-xs text-muted">{gridDims} · {inches}</span>
+        <span class="font-mono text-sm text-ink">{drillCount}</span>
+      </span>
     </button>
   );
 }
