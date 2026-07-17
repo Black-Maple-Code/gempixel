@@ -766,7 +766,7 @@ describe('App Component Mounting and Basic UI Inputs', () => {
 
       // Panel-4 is the canvas-first OrderScreen with the "Download order packet" CTA.
       const cta = Array.from(container.querySelectorAll('button')).find(
-        b => b.textContent === 'Download order packet'
+        b => b.textContent === 'Download Order Packet'
       ) as HTMLButtonElement;
       expect(cta).toBeTruthy();
 

@@ -98,20 +98,16 @@ describe('OrderScreen — two honest task sections (canvas downloads + drill car
     expect(finishRow.textContent).toContain('Trimmed');
   });
 
-  it('renders two finish cards; selecting one calls onFinishChange', () => {
-    const props = setup();
+  it('renders the Trimmed finish card selected by default (Image wrap removed)', () => {
+    setup();
     const trimmed = container.querySelector('[data-finish="trimmed"]') as HTMLButtonElement;
-    const wrap = container.querySelector('[data-finish="wrap"]') as HTMLButtonElement;
     expect(trimmed).toBeTruthy();
-    expect(wrap).toBeTruthy();
+    // Image wrap was retired — Trimmed is the only finish now.
+    expect(container.querySelector('[data-finish="wrap"]')).toBeNull();
     // Default selection reflected via aria-pressed.
     expect(trimmed.getAttribute('aria-pressed')).toBe('true');
-    expect(wrap.getAttribute('aria-pressed')).toBe('false');
     // Trimmed carries the "BEST FOR ART" tag.
     expect(trimmed.textContent).toContain('BEST FOR ART');
-
-    wrap.click();
-    expect(props.onFinishChange).toHaveBeenCalledWith('wrap');
   });
 
   it('renders the ship-to as plain text inputs (no dangerouslySetInnerHTML sink)', () => {
@@ -138,25 +134,25 @@ describe('OrderScreen — two honest task sections (canvas downloads + drill car
 
     const grid = q<HTMLButtonElement>('order-download-canvas-cta')!;
     expect(grid).toBeTruthy();
-    expect(grid.textContent).toBe('Download canvas (grid)');
+    expect(grid.textContent).toBe('Download Canvas (Grid)');
     grid.click();
     expect(props.onDownloadCanvasGrid).toHaveBeenCalledTimes(1);
 
     const combined = q<HTMLButtonElement>('order-download-grid-legend-cta')!;
     expect(combined).toBeTruthy();
-    expect(combined.textContent).toBe('Download grid + legend');
+    expect(combined.textContent).toBe('Download Grid + Legend');
     combined.click();
     expect(props.onDownloadGridLegend).toHaveBeenCalledTimes(1);
 
     const legend = q<HTMLButtonElement>('order-download-legend-cta')!;
     expect(legend).toBeTruthy();
-    expect(legend.textContent).toBe('Download legend');
+    expect(legend.textContent).toBe('Download Legend');
     legend.click();
     expect(props.onDownloadLegend).toHaveBeenCalledTimes(1);
 
     const packet = q<HTMLButtonElement>('order-download-cta')!;
     expect(packet).toBeTruthy();
-    expect(packet.textContent).toBe('Download order packet');
+    expect(packet.textContent).toBe('Download Order Packet');
     // No price baked into any download label (no implied charge).
     expect(packet.textContent).not.toMatch(/\$/);
     packet.click();
@@ -167,7 +163,7 @@ describe('OrderScreen — two honest task sections (canvas downloads + drill car
     const props = setup();
     const cart = q<HTMLButtonElement>('order-cart-cta')!;
     expect(cart).toBeTruthy();
-    expect(cart.textContent).toBe('Open drill cart at Diamond Drills USA ↗');
+    expect(cart.textContent).toBe('Open Drill Cart at Diamond Drills USA ↗');
     cart.click();
     expect(props.onCartCheckout).toHaveBeenCalledTimes(1);
   });

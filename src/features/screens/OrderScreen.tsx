@@ -32,7 +32,6 @@ const FINISH_OPTIONS: Array<{
   tag?: string;
 }> = [
   { value: 'trimmed', label: 'Trimmed', blurb: 'No border — full grid to the edge.', tag: 'BEST FOR ART' },
-  { value: 'wrap', label: 'Image wrap', blurb: '1½″ wraps around a stretched frame.' },
 ];
 
 /** One editable ship-to field descriptor (client-only free text). `span` is the
@@ -109,7 +108,7 @@ export function OrderScreen(props: OrderScreenProps) {
   return (
     <section
       data-screen="order"
-      className="flex w-full max-w-full flex-col text-ink"
+      className="mx-auto flex w-full max-w-[1180px] flex-col self-start text-ink"
     >
       {/* ── Top row: LOCKED spec (left) · finish + ship-to inputs (right).
           Actions + price live in the full-width strip below so the whole step
@@ -188,7 +187,7 @@ export function OrderScreen(props: OrderScreenProps) {
                   aria-pressed={selected}
                   onClick={() => onFinishChange(opt.value)}
                   className={cn(
-                    'flex flex-1 cursor-pointer flex-col gap-1 rounded-[var(--radius-card)] border p-2.5 text-left transition-all',
+                    'flex w-full cursor-pointer flex-col gap-1 rounded-[var(--radius-card)] border p-2.5 text-left transition-all sm:max-w-[340px]',
                     selected
                       ? 'border-2 border-accent bg-[#EAF2EF]'
                       : 'border border-border bg-panel hover:border-accent',
@@ -297,7 +296,7 @@ export function OrderScreen(props: OrderScreenProps) {
               className="w-full py-1.5 text-sm"
               onClick={onDownloadCanvasGrid}
             >
-              Download canvas (grid)
+              Download Canvas (Grid)
             </Button>
             <Button
               variant="primary"
@@ -305,7 +304,7 @@ export function OrderScreen(props: OrderScreenProps) {
               className="w-full py-1.5 text-sm"
               onClick={onDownloadGridLegend}
             >
-              Download grid + legend
+              Download Grid + Legend
             </Button>
             <Button
               variant="primary"
@@ -313,7 +312,7 @@ export function OrderScreen(props: OrderScreenProps) {
               className="w-full py-1.5 text-sm"
               onClick={onDownloadLegend}
             >
-              Download legend
+              Download Legend
             </Button>
             <Button
               variant="primary"
@@ -321,7 +320,7 @@ export function OrderScreen(props: OrderScreenProps) {
               className="w-full py-1.5 text-sm"
               onClick={onDownloadPacket}
             >
-              Download order packet
+              Download Order Packet
             </Button>
           </div>
           {/* Additive done-panel — the downloads stay available so the user can keep
@@ -350,7 +349,7 @@ export function OrderScreen(props: OrderScreenProps) {
             className="w-full py-1.5 text-sm"
             onClick={onCartCheckout}
           >
-            Open drill cart at Diamond Drills USA ↗
+            Open Drill Cart at Diamond Drills USA ↗
           </Button>
           {cartOpened && (
             <div
