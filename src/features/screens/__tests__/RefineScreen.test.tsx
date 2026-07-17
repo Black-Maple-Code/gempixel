@@ -185,6 +185,6 @@ describe('RefineScreen — two-tier seam + slider max + Advanced defaults', () =
     // A state-driven caret glyph (▸) signals the disclosure is openable.
     expect(summary.textContent).toContain('▸');
     // A "settings inside" hint cues what the group houses.
-    expect(summary.textContent).toContain('kit · colors · shape');
+    expect(summary.textContent).toContain('kit · colors');
   });
 });

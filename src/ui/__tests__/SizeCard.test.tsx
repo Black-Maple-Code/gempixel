@@ -65,9 +65,11 @@ describe('SizeCard — dumb selectable card contract (D-05)', () => {
 
   it('renders drillCount inside a font-mono data figure', () => {
     render(<SizeCard {...base} />, container);
-    const mono = card().querySelector('.font-mono');
-    expect(mono).not.toBeNull();
-    expect(mono?.textContent).toContain('4240');
+    // The count sits in its own mono figure beside a small "Drills" mono label,
+    // so match the mono span that actually carries the number.
+    const monos = Array.from(card().querySelectorAll('.font-mono'));
+    const figure = monos.find((m) => m.textContent?.includes('4240'));
+    expect(figure).toBeTruthy();
   });
 
   it('selected=true applies the accent border + tint recipe', () => {

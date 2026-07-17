@@ -67,9 +67,12 @@ export function SizeCard({
           <span class="text-[10px] font-mono uppercase tracking-wider text-faint">{tag}</span>
         ) : null}
       </span>
-      <span class="flex items-baseline justify-between gap-2">
+      <span class="flex items-end justify-between gap-2">
         <span class="text-xs text-muted">{gridDims} · {inches}</span>
-        <span class="font-mono text-sm text-ink">{drillCount}</span>
+        <span class="flex flex-col items-end leading-none">
+          <span class="font-mono text-[9px] uppercase tracking-wider text-faint">Drills</span>
+          <span class="font-mono text-sm text-ink">{drillCount}</span>
+        </span>
       </span>
     </button>
   );

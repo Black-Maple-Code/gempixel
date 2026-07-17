@@ -85,7 +85,7 @@ describe('Slider — native range + onInput + a11y strings', () => {
       <Slider value={3} onChange={vi.fn()} min={1} max={26} ariaLabel="x" />,
       container,
     );
-    expect(range().className).toContain('accent-[var(--accent)]');
+    expect(range().className).toContain('gem-slider');
   });
 
   it('merges a consumer className LAST into the class attribute', () => {

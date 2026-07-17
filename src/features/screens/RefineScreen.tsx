@@ -184,6 +184,22 @@ export function RefineScreen(props: RefineScreenProps) {
         />
       </div>
 
+      {/* ── Drill shape (promoted out of Advanced — a primary choice) ────── */}
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+          Drill shape
+        </span>
+        <SegmentedControl<'square' | 'round'>
+          label="Drill shape"
+          value={drillStyle}
+          onChange={onShapeChange}
+          options={[
+            { value: 'square', label: 'Square' },
+            { value: 'round', label: 'Round' },
+          ]}
+        />
+      </div>
+
       {/* ── Color count (post-process tier) ────────────────────────────── */}
       <div className="flex flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
@@ -237,7 +253,7 @@ export function RefineScreen(props: RefineScreenProps) {
           </span>
           <span>Advanced</span>
           <span className="font-mono text-[10px] font-normal uppercase tracking-wider text-faint">
-            kit · colors · shape
+            kit · colors
           </span>
         </summary>
 
@@ -255,20 +271,6 @@ export function RefineScreen(props: RefineScreenProps) {
               <option value="200">200-color kit</option>
             </select>
           </label>
-
-          {/* Drill shape */}
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Drill shape</span>
-            <SegmentedControl<'square' | 'round'>
-              label="Drill shape"
-              value={drillStyle}
-              onChange={onShapeChange}
-              options={[
-                { value: 'square', label: 'Square' },
-                { value: 'round', label: 'Round' },
-              ]}
-            />
-          </div>
 
           {/* Color exclusion (heavy list — mounted only while Advanced is open). */}
           <div className="flex flex-col gap-1">
