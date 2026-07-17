@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 Phase: 26
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-17 — Completed quick task 260717-dp8: RefineScreen UI polish (fixed viewport/no gap, pinned pan-zoom hint, arrowless caps Back/Next, visible slider track)
+Last activity: 2026-07-17 — Completed quick task 260717-eim: compact Refine size cards + reflow Order step (top row + 3-col strip) to fit one screen
 
 Progress: [██████████] 100%
 
@@ -139,6 +139,7 @@ Progress: [██████████] 100%
 | 260716-tlu | Fix three wizard layout issues: move New+Save into the header (delete floating action row), full-bleed frame so the right config panel is flush-right, and tighten the top spacing under the step bar | 2026-07-17 | e2726bf..d32aef5 | [260716-tlu-fix-three-gempixel-wizard-layout-issues-](./quick/260716-tlu-fix-three-gempixel-wizard-layout-issues-/) |
 | 260717-02w | Reconcile default post-upload grid to a RefineScreen preset card: on-load default now runs aspectAwareGrid on the Medium tier (DEFAULT_REFINE_PRESET), so the correct card highlights immediately with no crop; exact-3:2 dims kept byte-identical (size-selection-crops-image.md note #2) | 2026-07-17 | f9fab53..b2f7a1f | [260717-02w-reconcile-default-post-upload-grid-to-a-](./quick/260717-02w-reconcile-default-post-upload-grid-to-a-/) |
 | 260717-dp8 | RefineScreen (step 2) UI polish: fixed-height canvas viewport (kills the top gap; rail scrolls internally), pan/zoom hint pinned to viewport bottom & visible while zooming, Back/Next made arrowless + uppercase (BACK / NEXT STEP) to match header pills, and a visible white slider track (.gem-slider) on the color-count control | 2026-07-17 | eb115b2..33bcbb3 | [260717-dp8-refinescreen-ui-polish-fixed-viewport-no](./quick/260717-dp8-refinescreen-ui-polish-fixed-viewport-no/) |
+| 260717-eim | Compact Refine size cards (px-4 py-3, 2-line layout — less empty space, whole rail fits) + reflow the Order step from a tall two-column stack into a top row (spec+finish · ship-to) plus a full-width 3-column strip (Price · downloads · drills); ship-to packed into 4 rows via a 6-col grid. Content height ~800px→~611px so the step fits one standard-height screen | 2026-07-17 | f41180d..7edeecf | [260717-eim-compact-refine-size-cards-reflow-order-s](./quick/260717-eim-compact-refine-size-cards-reflow-order-s/) |
 
 ## Continuity & Handoff
 
