@@ -1481,6 +1481,7 @@ export function App() {
       step={wizard.step}
       canEnter={wizard.canEnter}
       goTo={wizard.goTo}
+      onNew={resetWorkspace}
       onSave={() => {
         setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
         setSaveModalOpen(true);
@@ -1574,32 +1575,6 @@ export function App() {
             {derivedWarning}
           </div>
         )}
-
-        {/* Relocated frame action row — the still-needed options that used to live in
-            the retired left drawer: New/Reset (#new-project-btn → resetWorkspace) and
-            Save (#save-project-btn → save modal). Recent projects + load + remove live
-            inside UploadScreen on step 1 (D-10); the top-bar Save pill still works too. */}
-        <div className="no-print mb-3 flex items-center justify-end gap-2">
-          <button
-            id="new-project-btn"
-            onClick={resetWorkspace}
-            className="cursor-pointer rounded-[var(--radius-control)] border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-border hover:text-ink"
-            title="Reset the workspace to start a new image"
-          >
-            New
-          </button>
-          <button
-            id="save-project-btn"
-            onClick={() => {
-              setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
-              setSaveModalOpen(true);
-            }}
-            disabled={!matchResult}
-            className="cursor-pointer rounded-[var(--radius-control)] border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Save project
-          </button>
-        </div>
 
         {/* Screens + single-mount canvas as a flex row. On Refine (step 2) the visible
             children read as [CanvasWorkspace preview | RefineScreen 360px rail]; on

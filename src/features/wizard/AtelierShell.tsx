@@ -21,6 +21,8 @@ export interface AtelierShellProps {
   canEnter: (step: number) => boolean;
   /** Navigate handler (WizardApi.goTo) — passed straight to StepBar. */
   goTo: (step: number) => void;
+  /** Reset-workspace handler for the header New button. */
+  onNew: () => void;
   /** Save handler for the top-bar Save pill. */
   onSave: () => void;
   /** Whether Save is currently allowed (pill disabled when false). */
@@ -56,7 +58,7 @@ const GEM_LOGO_CELLS = [
   '--gem-pink',
 ] as const;
 
-export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, bottomBar, canvasControls }: AtelierShellProps) {
+export function AtelierShell({ children, step, canEnter, goTo, onNew, onSave, canSave, bottomBar, canvasControls }: AtelierShellProps) {
   return (
     // Fixed 3-zone shell (D-05): Zone 1 top step-bar (shrink-0) → Zone 2 the
     // internally-scrolling content (flex-1 min-h-0 overflow-y-auto — `min-h-0` is
@@ -78,16 +80,28 @@ export function AtelierShell({ children, step, canEnter, goTo, onSave, canSave, 
         {/* Center: the single navigator */}
         <StepBar step={step} canEnter={canEnter} goTo={goTo} />
 
-        {/* Right: the one deliberate dark accent — Save pill
+        {/* Right: workspace controls — a secondary/ghost New pill (reset the
+            workspace) beside the one deliberate dark accent Save pill
             (bg #1B1A17 = ink token, text #F4F1E9 = on-accent token). */}
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={!canSave}
-          className="bg-ink text-on-accent rounded-[20px] px-5 py-2 text-xs font-bold uppercase tracking-wide transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110"
-        >
-          Save
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            id="new-project-btn"
+            type="button"
+            onClick={onNew}
+            title="Reset the workspace to start a new image"
+            className="rounded-[20px] border border-border px-4 py-2 text-xs font-bold uppercase tracking-wide text-muted transition-all cursor-pointer hover:bg-border hover:text-ink"
+          >
+            New
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!canSave}
+            className="bg-ink text-on-accent rounded-[20px] px-5 py-2 text-xs font-bold uppercase tracking-wide transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110"
+          >
+            Save
+          </button>
+        </div>
       </header>
 
       {/* Zone 2 — internally-scrolling content. `min-h-0` lets it shrink so the
