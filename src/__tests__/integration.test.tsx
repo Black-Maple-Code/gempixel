@@ -372,6 +372,159 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
+  // On-load-default reconciliation (260717-02w / size-selection-crops-image note #2):
+  // loadImageFile now derives its default dims via aspectAwareGrid on the Medium (BEST) tier,
+  // so the default grid equals the Medium RefineScreen card exactly — its selected-highlight
+  // lands immediately on upload (exactly one card highlighted), still crop-free.
+  it('a 2:3 portrait upload defaults to the Medium tier (53×80) and highlights the Medium card on load', async () => {
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 1000,
+      naturalHeight: 1500,
+      width: 1000,
+      height: 1500,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const mockContext = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(1000 * 1500 * 4),
+        width: 1000,
+        height: 1500,
+      }),
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') return mockContext as any;
+      return null;
+    });
+
+    render(<App />, container);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'portrait.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => {
+      const canvas = container.querySelector('canvas');
+      expect(canvas).not.toBeNull();
+    });
+
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+
+    // Live cols/rows === aspectAwareGrid(80, 53, 1000, 1500): long-axis budget 80 on the
+    // vertical axis, short axis round(80 * (1000/1500)) = 53.
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+    expect(widthEl.value).toBe('53');
+    expect(heightEl.value).toBe('80');
+
+    // Exactly one card highlighted: Medium aria-pressed true, Small/Large false.
+    const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const mediumCard = cards.find(c => c.textContent?.includes('Medium'))!;
+    const smallCard = cards.find(c => c.textContent?.includes('Small'))!;
+    const largeCard = cards.find(c => c.textContent?.includes('Large'))!;
+    expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
+    expect(smallCard.getAttribute('aria-pressed')).toBe('false');
+    expect(largeCard.getAttribute('aria-pressed')).toBe('false');
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
+
+  it('an exact-3:2 upload keeps the 80×53 default (byte-identical) and highlights Medium', async () => {
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 3000,
+      naturalHeight: 2000,
+      width: 3000,
+      height: 2000,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const mockContext = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(3000 * 2000 * 4),
+        width: 3000,
+        height: 2000,
+      }),
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') return mockContext as any;
+      return null;
+    });
+
+    render(<App />, container);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'landscape.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => {
+      const canvas = container.querySelector('canvas');
+      expect(canvas).not.toBeNull();
+    });
+
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+
+    // aspectAwareGrid(80, 53, 3000, 2000) at ar=1.5 reproduces the preset dims byte-for-byte:
+    // cols 80, rows round(80/1.5) = 53 — unchanged from prior behavior.
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+    expect(widthEl.value).toBe('80');
+    expect(heightEl.value).toBe('53');
+
+    const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const mediumCard = cards.find(c => c.textContent?.includes('Medium'))!;
+    expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
+
   // Re-homed to the RefineScreen SizeCards (23-03): the legacy preset-size <select> moved
   // OFF Upload (D-10/SC1) and is replaced by curated grid SizeCards (REFINE-01/D-05).
   // Selecting a card applies its grid dims to the live cols/rows (worker tier). The "units"
