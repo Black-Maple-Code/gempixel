@@ -100,7 +100,7 @@ export function RefineScreen(props: RefineScreenProps) {
   return (
     <section
       data-screen="refine"
-      className="flex w-full max-w-[320px] flex-col gap-6 border-l border-border bg-panel p-6 text-ink @max-[640px]:w-full @max-[640px]:border-l-0"
+      className="flex w-full max-w-[320px] min-h-0 flex-col gap-6 overflow-y-auto border-l border-border bg-panel p-6 text-ink @max-[640px]:w-full @max-[640px]:overflow-visible @max-[640px]:border-l-0"
     >
       {/* ── Size (worker tier) ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">

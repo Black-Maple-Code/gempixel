@@ -31,9 +31,9 @@ export interface SliderProps
  * free; we add `aria-label` + `aria-valuetext` so the value announces meaningfully.
  * CRITICAL (Preact, not React): the live handler is `onInput`, NOT `onChange` — in
  * Preact `onChange` fires only on commit/blur, so a controlled slider wired to it
- * would appear frozen mid-drag. The baseline `accent-[var(--accent)]` tints thumb +
- * fill natively. An optional `className` is merged LAST; remaining native input
- * attributes spread through `...rest`.
+ * would appear frozen mid-drag. The `.gem-slider` class (src/index.css) draws a
+ * visible white track + accent thumb for both engines. An optional `className` is
+ * merged LAST; remaining native input attributes spread through `...rest`.
  */
 export function Slider({
   value,
@@ -57,11 +57,7 @@ export function Slider({
       aria-valuetext={ariaValueText}
       // Preact: onInput fires per drag tick; onChange would only fire on commit (Pitfall 1).
       onInput={e => onChange(parseInt((e.currentTarget as HTMLInputElement).value, 10))}
-      className={cn(
-        'w-full h-1 cursor-pointer appearance-none rounded',
-        'accent-[var(--accent)]',
-        className,
-      )}
+      className={cn('gem-slider', className)}
       {...rest}
     />
   );

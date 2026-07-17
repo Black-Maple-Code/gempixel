@@ -1563,9 +1563,9 @@ export function App() {
             <button
               id="wizard-back-btn"
               onClick={wizard.back}
-              className="cursor-pointer text-xs font-bold text-muted transition-colors hover:text-ink"
+              className="cursor-pointer text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:text-ink"
             >
-              &lt; Back
+              Back
             </button>
           ) : (
             <div className="w-[42px] select-none">&nbsp;</div>
@@ -1576,9 +1576,9 @@ export function App() {
               id="wizard-next-btn"
               onClick={wizard.next}
               disabled={!wizard.canEnter(wizard.step + 1)}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wide text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Next Step →
+              Next Step
             </button>
           ) : (
             <div className="w-[72px] select-none">&nbsp;</div>
@@ -1592,8 +1592,8 @@ export function App() {
         1180px card frame on the cream Atelier background. This replaces the retired
         dark 3-column shell (the dark full-bleed wrapper + 320px left "My Images" aside
         + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
-    <div className="relative min-h-full bg-bg print:h-auto">
-      <div className="flex min-h-full w-full flex-col pl-4 pr-0 pt-2 pb-4 print:p-0">
+    <div className="relative h-full min-h-0 bg-bg print:h-auto print:min-h-0">
+      <div className="flex h-full min-h-0 w-full flex-col pl-4 pr-0 pt-2 pb-4 print:h-auto print:p-0">
 
         {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
             the canvas is visible (they moved out of CanvasWorkspace in Plan 08).
