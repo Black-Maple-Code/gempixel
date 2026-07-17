@@ -1362,19 +1362,23 @@ export function App() {
   const orderSizeLabel = `${formatInches(orderWidthIn)} × ${formatInches(orderHeightIn)} in`;
   const orderGridLabel = `${matchCols}×${matchRows}`;
 
-  // ORDER-01: editing the finish or ship-to invalidates the just-downloaded artifacts,
-  // so clear BOTH per-task done-states — the downloaded canvas files and the packet no
-  // longer reflect the edited spec, and the drill cart reflected the prior plan. The
-  // user can re-download / re-open. Never a silent no-op after an edit (WR-01 discipline).
+  // ORDER-01: editing the finish or ship-to invalidates the JSON packet (which embeds
+  // both finish + ship-to), so clear the canvas/packet done-state — the downloaded
+  // artifacts no longer reflect the edited spec and the user can re-download.
+  // WR-02: do NOT clear cartOpened here. The drill cart (handleShopifyCheckout) is built
+  // purely from matchResult.counts + drillStyle + pricing — it depends on NEITHER the
+  // canvas finish (a fixed enum with no price impact, RESEARCH-Q3) nor shipTo (embedded
+  // only in the JSON packet). A finish / ship-to edit does not invalidate an opened
+  // cart, so erasing "Cart opened ↗" here would be a false invalidation. The cart's
+  // done-state is invalidated only when the drill plan actually changes — handled by the
+  // matchResult / drillStyle reset effect (WR-01) above.
   const handleFinishChange = (next: OrderFinish) => {
     setFinish(next);
     setCanvasDownloaded(false);
-    setCartOpened(false);
   };
   const handleShipToChange = (patch: Partial<OrderPacketShipTo>) => {
     setShipTo(prev => ({ ...prev, ...patch }));
     setCanvasDownloaded(false);
-    setCartOpened(false);
   };
 
   // ORDER-02 (D-08/D-09): complete the flow by DOWNLOADING a versioned,
