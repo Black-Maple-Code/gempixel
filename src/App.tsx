@@ -2,19 +2,30 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { CanvasViewer } from './engine/viewer';
 import { DMC_PALETTE } from './engine/palette';
 import { compileShopifyCartLink, calculateCanvasCost, normalizeVendor, VENDOR_REGISTRY, type CanvasVendor } from './engine/checkout';
-import { drawCanvasOnly, drawCombinedCanvasSheet, triggerCanvasDownload, FRAMER_MARGIN_CELLS } from './engine/export';
+import { drawCanvasOnly, drawCombinedCanvasSheet, drawLegendOnly, triggerCanvasDownload } from './engine/export';
 import { planOrderSupply, defaultPacketCost } from './engine/bagPlanner';
+import { buildOrderQuote } from './engine/quote';
+import { gridToInches, formatInches } from './engine/density';
 import { hasVariantMapping } from './engine/variants';
-import { toCents, fromCents, formatUSD, sanitizeMoney } from './engine/money';
+import { toCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
-import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
+import { projectStore, generateUUID, generateThumbnail, imageToStorableDataUrl, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
 import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
-import { Step1Ingest } from './features/wizard/steps/Step1Ingest';
-import { Step2Palette } from './features/wizard/steps/Step2Palette';
-import { Step3Canvas } from './features/wizard/steps/Step3Canvas';
-import { Step4Export } from './features/wizard/steps/Step4Export';
+import { AtelierShell } from './features/wizard/AtelierShell';
+import { CanvasWorkspace } from './features/wizard/CanvasWorkspace';
+import { CanvasControlBar } from './features/wizard/CanvasControlBar';
+import { UploadScreen } from './features/screens/UploadScreen';
+import { RefineScreen, type RefineScreenProps } from './features/screens/RefineScreen';
+import { SuppliesScreen, type SuppliesScreenProps } from './features/screens/SuppliesScreen';
+import { OrderScreen, type OrderScreenProps } from './features/screens/OrderScreen';
+import {
+  buildOrderPacket,
+  LOCKED_CANVAS_PRODUCT,
+  type OrderFinish,
+  type OrderPacketShipTo,
+} from './features/screens/orderPacket';
 import { usePersistentState, codecs } from './hooks/usePersistentState';
 import type { Codec } from './hooks/usePersistentState';
 
@@ -44,6 +55,11 @@ export const customTemplateCodec: Codec<string> = {
 };
 
 
+// Minimum grid dimension for an auto-recompute. Mirrors the ingest/width-height
+// clamp lower bound (`Math.max(1, …)`), so a half-typed / degenerate custom size
+// never fires a garbage worker run (D-02 clamp-guard).
+export const MIN_GRID = 1;
+
 export const STANDARD_SIZES = [
   { name: 'Custom size', value: 'custom' },
   // Standard Sizes (12x16, 16x20, 20x28, 40x60 in)
@@ -62,6 +78,65 @@ export const STANDARD_SIZES = [
   { name: '100 x 75 grid', value: '100x75-grid', width: 100, height: 75, unit: 'grid' },
   { name: '120 x 80 grid', value: '120x80-grid', width: 120, height: 80, unit: 'grid' }
 ];
+
+/**
+ * Curated Refine SizeCard presets (REFINE-01, D-05). A small recommendation set in
+ * GRID dims — deliberately NOT the mixed cm/inch/grid STANDARD_SIZES above (RESEARCH
+ * Q2). App derives each card's true inches (via gridToInches/formatInches, 2.5mm/dot)
+ * and live drill count and passes them as props; the card renders, never derives
+ * (Pattern 2). Anything off this list is reachable through the custom-size entry
+ * (REFINE-02). "Medium" (80×53) is the default recommendation and carries the BEST tag.
+ */
+export const REFINE_SIZE_PRESETS: Array<{ label: string; cols: number; rows: number; tag?: string }> = [
+  { label: 'Small', cols: 80, rows: 53 },
+  { label: 'Medium', cols: 110, rows: 73 },
+  { label: 'Large', cols: 140, rows: 93 },
+  { label: 'Extra large', cols: 190, rows: 127 },
+];
+
+/**
+ * The default post-upload size tier (Medium). Anchoring the on-load default to this tier via
+ * aspectAwareGrid makes the initial grid equal the Medium RefineScreen card, so its
+ * selected-highlight lands immediately on load (reconciles the two anchoring strategies; fixes
+ * size-selection-crops-image.md note #2). Derived from REFINE_SIZE_PRESETS — no duplicate literal.
+ */
+export const DEFAULT_REFINE_PRESET = REFINE_SIZE_PRESETS[1];
+
+/**
+ * AR-aware preset sizing (fixes size-selection-crops-image). Each REFINE_SIZE_PRESET is a
+ * size/detail TIER whose meaningful number is its drill budget on the LONG axis
+ * (`max(cols, rows)`). Given the loaded image's pixel dimensions this maps that long-axis
+ * budget onto the image's OWN long axis and derives the short axis from the image aspect
+ * ratio — the exact `Math.max(1, round(long / ar))` derivation the custom-size handlers
+ * (handleWidthChange/handleHeightChange) already use. The downscale crop
+ * (`calculateCropBounds`, Cover/Crop in ingest.ts) then becomes a no-op, so NO content is
+ * lost for any image aspect ratio: a portrait photo gets a TALL canvas of comparable
+ * long-axis budget instead of being center-cropped into a 3:2 grid.
+ *
+ * Byte-identical guarantee: a 3:2 landscape image (ar = 1.5) lands on the preset's original
+ * cols/rows exactly — long axis === preset long axis, and the short axis rounds back to the
+ * preset short axis (e.g. Medium: cols=80, rows=round(80/1.5)=53) — so already-3:2 matches
+ * are unchanged. Falls back to the raw preset for a missing/degenerate image (defensive; the
+ * Refine flow always has a loaded image).
+ */
+export function aspectAwareGrid(
+  presetCols: number,
+  presetRows: number,
+  imageWidth: number,
+  imageHeight: number,
+): { cols: number; rows: number } {
+  const longBudget = Math.max(presetCols, presetRows);
+  const ar = imageWidth / imageHeight; // width / height
+  if (!Number.isFinite(ar) || ar <= 0) {
+    return { cols: presetCols, rows: presetRows };
+  }
+  if (ar >= 1) {
+    // Landscape or square: the image's long axis is its width → cols carries the budget.
+    return { cols: longBudget, rows: Math.max(1, Math.round(longBudget / ar)) };
+  }
+  // Portrait: the image's long axis is its height → rows carries the budget.
+  return { cols: Math.max(1, Math.round(longBudget * ar)), rows: longBudget };
+}
 
 
 export function calculateSafetyPurchase(exactCount: number, bagSize: number = 200): { safety: number; packets: number; purchase: number } {
@@ -125,70 +200,95 @@ export function hexToHue(hex: string): number {
 export function App() {
   const isTestEnv = typeof window !== 'undefined' && navigator.userAgent.includes('jsdom');
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [cols, setCols] = useState(80);
-  const [rows, setRows] = useState(53);
+  const [cols, setCols] = useState(110);
+  const [rows, setRows] = useState(73);
+
+  // D-02: the COMMITTED match inputs the worker actually consumes. Live image/cols/rows
+  // drive the editing UI; these advance only on an intentional commit (fresh upload,
+  // project load, reset, or an auto-fired recompute — SizeCard-immediate / custom-size
+  // debounced). Keeping a separate committed snapshot means the expensive/abort-race-prone
+  // match runs once per commit, and the last-good grid renders until the fresh one lands.
+  const [matchInputs, setMatchInputs] = useState<{ image: HTMLImageElement | null; cols: number; rows: number }>(
+    { image: null, cols: 110, rows: 73 }
+  );
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string>('');
   const [projectsRegistry, setProjectsRegistry] = useState<ProjectSummary[]>(() => projectStore.list());
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState('');
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   // Unified one-shot action-error banner (ERR-01). Surfaces imperative failures —
   // save quota-full (CR-02/B3, folded in from the former saveErrorMsg), download
   // generation failures, and a corrupt checkout unmapped-colors log. Each action
   // handler clears it at its start (clear-then-act) and it is dismissible.
   const [actionError, setActionError] = useState<string | null>(null);
-  const [imagesDrawerOpen, setImagesDrawerOpen] = useState(false);
-  // Step 1 "Source Image" disclosure — auto-collapses once an image is loaded so the
-  // ingestion settings sit near the top without scrolling; user can reopen it.
-  const [imageSourceOpen, setImageSourceOpen] = useState(true);
+
+  // WR-03: the PERSISTENT derived advisory (unpriced bag sizes + unmapped-shape colors)
+  // lives in its OWN state, rendered as its own banner — NEVER on the shared one-shot
+  // actionError. This is what makes it survive the clear-then-act `setActionError(null)`
+  // every imperative handler runs at its start: previously the derived warning was
+  // written onto actionError and any action that did not change its deps (e.g. "Download
+  // canvas", "Open drill cart") cleared it with no way for the effect to restore it. It
+  // is derived from live state, so it is not user-dismissible (dismissing would be a lie).
+  const [derivedWarning, setDerivedWarning] = useState<string | null>(null);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
-  const [widthInput, setWidthInput] = useState<string>('80');
-  const [heightInput, setHeightInput] = useState<string>('53');
-  const [selectedPreset, setSelectedPreset] = useState<string>('custom');
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
-  const [excludeListOpen, setExcludeListOpen] = useState(false);
-  const [recsOpen, setRecsOpen] = useState(true);
-  const [supplyListOpen, setSupplyListOpen] = useState(true);
-  // BAG-02/D-09: open/closed state for the a11y-safe "Why these bags?" dye-lot
-  // explainer; follows the supplyListOpen progressive-disclosure idiom.
+  const [widthInput, setWidthInput] = useState<string>('110');
+  const [heightInput, setHeightInput] = useState<string>('73');
+  // selectedPreset is no longer read by any live screen (legacy Step1Ingest showed it);
+  // the setter is retained because live size-change handlers still reset it to 'custom'.
+  const [, setSelectedPreset] = useState<string>('custom');
   const [viewportMode, setViewportMode] = useState<'grid' | 'symbols' | 'reference'>('grid');
   const [zoomScale, setZoomScale] = useState(1.0);
 
-  // Theme skin: "dark" (Pixel Lab) / "light" (Atelier). Persisted via the guarded
-  // hook; the DOM side-effect (applying data-theme to <html>) stays a separate effect.
-  const [theme, setTheme] = usePersistentState<'dark' | 'light'>(
-    'gempixel_theme', 'light', codecs.string as unknown as Codec<'dark' | 'light'>
-  );
+  // Dark mode is fully retired (Atelier light only). Clear the abandoned persisted
+  // key once on boot so a returning dark-mode user carries no residue; routed
+  // through the guarded storage boundary so a blocked store never throws.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-  const [sortBy, setSortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
-  const [sortAsc, setSortAsc] = useState<boolean>(false);
+    safeStorage.removeItem('gempixel_theme');
+  }, []);
+  // Legend sort is retired with the right Color-Legend aside (Plan 08); the
+  // supply order is the stable default (quantity desc). Kept as read-only values
+  // so sortedMatches stays deterministic; the interactive sort setters are gone.
+  const [sortBy] = useState<'color' | 'code' | 'name' | 'quantity'>('quantity');
+  const [sortAsc] = useState<boolean>(false);
   const [recentImages, setRecentImages] = useState<RecentImage[]>(() => projectStore.recents.list());
 
-  const [recentUploadsOpen, setRecentUploadsOpen] = useState(true);
-
   // wizardStep state now lives in useWizard (wired below, after the match hook).
-  const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain'>('cover');
   const [drillStyle, setDrillStyle] = useState<'square' | 'round'>('square');
   const [selectedBaseKit, setSelectedBaseKit] = useState<'all' | '100' | '200'>('all');
   const [drillType, setDrillType] = useState<'standard' | 'ab' | 'glow' | 'crystal'>('standard');
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set());
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
-  const [resourcesModalOpen, setResourcesModalOpen] = useState(false);
-  
+
+  // ORDER-01/02/04/05 (D-06/D-07/D-08/D-09): Order-screen-only state. App stays sole
+  // state owner (D-01/D-02); the pure OrderScreen reads these via props. `finish` is a
+  // fixed UI enum with NO price impact (RESEARCH Q3); `shipTo` is CLIENT-SIDE only —
+  // embedded in the downloaded packet and NEVER transmitted (D-08). The two INDEPENDENT
+  // per-task done-states replace the old single `packetDownloaded` (D-07): `canvasDownloaded`
+  // turns true on ANY section-① canvas download (any of the three PNGs OR the JSON packet —
+  // the honest "files really on disk" trigger); `cartOpened` turns true when the drill cart
+  // opens. Two vendors, two honest sub-terminals — no order number / receipt / payment (D-09).
+  const [finish, setFinish] = useState<OrderFinish>('trimmed');
+  const [shipTo, setShipTo] = useState<OrderPacketShipTo>({
+    name: '',
+    addressLine1: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
+  });
+  const [canvasDownloaded, setCanvasDownloaded] = useState(false);
+  const [cartOpened, setCartOpened] = useState(false);
+
   // Match pipeline (worker lifecycle + derivations) lives in useDiamondArtMatch;
   // its { matchResult, symbolMap, loading, progress, restore } are wired in below.
   // Default ON — auto-substitute low-count colors unless the user opted out.
-  const [enableSubstitution, setEnableSubstitution] = usePersistentState(
+  const [enableSubstitution] = usePersistentState(
     'gempixel_enable_substitution', true, codecs.bool
   );
   // Default threshold 15 — colors with a count of 15 and below are substituted.
-  const [substitutionThreshold, setSubstitutionThreshold] = usePersistentState(
+  const [substitutionThreshold] = usePersistentState(
     'gempixel_substitution_threshold', 15, codecs.int(15)
   );
   // Default ON (Light) — clean orphan drills / blotchy edges unless opted out.
@@ -199,9 +299,18 @@ export function App() {
   const [smoothingStrength, setSmoothingStrength] = usePersistentState(
     'gempixel_smoothing_strength', 1, codecs.int(1)
   );
+  // REFINE-04 (D-03/D-04) target-N color reduction — the post-process tier the
+  // Refine color slider drives. OFF by default so matchResult stays byte-identical
+  // to the pre-reducer pipeline (SC5); flips on the moment the user lowers the
+  // slider below detectedColorCount. targetColorCount is a large sentinel until
+  // then so the slider thumb sits at the top (= a no-op reduce ceiling).
+  const [enableReduce, setEnableReduce] = useState(false);
+  const [targetColorCount, setTargetColorCount] = useState<number>(256);
   // Lazy-init read migrated onto the guarded hook; the imperative checkout writes
-  // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here.
-  const [unmappedLog, setUnmappedLog] = usePersistentState<string[]>(
+  // (handleShopifyCheckout) are guarded in Plan 11-03 — untouched here. The log VALUE
+  // is no longer read on any live surface (its Step3Canvas readout was deleted in
+  // 26-03); only the setter persists the checkout-time unmapped-colors log.
+  const [, setUnmappedLog] = usePersistentState<string[]>(
     'gempixel_unmapped_colors_log', [], codecs.stringArray()
   );
 
@@ -216,10 +325,6 @@ export function App() {
     1000: 1.80,
     2000: 3.20
   });
-
-  const updatePriceDb = (qty: 200 | 500 | 1000 | 2000, val: number) => {
-    setPriceDb(prev => ({ ...prev, [qty]: val }));
-  };
 
   // WR-01: when loadProject restores a project whose drillType differs from the
   // active one, it also restores that project's saved per-bag prices. The
@@ -259,28 +364,6 @@ export function App() {
     }
   }, [widthInput, heightInput, unit, selectedVendor, image, activeProjectId]);
 
-  const sizingAdviceData = useMemo(() => {
-    // Physical size is derived from the grid itself (10 dots per inch => 2.54 cm),
-    // so the advice is always in inches + cm regardless of the sizing mode.
-    const wIn = cols / 10;
-    const hIn = rows / 10;
-    const toCm = (inches: number) => inches * 2.54;
-    const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
-    const wrapIn = 1; // legend/wrap buffer for the combined sheet, each side
-    const framerIn = FRAMER_MARGIN_CELLS / 10; // framer wrap baked into the Canvas Grid PNG, each side
-
-    return {
-      gridIn: `${fmt(wIn)}″ × ${fmt(hIn)}″`,
-      gridCm: `${fmt(toCm(wIn))} × ${fmt(toCm(hIn))} cm`,
-      combinedIn: `${fmt(wIn + wrapIn * 2)}″ × ${fmt(hIn + wrapIn * 2)}″`,
-      combinedCm: `${fmt(toCm(wIn + wrapIn * 2))} × ${fmt(toCm(hIn + wrapIn * 2))} cm`,
-      canvasOnlyIn: `${fmt(wIn + framerIn * 2)}″ × ${fmt(hIn + framerIn * 2)}″`,
-      canvasOnlyCm: `${fmt(toCm(wIn + framerIn * 2))} × ${fmt(toCm(hIn + framerIn * 2))} cm`,
-      framer: `${fmt(framerIn)}″ (${fmt(toCm(framerIn))} cm)`,
-      wrap: `${wrapIn}″ (${fmt(toCm(wrapIn))} cm)`,
-    };
-  }, [cols, rows]);
-
   const loadProject = (id: string) => {
     const project = projectStore.load(id);
     if (!project) return;
@@ -291,6 +374,9 @@ export function App() {
     setSaveProjectName(project.name || '');
     setCols(project.dimensions.cols);
     setRows(project.dimensions.rows);
+    // D-13: a project load is a complete-state commit (its match is restored below),
+    // so align the committed match inputs with the restored dims — never "stale" on load.
+    setMatchInputs({ image: null, cols: project.dimensions.cols, rows: project.dimensions.rows });
     setDrillStyle(project.drillStyle);
     setSelectedBaseKit(project.selectedBaseKit || 'all');
     // WR-01: only arm the preset-skip when the load actually CHANGES drillType,
@@ -304,8 +390,12 @@ export function App() {
     setDrillType(loadedDrillType);
     setExcludedColors(new Set(project.excludedDmcCodes || []));
     setHighlightedColor(null);
-    setCanvasBaseCost(project.kitBaseCost ?? 15.0);
-    setDrillPacketCost(project.drillPacketCost ?? 0.25);
+    // Sanitize money-typed loads to a finite, non-negative NUMBER at the state
+    // boundary. `??` only guards null/undefined, so a tampered/imported value
+    // (e.g. the string '1e999') would otherwise reach the money math (toCents) in
+    // the render body and throw (CR-01). Clamping here keeps the render robust.
+    setCanvasBaseCost(sanitizeMoney(project.kitBaseCost ?? 15.0));
+    setDrillPacketCost(sanitizeMoney(project.drillPacketCost ?? 0.25));
     setCanvasTemplate(project.canvasTemplate || '');
     setAffiliateTag(project.affiliateTag || '');
     setAffiliateApp(project.affiliateApp || 'ref');
@@ -317,7 +407,16 @@ export function App() {
     setWidthInput(project.dimensions.cols.toString());
     setHeightInput(project.dimensions.rows.toString());
     setSelectedPreset('custom');
-    
+
+    // WR-01: Order state is per-workspace and must NOT leak across a project load.
+    // Reset the finish, the client-entered ship-to (PII — never carry one project's
+    // address into another's form), and BOTH per-task fulfillment flags (a false
+    // "already downloaded" / "cart opened" state for a project the user never touched).
+    setFinish('trimmed');
+    setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
+    setCanvasDownloaded(false);
+    setCartOpened(false);
+
     if (project.pricesPerBagSize) {
       setPriceDb(project.pricesPerBagSize);
     }
@@ -335,18 +434,32 @@ export function App() {
     } else {
       restore(null);
     }
+
+    // Rehydrate the source image (if this project was saved with one) so the load
+    // is complete: the canvas is already showing the restored grid (from gridData
+    // above), and once this async decode lands, `image` is set — so a later size
+    // change recomputes instead of hitting the "Re-upload the source image" guard.
+    // A NEW HTMLImageElement identity also fires the auto-advance effect, landing
+    // the user on Refine to see their restored project. Legacy blobs without an
+    // imageDataUrl keep the prior behavior (grid restored, no live image).
+    if (project.imageDataUrl) {
+      const restoredImg = new Image();
+      restoredImg.onload = () => setImage(restoredImg);
+      restoredImg.src = project.imageDataUrl;
+    }
   };
 
   const resetWorkspace = () => {
     setActiveProjectId(null);
     setImage(null);
-    setImageSourceOpen(true);
     setImageName('');
-    setCols(80);
-    setRows(53);
+    setCols(110);
+    setRows(73);
+    // D-13: reset clears the committed match inputs too (no residual stale state).
+    setMatchInputs({ image: null, cols: 110, rows: 73 });
     setUnit('grid');
-    setWidthInput('80');
-    setHeightInput('53');
+    setWidthInput('110');
+    setHeightInput('73');
     setSelectedPreset('custom');
     setDrillStyle('square');
     setSelectedBaseKit('all');
@@ -363,6 +476,13 @@ export function App() {
       1000: 1.80,
       2000: 3.20
     });
+    // WR-01: clear per-workspace Order state on reset too (finish + client-entered
+    // ship-to PII + BOTH per-task fulfillment flags) — a fresh workspace must never
+    // inherit the previous one's address or a stale "downloaded" / "cart opened" state.
+    setFinish('trimmed');
+    setShipTo({ name: '', addressLine1: '', city: '', state: '', postalCode: '', country: '' });
+    setCanvasDownloaded(false);
+    setCartOpened(false);
     restore(null);
     wizard.reset();
   };
@@ -397,7 +517,12 @@ export function App() {
       dateCreated: projectSummary.dateCreated,
       dateModified: nowStr,
       imageName: imageName || (image ? 'Uploaded Image' : 'Imported Project'),
-      dimensions: { cols, rows },
+      // HI-01: gridData below comes from the COMMITTED matchResult, so the saved
+      // dimensions must be the committed dims (matchInputs), not the live cols/rows.
+      // Otherwise a Save during the D-13 stale window (resized but not yet recomputed)
+      // persists a grid whose size disagrees with its stored dimensions — it renders
+      // wrong on reload. With no match there is no grid to disagree with, so use live.
+      dimensions: matchResult ? { cols: matchInputs.cols, rows: matchInputs.rows } : { cols, rows },
       drillStyle,
       selectedBaseKit,
       safetyMargin: 10,
@@ -411,7 +536,12 @@ export function App() {
       affiliateTag,
       affiliateApp,
       gridData,
-      selectedVendor
+      selectedVendor,
+      // Persist the source image (downscaled JPEG) so a reload fully restores the
+      // project — the canvas AND the ability to re-match on a size change — instead
+      // of prompting a re-upload. '' when there is no live image (e.g. a re-saved
+      // legacy project); the load path treats '' the same as absent.
+      imageDataUrl: image ? imageToStorableDataUrl(image) : ''
     };
 
     // CR-02/B3: on a quota failure, surface a warning and abort the "saved" side
@@ -428,13 +558,6 @@ export function App() {
     setActiveProjectId(projectId);
     setSaveModalOpen(false);
     return true;
-  };
-
-  const showSaveSuccess = () => {
-    setSaveSuccessMsg('Saved successfully!');
-    setTimeout(() => {
-      setSaveSuccessMsg('');
-    }, 3000);
   };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -456,15 +579,22 @@ export function App() {
   // dimension-sync effect's double-source-of-truth fragility is addressed separately.
   const activeCandidates = resolveActiveCandidates(selectedBaseKit, excludedColors);
 
-  const { matchResult, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
-    image,
-    cols,
-    rows,
+  const { matchResult, detectedColorCount, symbolMap, loading, progress, loadingPhase, restore, error: matchError } = useDiamondArtMatch({
+    // D-13: the worker consumes the COMMITTED inputs, not the live ones — so an
+    // upstream edit (size/image) after a match does not silently re-fire the worker.
+    image: matchInputs.image,
+    cols: matchInputs.cols,
+    rows: matchInputs.rows,
     activeCandidates,
     enableSubstitution,
     substitutionThreshold,
     enableSmoothing,
     smoothingStrength,
+    // REFINE-04 post-process tier (D-03/D-04): these live ONLY in the hook's
+    // matchResult memo deps, never the worker effect (image/cols/rows/candidatesKey),
+    // so the color slider re-renders on the main thread with no worker re-fire.
+    enableReduce,
+    targetColorCount,
   });
 
   const wizard = useWizard({
@@ -472,6 +602,77 @@ export function App() {
     hasMatch: !!matchResult,
     isTestEnv,
   });
+
+  // The dimensions the on-screen match actually corresponds to (the COMMITTED match
+  // inputs). The canvas/exports render at these dims, so a dimension change that is
+  // still being recomputed keeps showing the last-good grid coherently until the fresh
+  // one lands — the two-phase loading overlay covers that pending window.
+  const matchCols = matchInputs.cols;
+  const matchRows = matchInputs.rows;
+
+  // WR-01: the Order terminals ("Downloaded ✓" / "Cart opened ↗") assert that the
+  // on-disk artifacts and the opened cart reflect the CURRENT design. So any upstream
+  // edit that changes the committed grid OR the drill plan must invalidate both
+  // per-task done-states — otherwise a user can download / open the cart, go back to
+  // Refine, change the size / kit / exclusions / reduce / smoothing or the drill shape,
+  // and return to a stale "done" claim.
+  //
+  // Key on the COMMITTED design inputs, NOT on matchResult. matchResult is the async
+  // worker output whose object identity churns on every settle/re-derive independent of
+  // a user edit — keying on it would spuriously clear a fresh "Downloaded ✓" the instant
+  // the match re-settles after the download (a real regression against the Order-state
+  // test contract). Each dep below is state that changes ONLY on a genuine design edit or
+  // a project load: matchInputs (size/image commit), drillStyle, selectedBaseKit,
+  // targetColorCount + enableReduce (color reduce), excludedColors, and
+  // enableSmoothing + smoothingStrength (edge cleanup). Resetting to false when already
+  // false (initial mount, or an edit before any download) is a no-op in React.
+  useEffect(() => {
+    setCanvasDownloaded(false);
+    setCartOpened(false);
+  }, [
+    matchInputs,
+    drillStyle,
+    selectedBaseKit,
+    targetColorCount,
+    enableReduce,
+    excludedColors,
+    enableSmoothing,
+    smoothingStrength,
+  ]);
+
+  // D-02 auto-recompute: commit the given (or current live) inputs. Committing makes
+  // the match hook — which keys on matchInputs — fire the EXISTING match effect exactly
+  // once (no new worker path, no B2 abort-race re-entry). Callers pass the freshly
+  // computed cols/rows explicitly so the commit never reads stale React state from the
+  // same tick as the setCols/setRows that scheduled it. The last-good match stays on
+  // screen until the fresh one lands.
+  const handleRecomputeMatch = (nextCols: number = cols, nextRows: number = rows) => {
+    setActionError(null);
+    // ME-01: without a live source image there is nothing to recompute. Committing
+    // would let the worker bail on the null image and silently strand a mismatched
+    // grid, so keep the last-good match and prompt a re-upload instead.
+    if (!image) {
+      setActionError('Re-upload the source image to recompute the match.');
+      return;
+    }
+    setMatchInputs({ image, cols: nextCols, rows: nextRows });
+  };
+
+  // D-02: a valid custom-size edit auto-recomputes on a ~500ms debounce so rapid
+  // keystrokes ("1" → "15" → "150") collapse into a single worker run. The clamp-guard
+  // (MIN_GRID + a live image) means a half-typed or imageless value never fires.
+  const customRecomputeTimerRef = useRef<number | null>(null);
+  const scheduleCustomRecompute = (nextCols: number, nextRows: number) => {
+    if (customRecomputeTimerRef.current !== null) {
+      clearTimeout(customRecomputeTimerRef.current);
+    }
+    customRecomputeTimerRef.current = window.setTimeout(() => {
+      customRecomputeTimerRef.current = null;
+      if (image && nextCols >= MIN_GRID && nextRows >= MIN_GRID) {
+        handleRecomputeMatch(nextCols, nextRows);
+      }
+    }, 500);
+  };
 
   const { leftLegendColors, rightLegendColors } = useMemo(() => {
     // The printable/exported legend is a KEY for the grid, so it must list only
@@ -509,10 +710,18 @@ export function App() {
     return () => {
       viewerRef.current?.destroy();
       viewerRef.current = null;
+      if (customRecomputeTimerRef.current !== null) {
+        clearTimeout(customRecomputeTimerRef.current);
+        customRecomputeTimerRef.current = null;
+      }
     };
   }, []);
 
   const lastFitProjectRef = useRef<string | null>(null);
+  // Tracks the committed dims the canvas last fitted to, so a dimension change
+  // (SizeCard / custom size) re-fits the viewport cleanly once — riding the Plan 03
+  // isFitMode resting state — without a post-process slider tick ever re-fitting (D-04).
+  const lastFitDimsRef = useRef<string | null>(null);
 
   // Initialize CanvasViewer when canvas is rendered (depends on image OR matchResult)
   useEffect(() => {
@@ -537,29 +746,42 @@ export function App() {
     if (viewerRef.current && matchResult && activeCandidates.length > 0) {
       const colorMap = new Map<string, string>();
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
-      viewerRef.current.setData(cols, rows, matchResult.matches, colorMap);
+      // Draw the grid at the COMMITTED match dimensions so an in-flight recompute keeps
+      // rendering the last-good grid coherently until the fresh one lands.
+      viewerRef.current.setData(matchCols, matchRows, matchResult.matches, colorMap);
       viewerRef.current.setDrillStyle(drillStyle);
       viewerRef.current.setHighlightedColor(highlightedColor);
       viewerRef.current.setDrillType(drillType);
       viewerRef.current.setViewMode(viewportMode);
       viewerRef.current.setSymbolMap(symbolMap);
 
-      // Automatically fit to container by default on first load of a new image or when switching projects
-      if (lastFitImageRef.current !== image || (activeProjectId && lastFitProjectRef.current !== activeProjectId)) {
+      // Auto-fit on first load of a new image, on a project switch, OR on a committed
+      // dimension change (D-02/D-04). The fit math keys on the grid dims alone, so
+      // fitting here — after setData installs the new dims — re-fits cleanly with no
+      // zoom-jump. A post-process slider tick (same dims) never re-fits.
+      const fitDimsKey = `${matchCols}x${matchRows}`;
+      if (
+        lastFitImageRef.current !== image ||
+        (activeProjectId && lastFitProjectRef.current !== activeProjectId) ||
+        lastFitDimsRef.current !== fitDimsKey
+      ) {
         viewerRef.current.fitToContainer();
         lastFitImageRef.current = image;
         lastFitProjectRef.current = activeProjectId;
+        lastFitDimsRef.current = fitDimsKey;
       }
     }
-  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, cols, rows, drillType, activeProjectId, viewportMode, symbolMap]);
+  }, [image, matchResult, activeCandidates, drillStyle, highlightedColor, matchCols, matchRows, drillType, activeProjectId, viewportMode, symbolMap]);
 
-  // Push theme colors into the canvas viewer (canvas can't read CSS vars itself).
+  // Push CSS-var canvas tokens into the viewer (canvas can't read CSS vars itself).
+  // The real theme->canvas mechanism: :root now always resolves to Atelier light.
+  // PHASE 22: remove theme param — the `theme` dep was dropped when dark mode retired.
   useEffect(() => {
     if (!viewerRef.current) return;
     const styles = getComputedStyle(document.documentElement);
     viewerRef.current.setRoundBacking(styles.getPropertyValue('--drill-round-backing').trim());
     viewerRef.current.setGridGap(styles.getPropertyValue('--canvas-gap').trim());
-  }, [theme, image, matchResult, drillStyle]);
+  }, [image, matchResult, drillStyle]);
 
   const savedViewportModeRef = useRef<'grid' | 'symbols' | 'reference'>('grid');
 
@@ -590,6 +812,34 @@ export function App() {
       window.removeEventListener('afterprint', handleAfterPrint);
     };
   }, [viewportMode]);
+
+  // Re-fit the single-mount canvas when Refine (step 2) becomes the visible screen.
+  // The canvas <main> is display:none on Upload/Supplies/Order, so its container
+  // measures 0 there; re-entering Refine must re-measure the now-visible canvas
+  // WITHOUT remounting the viewer (D-14). Guarded on a live viewer + step 2.
+  useEffect(() => {
+    if (wizard.step === 2) {
+      viewerRef.current?.fitToContainer();
+    }
+  }, [wizard.step]);
+
+  // D-08 / SC5: auto-advance Upload → Refine once a freshly ingested image commits.
+  // Keyed on the image object IDENTITY: a file ingest installs a NEW HTMLImageElement,
+  // so this fires exactly once per upload (fresh or re-upload). Project loads set
+  // `image` to null (they carry activeProjectId instead), so a loaded project NEVER
+  // triggers this — it stays on Upload until the user navigates, preserving the load
+  // flow. This runs as an EFFECT rather than a synchronous `wizard.goTo(2)` inside
+  // img.onload on purpose: the onload closure's captured wizard still reads the
+  // pre-upload `hasImage` (false), so canEnter(2) would reject the advance in
+  // production — only the isTestEnv bypass would mask it. By the time this effect runs,
+  // the setImage render has committed, hasImage is true, and goTo(2) is legal.
+  // (Same effect-not-inline discretion Plan 25-04 applied for the re-fit trigger.)
+  useEffect(() => {
+    if (image) wizard.goTo(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- image identity only;
+    // including `wizard` (new object each render) would re-yank the user to Refine on
+    // any unrelated re-render.
+  }, [image]);
 
   // Update physical dimensions inputs when grid size changes or unit changes
   useEffect(() => {
@@ -630,22 +880,6 @@ export function App() {
     }
   }, [drillType, drillBagSize]);
 
-  // Handle changes to unit selector
-  const handleUnitChange = (newUnit: 'cm' | 'inch' | 'grid') => {
-    setUnit(newUnit);
-    setSelectedPreset('custom');
-    if (newUnit === 'grid') {
-      setWidthInput(cols.toString());
-      setHeightInput(rows.toString());
-    } else if (newUnit === 'cm') {
-      setWidthInput((cols / 4).toString());
-      setHeightInput((rows / 4).toString());
-    } else if (newUnit === 'inch') {
-      setWidthInput((cols / 10).toString());
-      setHeightInput((rows / 10).toString());
-    }
-  };
-
   const handleWidthChange = (valStr: string) => {
     setWidthInput(valStr);
     setSelectedPreset('custom');
@@ -663,10 +897,10 @@ export function App() {
     setCols(computedCols);
 
     // Auto-adjust height if image is loaded to maintain aspect ratio
+    let computedRows = rows;
     if (image) {
       const ar = image.naturalWidth / image.naturalHeight;
       const computedHeight = val / ar;
-      let computedRows = rows;
       if (unit === 'grid') {
         computedRows = Math.max(1, Math.round(computedHeight));
         setHeightInput(Math.max(1, Math.round(computedHeight)).toString());
@@ -680,6 +914,9 @@ export function App() {
       }
       setRows(computedRows);
     }
+
+    // D-02: auto-recompute the match on the debounced, clamp-guarded custom size.
+    scheduleCustomRecompute(computedCols, computedRows);
   };
 
   const handleHeightChange = (valStr: string) => {
@@ -699,10 +936,10 @@ export function App() {
     setRows(computedRows);
 
     // Auto-adjust width if image is loaded to maintain aspect ratio
+    let computedCols = cols;
     if (image) {
       const ar = image.naturalWidth / image.naturalHeight;
       const computedWidth = val * ar;
-      let computedCols = cols;
       if (unit === 'grid') {
         computedCols = Math.max(1, Math.round(computedWidth));
         setWidthInput(Math.max(1, Math.round(computedWidth)).toString());
@@ -716,31 +953,10 @@ export function App() {
       }
       setCols(computedCols);
     }
+
+    // D-02: auto-recompute the match on the debounced, clamp-guarded custom size.
+    scheduleCustomRecompute(computedCols, computedRows);
   };
-
-  const handlePresetChange = (e: Event) => {
-    const val = (e.target as HTMLSelectElement).value;
-    setSelectedPreset(val);
-    if (val === 'custom') return;
-
-    const preset = STANDARD_SIZES.find(s => s.value === val);
-    if (preset && preset.width && preset.height && preset.unit) {
-      setUnit(preset.unit as any);
-      setWidthInput(preset.width.toString());
-      setHeightInput(preset.height.toString());
-      if (preset.unit === 'cm') {
-        setCols(Math.max(1, Math.round(preset.width * 4)));
-        setRows(Math.max(1, Math.round(preset.height * 4)));
-      } else if (preset.unit === 'inch') {
-        setCols(Math.max(1, Math.round(preset.width * 10)));
-        setRows(Math.max(1, Math.round(preset.height * 10)));
-      } else if (preset.unit === 'grid') {
-        setCols(preset.width);
-        setRows(preset.height);
-      }
-    }
-  };
-
 
   // Toggle exclusion for a color
   const toggleColorExclusion = (dmc: string) => {
@@ -758,26 +974,6 @@ export function App() {
       }
       return next;
     });
-  };
-
-  const handleSelectAll = () => {
-    setExcludedColors(new Set());
-  };
-
-  const handleDeselectAll = () => {
-    if (baseCandidates.length > 0) {
-      const allOthers = baseCandidates.slice(1).map(c => c.dmc);
-      setExcludedColors(new Set(allOthers));
-    }
-  };
-
-  // Handle color row clicks in supply table for highlighting
-  const handleRowClick = (code: string) => {
-    const nextHighlight = highlightedColor === code ? null : code;
-    setHighlightedColor(nextHighlight);
-    if (viewerRef.current) {
-      viewerRef.current.setHighlightedColor(nextHighlight);
-    }
   };
 
   // Image loading helpers
@@ -812,33 +1008,39 @@ export function App() {
       const dataUrlStr = event.target?.result as string;
       const img = new Image();
       img.onload = () => {
-        // Reset exclusions when loading a new image
-        setExcludedColors(new Set());
         setHighlightedColor(null);
-        setSelectedPreset('custom');
         setActiveProjectId(null);
         setImageName(file.name || 'Uploaded Image');
 
-        // Adjust dimensions to match aspect ratio
-        const ar = img.naturalWidth / img.naturalHeight;
-        let newRows = rows;
-        if (unit === 'grid') {
-          newRows = Math.max(1, Math.round(cols / ar));
-          setHeightInput(newRows.toString());
-        } else if (unit === 'cm') {
-          const currentWidthCm = cols / 4;
-          const newHeightCm = currentWidthCm / ar;
-          newRows = Math.max(1, Math.round(newHeightCm * 4));
-          setHeightInput(newHeightCm.toFixed(1));
-        } else if (unit === 'inch') {
-          const currentWidthInch = cols / 10;
-          const newHeightInch = currentWidthInch / ar;
-          newRows = Math.max(1, Math.round(newHeightInch * 10));
-          setHeightInput(newHeightInch.toFixed(1));
-        }
-        setRows(newRows);
+        // Default the post-upload grid to the recommended Medium size TIER mapped through
+        // aspectAwareGrid so the grid AR follows the image (no crop) AND the dims equal the
+        // Medium RefineScreen card exactly — so its selected-highlight lands on load (reconciles
+        // the two anchoring strategies; fixes size-selection-crops-image.md note #2). An
+        // exact-3:2 image reproduces 80×53 byte-for-byte because aspectAwareGrid(80,53,·)
+        // returns the preset dims at ar=1.5.
+        const { cols: defaultCols, rows: defaultRows } = aspectAwareGrid(
+          DEFAULT_REFINE_PRESET.cols,
+          DEFAULT_REFINE_PRESET.rows,
+          img.naturalWidth,
+          img.naturalHeight,
+        );
+        setCols(defaultCols);
+        setRows(defaultRows);
+        setWidthInput(String(defaultCols));
+        setHeightInput(String(defaultRows));
         setImage(img);
-        setImageSourceOpen(false);
+        // D-08 image-swap commit: EVERY successful ingest commits the new image — not
+        // just the first (the prior `if (!matchResult)` guard left a same-size re-upload
+        // uncommitted, so the canvas kept showing the OLD image's match; Plan 25-04
+        // flagged this as this plan's domain, and the new auto-advance to Refine would
+        // otherwise land the user on a stale grid). Committing the new image AND resetting
+        // the candidate inputs together is race-safe: the match hook keys on
+        // {image, cols, rows, candidatesKey}, so the worker re-fires on the NEW image with
+        // fresh candidates in one commit — the 25-04 hazard (candidates reset WITHOUT a new
+        // image commit re-firing on the OLD image) cannot occur when they commit together.
+        setExcludedColors(new Set());
+        setSelectedPreset('custom');
+        setMatchInputs({ image: img, cols: defaultCols, rows: defaultRows });
 
         // Add to recent images history (limit to 5)
         setRecentImages(prev => {
@@ -858,69 +1060,6 @@ export function App() {
     reader.readAsDataURL(file);
   };
 
-  const loadRecentImage = (entry: { name: string; dataUrl: string; width: number; height: number }) => {
-    const img = new Image();
-    img.onload = () => {
-      setExcludedColors(new Set());
-      setHighlightedColor(null);
-      setSelectedPreset('custom');
-      setActiveProjectId(null);
-      setImageName(entry.name || 'Recent Image');
-
-      const ar = img.naturalWidth / img.naturalHeight;
-      let newRows = rows;
-      if (unit === 'grid') {
-        newRows = Math.max(1, Math.round(cols / ar));
-        setHeightInput(newRows.toString());
-      } else if (unit === 'cm') {
-        const currentWidthCm = cols / 4;
-        const newHeightCm = currentWidthCm / ar;
-        newRows = Math.max(1, Math.round(newHeightCm * 4));
-        setHeightInput(newHeightCm.toFixed(1));
-      } else if (unit === 'inch') {
-        const currentWidthInch = cols / 10;
-        const newHeightInch = currentWidthInch / ar;
-        newRows = Math.max(1, Math.round(newHeightInch * 10));
-        setHeightInput(newHeightInch.toFixed(1));
-      }
-      setRows(newRows);
-      setImage(img);
-      setImageSourceOpen(false);
-    };
-    img.src = entry.dataUrl;
-  };
-
-  const deleteRecentImage = (id: string, e: Event) => {
-    e.stopPropagation();
-    setRecentImages(prev => prev.filter(x => x.id !== id));
-  };
-
-  const handleHeaderClick = (type: 'color' | 'code' | 'name' | 'quantity') => {
-    if (sortBy === type) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortBy(type);
-      setSortAsc(type === 'name' || type === 'code' || type === 'color');
-    }
-  };
-
-  // BAG-03/D-10: "Print Supply Report" isolates a self-contained supply report
-  // (header + static savings/why banner + per-color supply table + reconciled
-  // proposed total) via its own print-only mode, mirroring the proven
-  // print-only-legend-mode pattern. The plain @media print path hid the report
-  // (it lived inside <aside>, which @media print sets display:none), so the
-  // button previously printed the canvas grid instead of a report — this mode
-  // reveals ONLY the .supply-report-print-container. Cleanup on afterprint.
-  const printReport = () => {
-    document.body.classList.add('print-only-report-mode');
-    window.print();
-    const cleanup = () => {
-      document.body.classList.remove('print-only-report-mode');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-  };
-
   const handleDownloadCanvasOnly = async () => {
     if (!matchResult) return;
     setActionError(null);
@@ -929,8 +1068,8 @@ export function App() {
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
       
       const canvas = drawCanvasOnly({
-        cols,
-        rows,
+        cols: matchCols,
+        rows: matchRows,
         gridData: matchResult.matches,
         colorMap,
         symbolMap,
@@ -939,6 +1078,8 @@ export function App() {
       
       const baseName = saveProjectName.trim() || 'gempixel-layout';
       await triggerCanvasDownload(canvas, `${baseName}-canvas.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
     } catch (err) {
       console.error('Failed to download canvas grid:', err);
       setActionError('Could not generate the download. Please try again.');
@@ -953,8 +1094,8 @@ export function App() {
       activeCandidates.forEach(c => colorMap.set(c.dmc, c.hex));
       
       const canvas = drawCombinedCanvasSheet({
-        cols,
-        rows,
+        cols: matchCols,
+        rows: matchRows,
         gridData: matchResult.matches,
         colorMap,
         symbolMap,
@@ -966,20 +1107,38 @@ export function App() {
       
       const baseName = saveProjectName.trim() || 'gempixel-layout';
       await triggerCanvasDownload(canvas, `${baseName}-grid-legend.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
     } catch (err) {
       console.error('Failed to download canvas grid + legend:', err);
       setActionError('Could not generate the download. Please try again.');
     }
   };
 
-  const printLegendSheetOnly = () => {
-    document.body.classList.add('print-only-legend-mode');
-    window.print();
-    const cleanup = () => {
-      document.body.classList.remove('print-only-legend-mode');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
+  // ORDER-04 (D-03/D-05): download the legend band ALONE as its own PNG — the third
+  // canvas artifact alongside `-canvas.png` and `-grid-legend.png`. Mirrors the
+  // handleDownloadCanvasOnly template exactly (guard, setActionError(null), try/catch,
+  // same error copy); builds via the additive drawLegendOnly (26-01) from the same
+  // left/right legend colors + symbolMap the combined sheet uses, so the standalone
+  // legend can never diverge from the grid+legend sheet.
+  const handleDownloadLegend = async () => {
+    if (!matchResult) return;
+    setActionError(null);
+    try {
+      const canvas = drawLegendOnly({
+        leftLegendColors,
+        rightLegendColors,
+        symbolMap,
+      });
+
+      const baseName = saveProjectName.trim() || 'gempixel-layout';
+      await triggerCanvasDownload(canvas, `${baseName}-legend.png`);
+      // Honest section-① done-state: any canvas download marks the files as on-disk (D-07).
+      setCanvasDownloaded(true);
+    } catch (err) {
+      console.error('Failed to download legend:', err);
+      setActionError('Could not generate the download. Please try again.');
+    }
   };
 
   // BAG-02/D-13: the legend, per-color bags, total bag count and total cost are all
@@ -989,6 +1148,17 @@ export function App() {
   // name/hex lookup and no sort), so the DMC_PALETTE join and the existing sort stay
   // here in the component.
   const orderPlan = planOrderSupply(matchResult?.counts || {}, drillStyle, priceDb);
+
+  // D-07 SINGLE-SOURCE QUOTE: derive the ONE itemized customer quote from the same
+  // reconciled orderPlan + curated canvas base + vendor shipping. Supplies (this
+  // phase) and Order (wave 5) both render THIS object verbatim, so their totals can
+  // never diverge. The legacy inline `totalCostSafetyCents` (below) is deliberately
+  // left untouched — it still feeds the legacy Step3/Step4 bodies until Phase 25 (SC5).
+  const orderQuote = buildOrderQuote({
+    supplyPlan: orderPlan,
+    canvasBaseCost,
+    vendor: selectedVendor,
+  });
 
   // Calculate sorted legend table rows
   const sortedMatches = orderPlan.rows
@@ -1059,15 +1229,12 @@ export function App() {
     toCents(sanitizeMoney(canvasBaseCost)) +
     toCents(sanitizeMoney(canvasShippingEstimate)) +
     safetyDrillCostCents;
-  const safetyDrillCost = fromCents(safetyDrillCostCents);
-  const totalCostSafety = fromCents(totalCostSafetyCents);
 
   // BAG-03/D-08: always-on savings headline sourced from the SHARED aggregator's
   // savingsCents/savingsPct (already integer-cents and clamped >= 0 in 16-02) —
   // formatted ONCE here via money.ts formatUSD and never recomputed. This single
-  // string feeds both the on-screen Step3Canvas headline and the static print
-  // mirror (D-10) so the two can never diverge. When there are no bulk savings
-  // (small-color plans), a truthful zero-state line renders rather than hiding.
+  // string feeds the static print-report mirror (D-10). When there are no bulk
+  // savings (small-color plans), a truthful zero-state line renders rather than hiding.
   const savingsHeadline =
     orderPlan.savingsCents > 0
       ? `Save ${formatUSD(orderPlan.savingsCents)} (${orderPlan.savingsPct}%) vs per-color`
@@ -1088,10 +1255,11 @@ export function App() {
     .filter(code => !hasVariantMapping(code, drillStyle));
   const unmappedShapeKey = unmappedShapeCodes.join(',');
 
-  // Only THIS derived warning is managed on the shared actionError banner; track the
-  // last value we set so the effect can clear its own stale warning (WR-01) without
-  // clobbering an unrelated storage/download/checkout error that is currently showing.
-  const derivedActionWarningRef = useRef<string | null>(null);
+  // WR-03: this derived advisory owns its OWN state (derivedWarning) rendered as its own
+  // banner, so it is fully decoupled from the imperative actionError. The effect simply
+  // re-asserts the current derived value whenever its deps change — no previous-value
+  // gating, no ref, no risk of an imperative clear dropping it or a stale checkout note
+  // suppressing a fresh warning.
   useEffect(() => {
     const messages: string[] = [];
     if (unpricedColorsKey) {
@@ -1102,24 +1270,14 @@ export function App() {
     }
     if (unmappedShapeKey) {
       const codes = unmappedShapeKey.split(',').join(', ');
-      // WR-02: state the fact (no drills available for this shape) without claiming the
-      // color was excluded from the total — in fixed-bag mode it is still billed.
+      // State the fact (no drills available for this shape) without claiming the color
+      // was excluded from the total — in fixed-bag mode it is still billed.
       messages.push(
         `These colors have no ${drillStyle} drills available: ${codes} — switch drill shape or exclude them.`
       );
     }
-    const next = messages.length > 0 ? messages.join(' ') : null;
-    const prevDerived = derivedActionWarningRef.current;
-    derivedActionWarningRef.current = next;
-    // Reactively clear/replace our own warning; leave any unrelated error untouched.
-    setActionError(current => (current === prevDerived || current === null ? next : current));
+    setDerivedWarning(messages.length > 0 ? messages.join(' ') : null);
   }, [unpricedColorsKey, unmappedShapeKey, drillStyle]);
-
-  const [checkoutWarning, setCheckoutWarning] = useState<{
-    url: string;
-    isUrlTooLong: boolean;
-    unmappedItems: Array<{ dmcCode: string; handle: string }>;
-  } | null>(null);
 
   const handleShopifyCheckout = () => {
     if (!matchResult) return;
@@ -1134,7 +1292,12 @@ export function App() {
     });
 
     const result = compileShopifyCartLink(items, affiliateTag, affiliateApp, priceDb);
-    
+
+    // D-08: the too-long / unmapped condition surfaces as honest, text-only notes on
+    // the shared actionError banner (the deleted dark-slate Checkout Warning modal's
+    // replacement) — never a modal. The cart still opens for the mapped colors.
+    const notes: string[] = [];
+
     if (result.unmappedItems.length > 0) {
       // Guard the stored-log read (W4 / T-11-06): a corrupt value (another tab or a
       // manual edit) must not throw and silently kill checkout. On parse failure we
@@ -1151,7 +1314,7 @@ export function App() {
           if (!Array.isArray(parsed)) throw new Error('not an array');
           return parsed as string[];
         } catch {
-          setActionError('Could not read the saved unmapped-colors log; continuing without it.');
+          notes.push('Could not read the saved unmapped-colors log; continuing without it.');
           return [];
         }
       })();
@@ -1159,1190 +1322,423 @@ export function App() {
       const updatedLog = Array.from(new Set([...savedLog, ...newCodes]));
       safeStorage.setItem('gempixel_unmapped_colors_log', JSON.stringify(updatedLog));
       setUnmappedLog(updatedLog);
+
+      // Name the unmapped colors on the banner — they can't be direct-added to the
+      // cart and must be added manually at Diamond Drills USA (D-08).
+      notes.push(
+        `Some colors aren’t in the direct-add catalog and must be added manually at Diamond Drills USA: ${newCodes.join(', ')}.`
+      );
     }
-    
-    if (result.isUrlTooLong || result.unmappedItems.length > 0) {
-      setCheckoutWarning(result);
-    } else {
-      window.open(result.url, '_blank', 'noopener,noreferrer');
+
+    if (result.isUrlTooLong) {
+      notes.push(
+        'The cart link is very long — if it doesn’t open, order the drills in a smaller batch.'
+      );
+    }
+
+    if (notes.length > 0) {
+      setActionError(notes.join(' '));
+    }
+
+    // Always open the cart for the mapped colors and mark it opened (D-06/D-08): no
+    // modal gate — the banner carries any caveat while the cart still opens. Preserve
+    // the reverse-tabnabbing-safe flags verbatim (T-26-07).
+    window.open(result.url, '_blank', 'noopener,noreferrer');
+    // Honest section-② done-state: the cart was OPENED (never "ordered", D-06).
+    setCartOpened(true);
+  };
+
+  // ── Refine screen props (23-03, D-03..D-06) ────────────────────────────────
+  // App derives every displayed figure; RefineScreen renders pure (Pattern 2).
+  // SizeCards get pre-computed inch strings + drill counts (density.ts). Edge
+  // cleanup maps onto enableSmoothing/smoothingStrength; the color slider drives
+  // the NEW enableReduce/targetColorCount post-process tier. Size selection sets
+  // live cols/rows only → the existing soft-invalidate/Recompute owns the worker.
+  const refineSizePresets = REFINE_SIZE_PRESETS.map(p => {
+    // AR-aware preset dims (fixes size-selection-crops-image): with an image loaded, derive
+    // cols/rows from its aspect ratio so selecting a preset never crops. The card LABELS
+    // (grid dims, inches, drill count) and the `selected` highlight all read these adjusted
+    // dims, and onSelectSize commits them — so the labels never lie and the highlight tracks
+    // the AR-adjusted size. A 3:2 image reproduces the preset's original dims byte-for-byte.
+    const { cols: presetCols, rows: presetRows } = image
+      ? aspectAwareGrid(p.cols, p.rows, image.naturalWidth, image.naturalHeight)
+      : { cols: p.cols, rows: p.rows };
+    const { widthIn, heightIn } = gridToInches(presetCols, presetRows);
+    return {
+      label: p.label,
+      cols: presetCols,
+      rows: presetRows,
+      tag: p.tag,
+      inches: `${formatInches(widthIn)} × ${formatInches(heightIn)} in`,
+      drillCount: presetCols * presetRows,
+    };
+  });
+  // Edge-cleanup value: Off (0) when smoothing disabled, else the strength (1-3).
+  const edgeCleanup = (enableSmoothing ? Math.min(3, Math.max(0, smoothingStrength)) : 0) as 0 | 1 | 2 | 3;
+  // Distinct colors currently rendered (post smooth/reduce) — the live readout beside
+  // the slider so a smoothing dead-zone reads "already at N", not a broken control.
+  const currentColorCount = Object.keys(matchResult?.counts ?? {}).length;
+  // Slider thumb: sits at the top (detectedColorCount) until the user opts into reduce.
+  const refineColorTarget = enableReduce ? targetColorCount : detectedColorCount;
+
+  const refineProps: RefineScreenProps = {
+    sizePresets: refineSizePresets,
+    cols,
+    rows,
+    onSelectSize: (c: number, r: number) => {
+      // Worker tier (D-02): set live cols/rows AND auto-fire the recompute at once.
+      // A SizeCard is a discrete preset, so firing immediately (no debounce) is safe —
+      // handleRecomputeMatch commits {image, c, r} explicitly, avoiding stale React
+      // state, and the fire-once setMatchInputs commit keeps the B2 abort-race guard.
+      setCols(c);
+      setRows(r);
+      setWidthInput(String(c));
+      setHeightInput(String(r));
+      setSelectedPreset('custom');
+      handleRecomputeMatch(c, r);
+    },
+    widthInput,
+    heightInput,
+    onWidthChange: handleWidthChange,
+    onHeightChange: handleHeightChange,
+    unit,
+    // Just set the unit — the dimension-sync effect converts the width/height
+    // inputs from the live cols/rows into the new unit's display values.
+    onUnitChange: setUnit,
+    edgeCleanup,
+    onEdgeCleanupChange: (v: 0 | 1 | 2 | 3) => {
+      // Post-process tier (D-03): pure main-thread re-render, no worker, no staleness.
+      if (v === 0) {
+        setEnableSmoothing(false);
+      } else {
+        setEnableSmoothing(true);
+        setSmoothingStrength(v);
+      }
+    },
+    colorTarget: refineColorTarget,
+    detectedColorCount,
+    currentColorCount,
+    onColorTargetChange: (n: number) => {
+      // Post-process tier (D-03/Pitfall 3): flip reduce on and clamp to [8, detected].
+      // WR-02: with <= 8 detected colors there is nothing to reduce; ignore the input
+      // so the clamp can never force targetColorCount = 8 above the detected count (a
+      // nonsensical reduce ceiling). The RefineScreen also hides the slider here.
+      if (detectedColorCount <= 8) return;
+      setEnableReduce(true);
+      setTargetColorCount(Math.max(8, Math.min(n, detectedColorCount)));
+    },
+    selectedBaseKit,
+    onKitChange: setSelectedBaseKit,
+    drillStyle,
+    onShapeChange: setDrillStyle,
+    excludedColors,
+    onToggleExclude: toggleColorExclusion,
+    baseCandidates,
+  };
+
+  // SUPPLIES-01/02 (D-07): the pure Supplies screen reads the already-joined supply
+  // rows (sortedMatches) + symbolMap + the static dye-lot sentence + the SINGLE-SOURCE
+  // orderQuote. No cents math or table assembly leaks into the screen (props-only).
+  const suppliesProps: SuppliesScreenProps = {
+    rows: sortedMatches,
+    symbolMap,
+    dyeLotWhy: DYE_LOT_WHY_SENTENCE,
+    totalSafetyDrills,
+    totalPackets,
+    quote: orderQuote,
+  };
+
+  // ORDER-01: the auto-filled LOCKED spec size, derived ONCE from the committed
+  // match grid via the single density source (gridToInches, 2.5mm/dot) so the
+  // spec label, the packet's canvasSpec, and the canvas cost can never desync.
+  const { widthIn: orderWidthIn, heightIn: orderHeightIn } = gridToInches(matchCols, matchRows);
+  const orderSizeLabel = `${formatInches(orderWidthIn)} × ${formatInches(orderHeightIn)} in`;
+  const orderGridLabel = `${matchCols}×${matchRows}`;
+
+  // ORDER-01: editing the finish or ship-to invalidates the JSON packet (which embeds
+  // both finish + ship-to), so clear the canvas/packet done-state — the downloaded
+  // artifacts no longer reflect the edited spec and the user can re-download.
+  // WR-02: do NOT clear cartOpened here. The drill cart (handleShopifyCheckout) is built
+  // purely from matchResult.counts + drillStyle + pricing — it depends on NEITHER the
+  // canvas finish (a fixed enum with no price impact, RESEARCH-Q3) nor shipTo (embedded
+  // only in the JSON packet). A finish / ship-to edit does not invalidate an opened
+  // cart, so erasing "Cart opened ↗" here would be a false invalidation. The cart's
+  // done-state is invalidated only when the drill plan actually changes — handled by the
+  // matchResult / drillStyle reset effect (WR-01) above.
+  const handleFinishChange = (next: OrderFinish) => {
+    setFinish(next);
+    setCanvasDownloaded(false);
+  };
+  const handleShipToChange = (patch: Partial<OrderPacketShipTo>) => {
+    setShipTo(prev => ({ ...prev, ...patch }));
+    setCanvasDownloaded(false);
+  };
+
+  // ORDER-02 (D-08/D-09): complete the flow by DOWNLOADING a versioned,
+  // self-contained JSON packet — the honest client-side handoff. The CSPRNG id
+  // (generateUUID, never Math.random) + timestamp are generated HERE and injected
+  // into the PURE buildOrderPacket serializer. The packet is written to an
+  // application/json Blob and downloaded via the export.ts anchor + createObjectURL
+  // + deferred-revoke idiom (export.ts:260-288). Ship-to is embedded in the Blob
+  // ONLY — there is NO fetch/network call (D-08). On failure the shared actionError
+  // banner surfaces (never a silent throw); on success the honest terminal state.
+  const handleDownloadOrderPacket = () => {
+    if (!matchResult) return;
+    setActionError(null);
+    try {
+      const packetId = generateUUID();
+      const colorNames = Object.fromEntries(sortedMatches.map(m => [m.code, m.name]));
+      const packet = buildOrderPacket({
+        packetId,
+        createdAt: new Date().toISOString(),
+        design: {
+          cols: matchCols,
+          rows: matchRows,
+          grid: matchResult.matches,
+          drillShape: drillStyle,
+          drillType,
+        },
+        finish,
+        vendor: selectedVendor,
+        supplyPlan: orderPlan,
+        colorNames,
+        quote: orderQuote,
+        shipTo,
+      });
+
+      const blob = new Blob([JSON.stringify(packet, null, 2)], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `gempixel-order-${packetId.slice(0, 8)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      // Defer revocation so the download thread has started (export.ts idiom).
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+
+      // Honest section-① done-state: the JSON packet counts as a canvas download (D-07).
+      setCanvasDownloaded(true);
+    } catch (err) {
+      console.error('Failed to build the order packet:', err);
+      setActionError('Couldn’t build the order packet. Please try again.');
     }
   };
 
+  // ORDER-01/02 (D-01/D-07): the pure Order screen reads the LOCKED spec, the finish
+  // selection, the client-only ship-to, and the SAME single-source orderQuote that
+  // Supplies renders (so Supplies total === Order total by construction, D-07).
+  const orderProps: OrderScreenProps = {
+    product: LOCKED_CANVAS_PRODUCT,
+    sizeLabel: orderSizeLabel,
+    gridLabel: orderGridLabel,
+    finish,
+    onFinishChange: handleFinishChange,
+    shipTo,
+    onShipToChange: handleShipToChange,
+    quote: orderQuote,
+    // Section ① — four canvas downloads (handlers KEEP their App home, D-02; only the
+    // call site is now OrderScreen). Section ② — the single Diamond Drills USA cart (D-01).
+    onDownloadCanvasGrid: handleDownloadCanvasOnly,
+    onDownloadGridLegend: handleDownloadCombinedCanvasSheet,
+    onDownloadLegend: handleDownloadLegend,
+    onDownloadPacket: handleDownloadOrderPacket,
+    onCartCheckout: handleShopifyCheckout,
+    canvasDownloaded,
+    cartOpened,
+  };
+
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden print:h-auto print:overflow-visible">
-      {/* Left Sidebar Control Panel */}
-      <aside
-        className={`bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col gap-4 no-print transition-all duration-300 relative shrink-0 ${
-          leftPanelCollapsed ? 'w-0 border-r-0 p-0 overflow-hidden' : 'w-80 p-4'
-        }`}
-      >
-        <div className="flex justify-between items-center border-b border-slate-800/60 pb-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="gem-logo w-[38px] h-[38px] shrink-0" aria-hidden="true">
-              {['--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink'].map((c, i) => (
-                <span key={i} style={{ backgroundColor: `var(${c})` }} />
-              ))}
-            </div>
-            <div>
-              <h1 className="font-display text-[23px] font-bold text-ink leading-none">GemPixel</h1>
-              <p className="text-[10px] text-muted mt-1 font-medium tracking-wide">Diamond Painting Planner</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setLeftPanelCollapsed(true)}
-            className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center border border-transparent hover:border-slate-700/30"
-            title="Collapse Sidebar"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4 pr-1">
-          {/* My Images saved-projects drawer */}
-          <div className="border-b border-slate-800/40 pb-2 flex flex-col gap-2 shrink-0">
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => setImagesDrawerOpen(!imagesDrawerOpen)}
-              className="flex items-center gap-1.5 text-left font-bold text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
-            >
-              <span className={`text-[8px] text-slate-500 transition-transform duration-200 ${imagesDrawerOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">My Images</span>
-              <span className="text-[9px] text-slate-500 font-medium">({projectsRegistry.length})</span>
-            </button>
-            <button
-              id="new-project-btn"
-              onClick={resetWorkspace}
-              className="text-[9px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer border border-indigo-500/20 px-1.5 py-0.5 rounded bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors"
-              title="Reset workspace to start a new image"
-            >
-              New
-            </button>
-          </div>
-          
-          {imagesDrawerOpen && (
-            <div className="flex flex-col gap-2 mt-1">
-              <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto scrollbar-thin">
-                {projectsRegistry.map(project => {
-                  const isActive = activeProjectId === project.id;
-                  return (
-                    <div
-                      key={project.id}
-                      onClick={() => loadProject(project.id)}
-                      className={`group relative flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all border ${
-                        isActive
-                          ? 'bg-indigo-600/10 border-indigo-500/30'
-                          : 'bg-slate-950/40 border-slate-850 hover:bg-slate-950/60 hover:border-slate-800'
-                      }`}
-                    >
-                      {project.thumbnail ? (
-                        <img
-                          src={project.thumbnail}
-                          alt={project.name}
-                          className="w-8 h-8 rounded object-cover border border-slate-800/80 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded bg-slate-800 border border-slate-700/80 shrink-0 flex items-center justify-center text-[9px] text-slate-500 font-bold">
-                          GEM
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-semibold text-slate-200 block truncate group-hover:text-white transition-colors">{project.name}</span>
-                        <span className="text-[9px] text-slate-500 block truncate font-mono">{new Date(project.dateModified).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Delete "${project.name}"?`)) {
-                            projectStore.remove(project.id);
-                            setProjectsRegistry(projectStore.list());
-                            if (activeProjectId === project.id) {
-                              setActiveProjectId(null);
-                              restore(null);
-                            }
-                          }
-                        }}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-950/80 text-[11px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-slate-900 border border-slate-800 cursor-pointer"
-                        title="Delete Image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-                {projectsRegistry.length === 0 && (
-                  <span className="text-[10px] text-slate-500 text-center block py-2 italic">No images saved yet.</span>
-                )}
-              </div>
-              <button
-                id="save-project-btn"
-                onClick={() => {
-                  setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
-                  setSaveModalOpen(true);
-                }}
-                disabled={!matchResult}
-                className="w-full bg-slate-950/80 hover:bg-slate-850 disabled:bg-slate-950/20 disabled:text-slate-600 text-indigo-400 hover:text-indigo-300 disabled:border-slate-900 border border-slate-800 rounded py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
-              >
-                <span>Save to My Images</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Wizard Step Contents */}
-        {wizard.step === 1 && (
-          <Step1Ingest
-            image={image}
-            imageName={imageName}
-            dropZoneRef={dropZoneRef}
-            isDragOver={isDragOver}
-            imageSourceOpen={imageSourceOpen}
-            setImageSourceOpen={setImageSourceOpen}
-            recentImages={recentImages}
-            recentUploadsOpen={recentUploadsOpen}
-            setRecentUploadsOpen={setRecentUploadsOpen}
-            imageFitMode={imageFitMode}
-            setImageFitMode={setImageFitMode}
-            standardSizes={STANDARD_SIZES}
-            selectedPreset={selectedPreset}
-            setSelectedPreset={setSelectedPreset}
-            unit={unit}
-            setUnit={setUnit}
-            widthInput={widthInput}
-            heightInput={heightInput}
-            setWidthInput={setWidthInput}
-            setHeightInput={setHeightInput}
-            cols={cols}
-            rows={rows}
-            setCols={setCols}
-            setRows={setRows}
-            drillStyle={drillStyle}
-            setDrillStyle={setDrillStyle}
-            recsOpen={recsOpen}
-            setRecsOpen={setRecsOpen}
-            handleFileChange={handleFileChange}
-            handleDragOver={handleDragOver}
-            handleDragLeave={handleDragLeave}
-            handleDrop={handleDrop}
-            loadRecentImage={loadRecentImage}
-            deleteRecentImage={deleteRecentImage}
-            handlePresetChange={handlePresetChange}
-            handleUnitChange={handleUnitChange}
-            handleWidthChange={handleWidthChange}
-            handleHeightChange={handleHeightChange}
-          />
-        )}
-
-        {wizard.step === 2 && (
-          <Step2Palette
-            selectedBaseKit={selectedBaseKit}
-            setSelectedBaseKit={setSelectedBaseKit}
-            setExcludedColors={setExcludedColors}
-            drillType={drillType}
-            setDrillType={setDrillType}
-            enableSubstitution={enableSubstitution}
-            setEnableSubstitution={setEnableSubstitution}
-            substitutionThreshold={substitutionThreshold}
-            setSubstitutionThreshold={setSubstitutionThreshold}
-            enableSmoothing={enableSmoothing}
-            setEnableSmoothing={setEnableSmoothing}
-            smoothingStrength={smoothingStrength}
-            setSmoothingStrength={setSmoothingStrength}
-            excludeListOpen={excludeListOpen}
-            setExcludeListOpen={setExcludeListOpen}
-            excludedColors={excludedColors}
-            baseCandidates={baseCandidates}
-            handleSelectAll={handleSelectAll}
-            handleDeselectAll={handleDeselectAll}
-            toggleColorExclusion={toggleColorExclusion}
-            sortedMatches={sortedMatches}
-            highlightedColor={highlightedColor}
-            handleRowClick={handleRowClick}
-          />
-        )}
-
-        {wizard.step === 3 && (
-          <Step3Canvas
-            selectedVendor={selectedVendor}
-            setSelectedVendor={setSelectedVendor}
-            canvasBaseCost={canvasBaseCost}
-            setCanvasBaseCost={setCanvasBaseCost}
-            canvasShippingEstimate={canvasShippingEstimate}
-            setCanvasShippingEstimate={setCanvasShippingEstimate}
-            priceDb={priceDb}
-            updatePriceDb={updatePriceDb}
-            totalSafetyDrills={totalSafetyDrills}
-            totalPackets={totalPackets}
-            safetyDrillCost={safetyDrillCost}
-            totalCostSafety={totalCostSafety}
-            savingsHeadline={savingsHeadline}
-            matchResult={matchResult}
-            sizingAdviceData={sizingAdviceData}
-            affiliateTag={affiliateTag}
-            setAffiliateTag={setAffiliateTag}
-            affiliateApp={affiliateApp}
-            setAffiliateApp={setAffiliateApp}
-            unmappedLog={unmappedLog}
-            setUnmappedLog={setUnmappedLog}
-            handleShopifyCheckout={handleShopifyCheckout}
-            handleDownloadCanvasOnly={handleDownloadCanvasOnly}
-            handleDownloadCombinedCanvasSheet={handleDownloadCombinedCanvasSheet}
-            printLegendSheetOnly={printLegendSheetOnly}
-            printReport={printReport}
-          />
-        )}
-
-        {wizard.step === 4 && (
-          <Step4Export
-            cols={cols}
-            rows={rows}
-            unit={unit}
-            matchResult={matchResult}
-            drillStyle={drillStyle}
-            drillType={drillType}
-            totalSafetyDrills={totalSafetyDrills}
-            totalCostSafety={totalCostSafety}
-            saveProjectName={saveProjectName}
-            setSaveProjectName={setSaveProjectName}
-            activeProjectId={activeProjectId}
-            saveSuccessMsg={saveSuccessMsg}
-            handleSaveProject={handleSaveProject}
-            showSaveSuccess={showSaveSuccess}
-            resetWorkspace={resetWorkspace}
-          />
-        )}
-
-
-        {/* Sidebar Footer Actions */}
-        <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-slate-800/60 shrink-0 no-print">
-          {matchResult && (
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">
-              <span className="w-2 h-2 rounded-sm bg-accent-2 inline-block" />
-              Matched · {sortedMatches.length} colors
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setResourcesModalOpen(true)}
-              className="flex-1 bg-panel hover:bg-border text-muted hover:text-ink py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-border active:scale-[0.98]"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              <span>Artist Resources</span>
-            </button>
-
-            {/* Simple light/dark pill toggle */}
-            <button
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              aria-label="Toggle light or dark theme"
-              className="relative w-[58px] h-8 rounded-full bg-panel border border-border cursor-pointer shrink-0 transition-colors"
-            >
-              <span
-                className={`absolute top-[3px] h-6 w-6 rounded-full bg-accent text-on-accent flex items-center justify-center text-[12px] leading-none transition-all duration-200 ${
-                  theme === 'light' ? 'left-[3px]' : 'left-[27px]'
-                }`}
-              >
-                {theme === 'light' ? '☀' : '☾'}
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sticky wizard navigation footer */}
-      <div className="mt-auto pt-4 border-t border-slate-800/60 shrink-0 no-print flex flex-col gap-4 bg-slate-900/60 px-1 pb-1">
-        <div className="flex items-center justify-between">
+    <AtelierShell
+      step={wizard.step}
+      canEnter={wizard.canEnter}
+      goTo={wizard.goTo}
+      onNew={resetWorkspace}
+      onSave={() => {
+        setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
+        setSaveModalOpen(true);
+      }}
+      canSave={!!matchResult}
+      canvasControls={wizard.step === 2 ? (
+        <CanvasControlBar
+          image={image}
+          viewportMode={viewportMode}
+          setViewportMode={setViewportMode}
+          onZoomIn={() => viewerRef.current?.zoomIn()}
+          onZoomOut={() => viewerRef.current?.zoomOut()}
+          onFit={() => viewerRef.current?.fitToContainer()}
+          zoomScale={zoomScale}
+        />
+      ) : undefined}
+      bottomBar={
+        /* Relocated wizard nav footer (D-05) — Back/Next re-homed to the shell's
+           fixed Zone 3 so Next stays hittable without page scroll (SC9). Ids and
+           handlers preserved verbatim so navigation + reset tests pass unchanged:
+           #wizard-back-btn / #wizard-next-btn; Next is disabled purely by
+           !canEnter(step+1); the final step hides Next. StepBar + wizard.goTo own
+           navigation (D-02 retired the stale forward-nav block). The inner row is
+           width-capped to the 1180px card frame so Back/Next align with content. */
+        <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between">
           {wizard.step > 1 ? (
             <button
               id="wizard-back-btn"
               onClick={wizard.back}
-              className="text-xs font-bold text-slate-450 hover:text-slate-200 cursor-pointer transition-colors"
+              className="cursor-pointer rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wide text-muted transition-all hover:bg-border hover:text-ink"
             >
-              &lt; Back
+              Back
             </button>
           ) : (
-            <div className="text-xs font-bold text-slate-700/0 select-none cursor-default w-[42px]">&nbsp;</div>
+            <div className="w-[42px] select-none">&nbsp;</div>
           )}
-
-          {/* Dots */}
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map(step => {
-              const isActive = wizard.step === step;
-              const isCompleted = wizard.step > step;
-              const isValid = wizard.canEnter(step) || isTestEnv;
-              return (
-                <button
-                  key={step}
-                  onClick={() => isValid && wizard.goTo(step)}
-                  disabled={!isValid}
-                  className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30 scale-105'
-                      : isCompleted
-                      ? 'bg-indigo-950 text-indigo-300 hover:bg-indigo-900 hover:text-white border border-indigo-500/30'
-                      : isValid
-                      ? 'bg-slate-850 text-slate-450 hover:bg-slate-800 hover:text-slate-250 border border-slate-800'
-                      : 'bg-slate-950 text-slate-750 border border-slate-900 cursor-not-allowed'
-                  }`}
-                  title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][step - 1]}
-                >
-                  {step}
-                </button>
-              );
-            })}
-          </div>
 
           {wizard.step < 4 ? (
             <button
               id="wizard-next-btn"
               onClick={wizard.next}
               disabled={!wizard.canEnter(wizard.step + 1)}
-              className="bg-accent text-on-accent px-3 py-1.5 rounded-md text-xs font-bold hover:brightness-110 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-all"
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wide text-on-accent transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Next Step →
+              Next Step
             </button>
           ) : (
-            <div className="text-xs font-bold text-indigo-750/0 select-none cursor-default w-[72px]">&nbsp;</div>
+            <div className="w-[72px] select-none">&nbsp;</div>
           )}
         </div>
+      }
+    >
+    {/* Centered Atelier viewport frame (UI-SPEC A1-A4) — the four screens are the
+        shell's PRIMARY content, hosted in AtelierShell's Zone 2 scroll region
+        (D-05); this wrapper centers + width-caps the inner content at the fixed
+        1180px card frame on the cream Atelier background. This replaces the retired
+        dark 3-column shell (the dark full-bleed wrapper + 320px left "My Images" aside
+        + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
+    {/* Height mode is step-aware: Refine (step 2) is a FIXED-height viewport
+        (`h-full` bounds it so the canvas fills and the rail scrolls internally),
+        while the other steps flow naturally (`min-h-full` grows with content so
+        Zone-2 scrolls the whole page — required for the Supplies sticky order
+        summary and normal long-form scrolling). */}
+    <div className={`relative min-h-0 bg-bg print:h-auto print:min-h-0 ${wizard.step === 2 ? 'h-full' : 'min-h-full'}`}>
+      <div className={`flex min-h-0 w-full flex-col pl-4 pr-0 pt-2 pb-4 print:h-auto print:p-0 ${wizard.step === 2 ? 'h-full' : 'min-h-full'}`}>
+
+        {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
+            the canvas is visible (they moved out of CanvasWorkspace in Plan 08).
+            matchError = worker/decode failures; actionError = imperative one-shot
+            failures (ERR-01), dismissible. Text-only (never dangerouslySetInnerHTML)
+            so a crafted error string cannot inject markup. */}
+        {matchError && (
+          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn shadow-lg">
+            Couldn't process the image: {matchError}
+          </div>
+        )}
+        {actionError && (
+          <div className="fixed top-16 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn no-print shadow-lg backdrop-blur">
+            <span>{actionError}</span>
+            <button
+              type="button"
+              aria-label="Dismiss error"
+              onClick={() => setActionError(null)}
+              className="-mr-1 -mt-0.5 shrink-0 px-1 text-sm leading-none text-warn transition-colors hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {/* WR-03: the derived advisory (unpriced bag sizes / unmapped-shape colors) is a
+            SEPARATE, persistent banner. It reflects live state, so it is not dismissible
+            and is never touched by the imperative clear-then-act — it disappears only when
+            the underlying condition is resolved. Text-only (no dangerouslySetInnerHTML). */}
+        {derivedWarning && (
+          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn shadow-lg">
+            {derivedWarning}
+          </div>
+        )}
+
+        {/* Screens + single-mount canvas as a flex row. On Refine (step 2) the visible
+            children read as [CanvasWorkspace preview | RefineScreen 360px rail]; on
+            Upload/Supplies/Order the canvas is display:none and the sole visible panel
+            fills the frame (justify-center keeps the single-column Upload centered).
+            The panels stay always-mounted, display-toggled siblings (D-14): visible =
+            display:contents (layout transparent), hidden = display:none; each is
+            no-print (screens never print — the canvas sheet + supply/legend report
+            print artifacts are separate). Because the panels use display:contents,
+            each screen's OWN root is the flex item (RefineScreen is w-[360px], the
+            others fill). */}
+        <div className="flex min-h-0 flex-1 flex-row justify-center @max-[640px]:flex-col @max-[640px]:justify-start @max-[640px]:overflow-y-auto">
+
+          {/* Single-mount canvas preview — an always-rendered frame sibling shown only
+              on Refine (step 2) and display:none otherwise, so the CanvasViewer element
+              is NEVER unmounted on a step change (D-14). A step-2 useEffect re-fits it
+              because it measures 0 while hidden. `print:block` is composed
+              UNCONDITIONALLY (D-03/WR-01): off-Refine the class is `hidden print:block`
+              — display:none on screen, block in print — so a plain Ctrl+P prints the
+              canvas grid from ANY step, not just Refine. The beforeprint hook re-fits the
+              backing store even while display:none. The dedicated report/legend print
+              modes still `display:none !important` this <main>, so there is no
+              double-print conflict (those modes win via !important). */}
+          <main className={`print:block ${wizard.step === 2 ? 'relative flex min-w-0 flex-1 flex-col @max-[640px]:sticky @max-[640px]:top-0 @max-[640px]:h-[45dvh] @max-[640px]:flex-none @max-[640px]:z-10' : 'hidden'}`}>
+            <CanvasWorkspace
+              canvasRef={canvasRef}
+              image={image}
+              matchResult={matchResult}
+              viewportMode={viewportMode}
+              cols={cols}
+              rows={rows}
+              symbolMap={symbolMap}
+              leftLegendColors={leftLegendColors}
+              rightLegendColors={rightLegendColors}
+              loading={loading}
+              loadingPhase={loadingPhase}
+              progress={progress}
+            />
+          </main>
+
+        <div data-step-panel="1" className={wizard.step === 1 ? 'contents no-print' : 'hidden'}>
+          <UploadScreen
+            dropZoneRef={dropZoneRef}
+            isDragOver={isDragOver}
+            handleFileChange={handleFileChange}
+            handleDragOver={handleDragOver}
+            handleDragLeave={handleDragLeave}
+            handleDrop={handleDrop}
+            projectsRegistry={projectsRegistry}
+            loadProject={loadProject}
+            onDeleteProject={(id) => {
+              projectStore.remove(id);
+              setProjectsRegistry(projectStore.list());
+              if (activeProjectId === id) {
+                setActiveProjectId(null);
+                restore(null);
+              }
+            }}
+          />
+        </div>
+
+        <div data-step-panel="2" className={wizard.step === 2 ? 'contents no-print' : 'hidden'}>
+          <RefineScreen {...refineProps} />
+        </div>
+
+        <div data-step-panel="3" className={wizard.step === 3 ? 'contents no-print' : 'hidden'}>
+          <SuppliesScreen {...suppliesProps} />
+        </div>
+
+        <div data-step-panel="4" className={wizard.step === 4 ? 'contents no-print' : 'hidden'}>
+          <OrderScreen {...orderProps} />
+        </div>
+
+
+        </div>
+
       </div>
-    </aside>
+    </div>
 
-    {/* Main Canvas Area */}
-    <main className="flex-1 relative flex flex-col min-w-0 print:block">
-
-        {/* Center top wizard progress bar + Save */}
-        <div className="hidden md:flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-panel no-print shrink-0">
-          <div className="flex items-center gap-1.5">
-            {['Upload', 'Size', 'Colors', 'Supplies'].map((label, i) => {
-              const step = i + 1;
-              const isActive = wizard.step === step;
-              const isCompleted = wizard.step > step;
-              const isValid = wizard.canEnter(step) || isTestEnv;
-              return (
-                <div key={label} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="w-6 h-px bg-border" />}
-                  <button
-                    onClick={() => isValid && wizard.goTo(step)}
-                    disabled={!isValid}
-                    title={['Upload', 'Palette & Optimize', 'Cost & Order', 'Save'][i]}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer disabled:cursor-not-allowed ${
-                      isCompleted
-                        ? 'bg-accent-2 text-on-accent font-bold'
-                        : isActive
-                        ? 'bg-accent text-on-accent font-bold'
-                        : isValid
-                        ? 'text-muted hover:text-ink'
-                        : 'text-muted opacity-50'
-                    }`}
-                  >
-                    <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] border border-current">
-                      {isCompleted ? '✓' : step}
-                    </span>
-                    {label}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            {wizard.step < 4 && (
-              <button
-                onClick={wizard.next}
-                disabled={!(wizard.canEnter(wizard.step + 1) || isTestEnv)}
-                className="btn-chunk rounded-md px-5 py-2 text-xs font-bold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Next Step →
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setSaveProjectName(activeProjectId ? (projectsRegistry.find(p => p.id === activeProjectId)?.name || '') : `Diamond Art ${projectsRegistry.length + 1}`);
-                setSaveModalOpen(true);
-              }}
-              disabled={!matchResult}
-              className="btn-chunk-2 rounded-md px-5 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-
-        {leftPanelCollapsed && (
-          <button
-            onClick={() => setLeftPanelCollapsed(false)}
-            className="absolute top-16 left-4 z-50 p-2 bg-slate-900/90 hover:bg-slate-800 text-indigo-400 hover:text-white rounded-lg shadow-xl border border-slate-700/50 transition-all duration-200 cursor-pointer hidden md:flex items-center justify-center hover:scale-105 active:scale-95"
-            title="Expand Sidebar"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        )}
-
-        {rightPanelCollapsed && (
-          <button
-            onClick={() => setRightPanelCollapsed(false)}
-            className="absolute top-16 right-4 z-50 flex items-center gap-2 pl-2 pr-3 py-2 bg-panel hover:bg-border text-ink rounded-lg shadow-xl border border-border transition-all duration-200 cursor-pointer hidden md:flex hover:scale-105 active:scale-95"
-            title="Expand color legend"
-          >
-            <svg className="w-4 h-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7M17 19l-7-7 7-7" />
-            </svg>
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-xs font-bold text-ink">Color Legend</span>
-              <span className="text-[9px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
-            </div>
-          </button>
-        )}
-
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950 viewport-dots print:bg-white print:h-auto print:overflow-visible print:p-4">
-          {/* Floating Viewport HUD overlay */}
-          {image && (
-            <div 
-              className="viewport-hud no-print"
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex bg-slate-950/40 rounded-lg p-0.5 border border-slate-800/40">
-                {(['grid', 'symbols', 'reference'] as const).map(mode => {
-                  const isActive = viewportMode === mode;
-                  const label = mode === 'grid' ? 'Grid Colors' : mode === 'symbols' ? 'Grid + Symbols' : 'Original Photo';
-                  const tooltip = mode === 'grid' ? 'Canvas colors' : mode === 'symbols' ? 'Colors + Symbols' : 'Original photo';
-                  return (
-                    <div key={mode} className="tooltip-group">
-                      <button
-                        onClick={() => setViewportMode(mode)}
-                        className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                          isActive
-                            ? 'bg-sky-500 text-white shadow shadow-sky-500/20'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                      <div className="tooltip-box">{tooltip}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Zoom controls */}
-              {(viewportMode === 'grid' || viewportMode === 'symbols') && (
-                <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
-                  <div className="tooltip-group">
-                    <button
-                      onClick={() => viewerRef.current?.zoomIn()}
-                      aria-label="Zoom In"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      ➕
-                    </button>
-                    <div className="tooltip-box">Zoom In</div>
-                  </div>
-
-                  <div className="tooltip-group">
-                    <button
-                      onClick={() => viewerRef.current?.zoomOut()}
-                      aria-label="Zoom Out"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      ➖
-                    </button>
-                    <div className="tooltip-box">Zoom Out</div>
-                  </div>
-
-                  <div className="tooltip-group">
-                    <button
-                      onClick={() => viewerRef.current?.fitToContainer()}
-                      aria-label="Fit Viewport"
-                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-355 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      ⛶
-                      <span className="hidden">Zoom</span>
-                    </button>
-                    <div className="tooltip-box">Fit to Screen</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Low zoom warning */}
-              {viewportMode === 'symbols' && zoomScale * 16 < 10 && (
-                <div className="tooltip-group flex items-center border-l border-slate-800 pl-3">
-                  <div className="px-2 py-1 rounded bg-warn/15 border border-warn/40 text-warn text-[10px] font-bold select-none cursor-default flex items-center gap-1 whitespace-nowrap animate-pulse">
-                    ⚠️ Low Zoom
-                  </div>
-                  <div className="tooltip-box">Zoom in to view symbol overlays (disabled at &lt;10px cell size)</div>
-                </div>
-              )}
-            </div>
-          )}
-          {(image || matchResult) ? (
-            <div className="print-canvas-sheet w-full h-full flex items-center justify-center print:grid print:grid-cols-[140px_1fr_140px] print:gap-2">
-              {/* Left print legend */}
-              <div className="print-legend print-legend-left hidden print:flex flex-col p-1 text-[8px] font-mono overflow-hidden border-r-2 border-dashed border-slate-500 pr-2">
-                {leftLegendColors.map(c => {
-                  const symbol = symbolMap[c.dmc] || '';
-                  return (
-                    <div key={c.dmc} className="print-legend-item flex items-center mb-1 pb-1 border-b border-slate-200">
-                      <span className="print-legend-symbol text-[10px] font-bold w-[18px] text-center mr-1">{symbol}</span>
-                      <div className="print-legend-swatch w-3 h-3 border border-black mr-2 print-color-adjust-exact" style={{ backgroundColor: c.hex }} />
-                      <span className="print-legend-label flex-1">{c.dmc}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Center canvas wrapper */}
-              <div className="print-canvas-wrapper flex items-center justify-center">
-                <canvas
-                  ref={canvasRef}
-                  width={800}
-                  height={600}
-                  className={`shadow-2xl border border-slate-800 bg-slate-950 print:border-none print:shadow-none ${
-                    (viewportMode === 'grid' || viewportMode === 'symbols') ? '' : 'hidden'
-                  }`}
-                />
-              </div>
-
-              {/* Right print legend */}
-              <div className="print-legend print-legend-right hidden print:flex flex-col p-1 text-[8px] font-mono overflow-hidden border-l-2 border-dashed border-slate-500 pl-2">
-                {rightLegendColors.map(c => {
-                  const symbol = symbolMap[c.dmc] || '';
-                  return (
-                    <div key={c.dmc} className="print-legend-item flex items-center mb-1 pb-1 border-b border-slate-200">
-                      <span className="print-legend-symbol text-[10px] font-bold w-[18px] text-center mr-1">{symbol}</span>
-                      <div className="print-legend-swatch w-3 h-3 border border-black mr-2 print-color-adjust-exact" style={{ backgroundColor: c.hex }} />
-                      <span className="print-legend-label flex-1">{c.dmc}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {image && (
-                <div className={`relative max-w-full max-h-[85vh] p-4 flex flex-col items-center gap-2 no-print ${
-                  viewportMode === 'reference' ? '' : 'hidden'
-                }`}>
-                  <img
-                    src={image.src}
-                    alt="Original reference full size"
-                    className="max-w-full max-h-[75vh] object-contain rounded-lg border border-slate-800 shadow-2xl"
-                  />
-                  <span className="text-[10px] text-slate-500 font-medium tracking-wide">Viewing original image at full resolution ({image.naturalWidth} x {image.naturalHeight})</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className="text-center p-6 max-w-md flex flex-col items-center gap-6"
-            >
-              <div className="flex flex-col items-center gap-2">
-                <h2 className="font-display text-4xl font-bold text-ink leading-tight">Photo → Diamond Chart</h2>
-                <p className="text-sm text-muted max-w-sm">Drop a photo to map it to DMC / Art Dot colors with exact drill counts. Everything runs in your browser.</p>
-              </div>
-              <div
-                onClick={() => document.getElementById('hero-file-upload')?.click()}
-                className={`w-full max-w-sm border-2 border-dashed rounded-xl px-6 py-10 cursor-pointer transition-all flex flex-col items-center gap-5 ${
-                  isDragOver ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/60 bg-panel/40'
-                }`}
-              >
-                <div className="gem-logo w-12 h-12" aria-hidden="true">
-                  {['--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink','--gem-cyan','--gem-violet','--gem-amber','--gem-pink'].map((c, i) => (
-                    <span key={i} style={{ backgroundColor: `var(${c})` }} />
-                  ))}
-                </div>
-                <span className="btn-chunk rounded-md px-5 py-2.5 text-xs font-bold uppercase tracking-wide">Browse Files</span>
-                <input
-                  id="hero-file-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Bottom hint pill */}
-          {(image || matchResult) && (viewportMode === 'grid' || viewportMode === 'symbols') && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 no-print px-3 py-1.5 rounded-full bg-panel/80 border border-border text-[10px] font-mono text-muted whitespace-nowrap backdrop-blur">
-              drag to pan · scroll to zoom · {(cols * rows).toLocaleString()} drills
-            </div>
-          )}
-
-          {/* Loading overlay — one surface, two phases (D-09). During the async
-              off-thread decode/resample interval loadingPhase is 'preparing': an
-              INDETERMINATE bar + "Preparing image…" (no percentage). It flips to
-              'matching' on the worker's first onProgress tick: the DETERMINATE
-              width:{progress}% bar + "Matching colors: {progress}%". Gated by
-              {loading && …} so it clears on completion or error and never
-              co-displays with the matchError banner below. */}
-          {loading && (
-            <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-3">
-              {loadingPhase === 'preparing' ? (
-                <>
-                  <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-indigo-500 h-full w-full animate-pulse" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-300">Preparing image…</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-indigo-500 h-full transition-all duration-100" style={{ width: `${progress}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-slate-300">Matching colors: {progress}%</span>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Match error banner — surfaces worker/synchronous failures across the whole
-              pipeline: off-thread decode-stage failures (D-10) as well as match-stage
-              failures (B1/W5). loading is cleared on error (see the hook), so this never
-              co-displays with the spinner. Copy is stage-agnostic so a decode-stage
-              message reads correctly. Text-only content (never dangerouslySetInnerHTML)
-              so a crafted worker error string cannot inject markup. Clears automatically
-              on the next match, which resets the hook's error to null. */}
-          {matchError && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 no-print max-w-md px-4 py-2.5 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-              Couldn't process the image: {matchError}
-            </div>
-          )}
-
-          {/* Unified action-error banner (ERR-01) — one surface for imperative
-              one-shot failures: save quota-full (CR-02/B3), download-generation
-              failures, and a corrupt checkout unmapped-colors log (W4). Fixed +
-              z-[60] so it sits above the Save Project Modal (z-50). Offset to top-16
-              (distinct from the matchError banner at top-4) so the two never overlap
-              (UX directive: no overlapping indicators). Text-only — {actionError} is
-              rendered as a plain JSX text child, never dangerouslySetInnerHTML, so a
-              crafted error/stored string cannot inject markup (ASVS output-encoding,
-              T-11-07). Dismissible via the × so a stale one-shot error doesn't linger;
-              each action handler also clears it at its start (clear-then-act). */}
-          {actionError && (
-            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] no-print max-w-md flex items-start gap-3 px-4 py-2.5 rounded-lg bg-rose-950/95 border border-rose-500/60 text-xs font-medium text-rose-100 shadow-lg backdrop-blur">
-              <span>{actionError}</span>
-              <button
-                type="button"
-                aria-label="Dismiss error"
-                onClick={() => setActionError(null)}
-                className="shrink-0 -mr-1 -mt-0.5 px-1 text-rose-300 hover:text-rose-100 transition-colors text-sm leading-none"
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
-      </main>
-      {/* Right Sidebar Checklist & Legend */}
-      <aside
-        className={`bg-panel border-l border-slate-800/80 flex flex-col overflow-hidden print:w-full print:border-l-0 print:bg-white print:text-black print:overflow-visible print:h-auto shrink-0 transition-all duration-300 relative ${
-          rightPanelCollapsed ? 'w-0 border-l-0 p-0' : 'w-96'
-        }`}
-      >
-        {/* Color Legend Header */}
-        <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 px-4 pt-3.5 no-print shrink-0">
-          <div className="flex items-baseline gap-2">
-            <span className="font-display text-lg font-bold text-ink leading-none">Color Legend</span>
-            <span className="text-[10px] font-mono text-muted uppercase tracking-wider">{sortedMatches.length} colors</span>
-          </div>
-          <button
-            onClick={() => setRightPanelCollapsed(true)}
-            className="p-1 rounded bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-slate-850/80 hover:scale-105 active:scale-95 flex items-center justify-center"
-            title="Collapse Workspace"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Collapsible Sub-palette selection checklist */}
-        <div className="border-b border-slate-800/80 no-print flex flex-col shrink-0 transition-all">
-          <button
-            onClick={() => setExcludeListOpen(!excludeListOpen)}
-            className="w-full flex justify-between items-center py-3 px-4 hover:bg-slate-850/50 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none"
-          >
-            <div className="flex items-center gap-2">
-              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${excludeListOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span>Exclude Colors</span>
-              {excludedColors.size > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">{excludedColors.size}</span>
-              )}
-            </div>
-            {excludeListOpen && (
-              <div className="flex gap-2 no-print" onClick={(e) => e.stopPropagation()}>
-                <button onClick={handleSelectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                  Select All
-                </button>
-                <span className="text-slate-700 text-[10px] select-none">|</span>
-                <button onClick={handleDeselectAll} className="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer">
-                  Deselect All
-                </button>
-              </div>
-            )}
-          </button>
-          
-          {excludeListOpen && (
-            <div className="px-4 pb-4 flex flex-col gap-2 transition-all">
-              <p className="text-[10px] text-slate-400">Uncheck colors to exclude them from calculations.</p>
-              <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto border border-slate-850 p-1.5 rounded bg-slate-950/60 shadow-inner">
-                {baseCandidates.map(c => {
-                  const isExcluded = excludedColors.has(c.dmc);
-                  return (
-                    <label
-                      key={c.dmc}
-                      className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-850 p-1 rounded text-xs select-none"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!isExcluded}
-                        onChange={() => toggleColorExclusion(c.dmc)}
-                        className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 h-3 w-3 cursor-pointer"
-                      />
-                      <span
-                        className="w-2.5 h-2.5 rounded-full border border-slate-850 shrink-0"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      <span className="font-mono text-slate-350 text-[11px] truncate" title={c.name}>{c.dmc}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Legend table */}
-        <div className="px-2 py-4 flex-1 flex flex-col overflow-hidden print:p-0 print:overflow-visible">
-          <button
-            onClick={() => setSupplyListOpen(!supplyListOpen)}
-            className="w-full flex justify-between items-center py-2.5 hover:bg-slate-850/30 text-left font-bold text-sm text-slate-200 transition-colors select-none cursor-pointer focus:outline-none no-print mb-2 border border-slate-850/50 p-2 rounded bg-slate-950/20 shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <span className={`text-[9px] text-slate-500 transition-transform duration-200 ${supplyListOpen ? 'rotate-90' : ''}`}>▶</span>
-              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">DMC Supply List</span>
-              {sortedMatches.length > 0 && !supplyListOpen && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold">{sortedMatches.length} colors</span>
-              )}
-            </div>
-            {highlightedColor && supplyListOpen && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRowClick(highlightedColor);
-                }}
-                className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors"
-              >
-                Clear Highlight
-              </button>
-            )}
-          </button>
-
-          {/* Table Container */}
-          {supplyListOpen && (
-            <div className="flex-1 overflow-y-auto border border-slate-850 rounded bg-slate-950/30 print:border-none print:bg-white print:overflow-visible no-print shadow-inner">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400 select-none text-[10px] uppercase tracking-wider font-semibold">
-                  <tr>
-                    <th 
-                      onClick={() => handleHeaderClick('color')}
-                      className="py-1.5 px-1 w-6 text-center cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Color Hue"
-                    >
-                      Color{sortBy === 'color' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('code')}
-                      className="py-1.5 px-1 w-10 text-center cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by DMC Code"
-                    >
-                      DMC{sortBy === 'code' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('name')}
-                      className="py-1.5 px-1 truncate max-w-[75px] cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Color Name"
-                    >
-                      Name{sortBy === 'name' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th 
-                      onClick={() => handleHeaderClick('quantity')}
-                      className="py-1.5 px-1 text-right cursor-pointer hover:text-slate-200 transition-colors"
-                      title="Sort by Quantity Needed"
-                    >
-                      Exact{sortBy === 'quantity' && (sortAsc ? ' ▲' : ' ▼')}
-                    </th>
-                    <th className="py-1.5 px-1 text-right">Safety</th>
-                    <th className="py-1.5 px-1 text-right text-ellipsis overflow-hidden truncate" title="Optimized combinations of 200, 500, 1000, 2000 bags">Bags (Opt)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedMatches.map(row => {
-                    const isHighlighted = highlightedColor === row.code;
-                    return (
-                      <tr
-                        key={row.code}
-                        onClick={() => handleRowClick(row.code)}
-                        className={`border-b border-slate-800/40 hover:bg-slate-850/30 cursor-pointer select-none transition-all duration-150 ${
-                          isHighlighted ? 'bg-indigo-950/40 hover:bg-indigo-950/50 border-l border-l-indigo-500 text-indigo-200' : 'text-slate-350'
-                        }`}
-                      >
-                        <td className="py-1 px-1 flex justify-center">
-                          <span
-                            className="block w-2.5 h-2.5 rounded-full border border-slate-850 shadow-sm"
-                            style={{ backgroundColor: row.hex }}
-                          />
-                        </td>
-                        <td className="py-1 px-1 font-mono font-bold text-center text-slate-200 text-[10px]">
-                          {row.code}
-                          {drillType !== 'standard' && (
-                            <span className={`ml-0.5 text-[7px] font-sans px-0.5 rounded-sm ${
-                              drillType === 'ab'
-                                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                : drillType === 'glow'
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                : 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                            }`}>
-                              {drillType === 'ab' ? 'AB' : drillType === 'glow' ? 'GLOW' : 'XTAL'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-1 px-1 text-slate-450 truncate max-w-[75px] text-[10px]" title={row.name}>
-                          {row.name}
-                        </td>
-                        <td className="py-1 px-1 text-right text-slate-400 font-mono text-[10px]">{row.count}</td>
-                        <td className="py-1 px-1 text-right font-medium text-indigo-300 font-mono text-[10px]">{row.safety}</td>
-                        <td className="py-1 px-1 text-right font-bold text-slate-300 font-mono text-[9.5px]">
-                          <div className="flex flex-col items-end leading-none">
-                            <span className="text-[9.5px] text-slate-200">{row.bagsText}</span>
-                            <span className="text-[8px] text-slate-500 font-normal font-sans">({row.purchase} pcs)</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {sortedMatches.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
-                        No matching colors. Load an image to compute.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-        </div>
-
-        {/* Legend footer summary + primary CTA */}
-        {matchResult && (
-          <div className="shrink-0 border-t border-border px-4 py-3 flex flex-col gap-3 no-print">
-            <div className="flex flex-col gap-1 text-[11px] font-mono">
-              <div className="flex justify-between">
-                <span className="text-muted uppercase tracking-wider">Drills (+10% safety)</span>
-                <span className="font-bold text-ink">{totalSafetyDrills.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                {/* WR-02: totalPackets sums mixed-size bags (200/500/1000/2000)
-                    from the optimizer, so a "200-ct" qualifier misrepresents it.
-                    Use a size-neutral label; per-row bagsText carries the sizes. */}
-                <span className="text-muted uppercase tracking-wider">Bags</span>
-                <span className="font-bold text-ink">{totalPackets}</span>
-              </div>
-              <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
-                <span className="text-muted uppercase tracking-wider">Est. total</span>
-                <span className="text-lg font-bold text-accent-2 font-mono">${totalCostSafety.toFixed(2)}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleShopifyCheckout}
-              className="btn-chunk rounded-md py-3 text-xs font-bold uppercase tracking-wide cursor-pointer"
-            >
-              Buy Supplies →
-            </button>
-          </div>
-        )}
-      </aside>
-
-      {/* Artist Resources Modal */}
-      {resourcesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            {/* Top Close Button */}
-            <button
-              onClick={() => setResourcesModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer transition-colors p-1 rounded-full hover:bg-slate-800/60"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Artist Resource Directory</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Curated links to print custom canvas layouts and purchase bulk DMC replacement drills.</p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {/* Category 1: Printing Custom Canvas */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Custom Canvas Printing</span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="https://adiamondpainting.com/products/personalised-photo-custom-diamond-painting"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">ADiamondPainting Custom Prints</span>
-                      <span className="text-[10px] text-slate-500">Factory-direct printing with poured glue and drop-shipping support.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                  
-                  <a
-                    href="https://pandacraftysteam.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">Panda Crafty Sourcing</span>
-                      <span className="text-[10px] text-slate-500">High-quality OEM factory manufacturing for custom canvases and kits.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* Category 2: Bulk replacement drills */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bulk replacement drills</span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="https://diamonddrillsusa.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">Diamond Drills USA</span>
-                      <span className="text-[10px] text-slate-500">Fast US shipping for round and square DMC replacement drill bags.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                  
-                  <a
-                    href="https://www.aliexpress.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 hover:border-indigo-500/50 transition-all text-xs text-slate-200 hover:text-white group"
-                  >
-                    <div>
-                      <span className="font-semibold block">AliExpress Replacement Outlets</span>
-                      <span className="text-[10px] text-slate-500">Inexpensive wholesale source for large quantity orders.</span>
-                    </div>
-                    <span className="text-slate-500 group-hover:text-indigo-400 font-bold ml-2">↗</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setResourcesModalOpen(false)}
-              className="mt-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
-            >
-              Close Directory
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile drawer backdrop — tap to return to Canvas */}
-      {(!leftPanelCollapsed || !rightPanelCollapsed) && (
-        <div
-          className="drawer-backdrop md:hidden no-print"
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(true);
-          }}
-        />
-      )}
-
-      {/* Mobile Bottom Tab Bar Navigation: Setup · Canvas · Colors */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 flex border-t border-border bg-panel pt-2.5 pb-[max(1.4rem,env(safe-area-inset-bottom))] no-print font-mono select-none">
-        {/* Setup */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(false);
-            setRightPanelCollapsed(true);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            !leftPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </span>
-          Setup
-        </button>
-
-        {/* Canvas */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(true);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            leftPanelCollapsed && rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </span>
-          Canvas
-        </button>
-
-        {/* Colors */}
-        <button
-          onClick={() => {
-            setLeftPanelCollapsed(true);
-            setRightPanelCollapsed(false);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wide cursor-pointer transition-colors ${
-            !rightPanelCollapsed ? 'text-accent font-bold' : 'text-muted'
-          }`}
-        >
-          <span className="w-5 h-5 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-          </span>
-          Colors
-        </button>
-      </nav>
-
-      {/* Checkout Warning Modal */}
-      {checkoutWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            {/* Top Close Button */}
-            <button
-              onClick={() => setCheckoutWarning(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer transition-colors p-1 rounded-full hover:bg-slate-800/60"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-white bg-gradient-to-r from-red-400 to-amber-400 bg-clip-text text-transparent">
-                Checkout Warnings & Fallbacks
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Review issues before proceeding to checkout at Diamond Drills USA.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
-              {checkoutWarning.isUrlTooLong && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-200">
-                  <span className="font-bold block mb-1">⚠️ Cart Link Too Long</span>
-                  The compiled cart permalink exceeds 2,000 characters. Shopify's server may reject it with a "414 URI Too Long" error. You can still try the link, or order colors individually using the links below.
-                </div>
-              )}
-
-              {checkoutWarning.unmappedItems.length > 0 && (
-                <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-850 flex flex-col gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Unmapped Colors ({checkoutWarning.unmappedItems.length})
-                  </span>
-                  <p className="text-[11px] text-slate-400">
-                    These colors are not mapped in the database. Please search or add them manually:
-                  </p>
-                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-                    {checkoutWarning.unmappedItems.map((item) => (
-                      <div key={item.dmcCode} className="flex items-center justify-between bg-slate-900/60 p-2 rounded border border-slate-800 text-xs">
-                        <span className="font-mono font-bold text-slate-200">DMC {item.dmcCode}</span>
-                        <div className="flex gap-2 items-center flex-wrap">
-                          <a
-                            href={`https://diamonddrillsusa.com/products/${item.handle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            DiamondDrillsUSA ↗
-                          </a>
-                          <span className="text-slate-700">|</span>
-                          <a
-                            href={`https://www.aliexpress.com/wholesale?SearchText=dmc+${item.dmcCode}+diamond+painting+drills`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            AliExpress ↗
-                          </a>
-                          <span className="text-slate-700">|</span>
-                          <a
-                            href={`https://www.temu.com/search_result.html?search_key=dmc+${item.dmcCode}+diamond+painting+drills`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            Temu ↗
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2.5 mt-2 border-t border-slate-850 pt-3">
-              <button
-                onClick={() => {
-                  window.open(checkoutWarning.url, '_blank', 'noopener,noreferrer');
-                  setCheckoutWarning(null);
-                }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors text-center"
-              >
-                Proceed to Shopify Cart anyway
-              </button>
-              <button
-                onClick={() => setCheckoutWarning(null)}
-                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Save Project Modal */}
       {saveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm no-print font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-            <h3 className="text-base font-bold text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/70 backdrop-blur-sm no-print font-sans">
+          <div className="bg-panel-2 border border-border rounded-[var(--radius-card)] max-w-sm w-full shadow-2xl p-5 relative overflow-hidden flex flex-col gap-4">
+            <h3 className="text-base font-bold text-ink">
               Save to My Images
             </h3>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-muted">
               Enter a name to save this project layout configuration locally.
             </p>
             <input
@@ -2351,21 +1747,21 @@ export function App() {
               value={saveProjectName}
               onInput={(e) => setSaveProjectName((e.target as HTMLInputElement).value)}
               placeholder="e.g. Sunset Beach"
-              className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="bg-panel border border-border rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-accent"
               autoFocus
             />
             <div className="flex gap-2.5 mt-2">
               <button
                 id="save-project-submit"
                 onClick={() => handleSaveProject(saveProjectName)}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+                className="flex-1 bg-accent text-on-accent text-xs font-semibold py-2 rounded-[var(--radius-control)] cursor-pointer transition-all hover:brightness-110"
               >
                 Save
               </button>
               <button
                 id="save-project-cancel"
                 onClick={() => setSaveModalOpen(false)}
-                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
+                className="flex-1 bg-panel border border-border text-ink text-xs font-semibold py-2 rounded-[var(--radius-control)] cursor-pointer transition-colors hover:bg-panel-2"
               >
                 Cancel
               </button>
@@ -2444,6 +1840,6 @@ export function App() {
         </table>
         <p className="supply-report-total">Proposed total: {formatUSD(totalCostSafetyCents)}</p>
       </div>
-    </div>
+    </AtelierShell>
   );
 }

@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
 import { App } from '../App';
 import { MatcherClient } from '../engine/worker-client';
-import { CanvasViewer } from '../engine/viewer';
 import { DMC_PALETTE } from '../engine/palette';
 import { __setOffscreenSupportForTest } from '../features/match/useDiamondArtMatch';
 
@@ -82,15 +81,19 @@ describe('Integration Match Triggering and Palette Toggles', () => {
   it('renders base checklist options correctly', async () => {
     render(<App />, container);
 
-    // Expand the collapsible section first
-    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Exclude Colors')
-    );
-    expect(excludeColorsBtn).not.toBeUndefined();
-    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Re-pointed (23-07): color-exclusion now lives in the RefineScreen "Advanced"
+    // disclosure (step-2 panel), not the legacy right aside deleted in Plan 08. Open the
+    // native <details> — RefineScreen mounts the exclusion list only while Advanced is open
+    // (it gates the list on the toggle event) — then assert the exclude checkboxes appear.
+    // Match by the surviving structure/copy, not the legacy right-aside capital-C string.
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const advanced = step2.querySelector('details') as HTMLDetailsElement;
+    expect(advanced).not.toBeNull();
+    advanced.open = true;
+    advanced.dispatchEvent(new Event('toggle', { bubbles: false }));
 
     await vi.waitFor(() => {
-      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = step2.querySelectorAll('input[type="checkbox"]');
       expect(checkboxes.length).toBeGreaterThan(0);
     });
   });
@@ -167,24 +170,30 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     // Clear call history
     mockMatch.mockClear();
 
-    // Expand the collapsible section first
-    const excludeColorsBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Exclude Colors')
-    );
-    expect(excludeColorsBtn).not.toBeUndefined();
-    excludeColorsBtn!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Re-pointed (23-07): the color-exclusion checklist now lives in the RefineScreen
+    // "Advanced" disclosure (step-2 panel), not the legacy right aside deleted in Plan 08.
+    // Open the native <details> (RefineScreen mounts the exclusion list only while Advanced
+    // is open) and toggle the first color there. NOTE the inverted checkbox semantics vs.
+    // the legacy aside: RefineScreen checkboxes are `checked === excluded`, so they start
+    // UNCHECKED (nothing excluded) and clicking one EXCLUDES that color — which is what
+    // shrinks the candidate list by 1.
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const advanced = step2.querySelector('details') as HTMLDetailsElement;
+    expect(advanced).not.toBeNull();
+    advanced.open = true;
+    advanced.dispatchEvent(new Event('toggle', { bubbles: false }));
 
-    // Wait for animation/render and find check box of first color and toggle it (uncheck it)
+    // Wait for the exclusion list to mount, then toggle the first color's checkbox.
     let checkboxes: NodeListOf<Element> = [] as any;
     await vi.waitFor(() => {
-      checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      checkboxes = step2.querySelectorAll('input[type="checkbox"]');
       expect(checkboxes.length).toBeGreaterThan(0);
     });
 
     const firstCheckbox = checkboxes[0] as HTMLInputElement;
-    expect(firstCheckbox.checked).toBe(true);
+    expect(firstCheckbox.checked).toBe(false);
 
-    // Click checkbox once (natively toggles state and fires click/change in jsdom)
+    // Click checkbox once (natively toggles state and fires click/change in jsdom) → excludes it
     firstCheckbox.click();
 
     // Wait for match recalculation
@@ -202,99 +211,12 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('updates highlighted color codes in the viewer when legend rows are selected', async () => {
-    // 1. Stub FileReader/Image/Canvas
-    const mockReader = {
-      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
-        if (this.onload) {
-          this.onload({ target: { result: 'data:image/png;base64,mock' } });
-        }
-      }),
-    };
-    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
-
-    const mockImageInstance = {
-      naturalWidth: 10,
-      naturalHeight: 10,
-      width: 10,
-      height: 10,
-      set src(_val: string) {
-        if (this.onload) {
-          setTimeout(() => this.onload(), 0);
-        }
-      },
-      onload: null as any,
-    };
-    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
-
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
-      if (type === '2d') {
-        return {
-          clearRect: vi.fn(),
-          drawImage: vi.fn(),
-          fillRect: vi.fn(),
-          beginPath: vi.fn(),
-          arc: vi.fn(),
-          fill: vi.fn(),
-          getImageData: vi.fn().mockReturnValue({
-            data: new Uint8ClampedArray(400),
-            width: 10,
-            height: 10,
-          }),
-        } as any;
-      }
-      return null;
-    });
-
-    // 2. Set up MatcherClient mock to return matches when called.
-    // New signature: (bitmap, cols, rows, candidates, onProgress, onComplete, onError).
-    mockMatch.mockImplementationOnce((_bitmap, _cols, _rows, _candidates, _onProgress, onSuccess) => {
-      // Immediately succeed with mock results: 1 cell of color '310'
-      onSuccess({
-        matches: ['310'],
-        counts: { '310': 1 }
-      });
-    });
-
-    render(<App />, container);
-
-    // 3. Trigger image load to populate legend
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File([''], 'test.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', {
-      value: [file],
-      writable: true
-    });
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-    await new Promise(r => setTimeout(r, 100));
-
-    expect(CanvasViewer).toHaveBeenCalled();
-
-    // Find the legend table row for '310' (first row) and click it once
-    const tableRow = container.querySelector('tbody tr') as HTMLTableRowElement;
-    expect(tableRow).toBeTruthy();
-    expect(tableRow.textContent).toContain('310');
-
-    tableRow.click();
-    await new Promise(r => setTimeout(r, 50));
-
-    // It should invoke setHighlightedColor with '310' on the viewer
-    expect(mockSetHighlightedColor).toHaveBeenCalledWith('310');
-
-    // Click it again to deselect
-    mockSetHighlightedColor.mockClear();
-    tableRow.click();
-    await new Promise(r => setTimeout(r, 50));
-
-    // It should invoke setHighlightedColor with null on the viewer
-    expect(mockSetHighlightedColor).toHaveBeenCalledWith(null);
-
-    // Clean up globals
-    vi.unstubAllGlobals();
-    HTMLCanvasElement.prototype.getContext = originalGetContext;
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "updates highlighted color codes
+  // in the viewer when legend rows are selected" covered the interactive, click-to-highlight
+  // sortable legend that lived ONLY in the legacy right <aside>. That aside is deleted in
+  // Plan 08; the new SuppliesScreen table is display-only by design (SUPPLIES-01), so there
+  // is no highlight-on-row-click behavior to cover. Strangler retirement pulled forward from
+  // Phase 25 — intentional coverage removal of deleted chrome, not a regression.
 
   it('verifies that canvas viewer draw context receives the correct globalAlpha parameters for highlight blending passes', async () => {
     // Import the actual CanvasViewer
@@ -360,6 +282,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
+  // Re-homed to the RefineScreen custom-size entry (23-03): width/ratio editing moved OFF
+  // Upload (D-10/SC1). App's handleWidthChange still owns the aspect-ratio auto-adjust; the
+  // Refine custom cols/rows inputs forward the strings to it.
   it('automatically adjusts height to stay in ratio with the loaded image when width changes', async () => {
     // 1. Stub FileReader and Image with naturalWidth = 100, naturalHeight = 50 (aspect ratio = 2)
     const mockReader = {
@@ -402,8 +327,8 @@ describe('Integration Match Triggering and Palette Toggles', () => {
 
     render(<App />, container);
 
-    // 2. Load the image
-    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
+    // 2. Load the image (the new Upload screen owns #upload-file-input).
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File([''], 'test.png', { type: 'image/png' });
     Object.defineProperty(fileInput, 'files', { value: [file] });
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -414,10 +339,27 @@ describe('Integration Match Triggering and Palette Toggles', () => {
       expect(canvas).not.toBeNull();
     });
 
-    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
-    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
+    // D-08 / SC5: a successful ingest auto-advances Upload → Refine (step 2). The
+    // panel-2 wrapper becomes the visible (display:contents) step and panel-1 hides.
+    await vi.waitFor(() => {
+      const panel2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+      expect(panel2.className).toContain('contents');
+      const panel1 = container.querySelector('[data-step-panel="1"]') as HTMLElement;
+      expect(panel1.className).toContain('hidden');
+    });
 
-    // Change width to 20
+    // Reveal the Refine custom-size entry (always-mounted panel-2).
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+
+    // Change width to 20 → ratio 2:1 (image 100×50) auto-adjusts height to 10.
     widthEl.value = '20';
     widthEl.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -430,105 +372,206 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('updates dimensions and units when preset canvas size changes', async () => {
-    render(<App />, container);
-    await new Promise(r => setTimeout(r, 0));
+  // On-load-default reconciliation (260717-02w / size-selection-crops-image note #2):
+  // loadImageFile now derives its default dims via aspectAwareGrid on the Medium (BEST) tier,
+  // so the default grid equals the Medium RefineScreen card exactly — its selected-highlight
+  // lands immediately on upload (exactly one card highlighted), still crop-free.
+  it('a 2:3 portrait upload defaults to the Medium tier (73×110) and highlights the Medium card on load', async () => {
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
 
-    // Load a mock image first to enable the wizard Next button
-    const fileInput = container.querySelector('#file-upload') as HTMLInputElement;
-    const file = new File([''], 'test.png', { type: 'image/png' });
+    const mockImageInstance = {
+      naturalWidth: 1000,
+      naturalHeight: 1500,
+      width: 1000,
+      height: 1500,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const mockContext = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(1000 * 1500 * 4),
+        width: 1000,
+        height: 1500,
+      }),
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') return mockContext as any;
+      return null;
+    });
+
+    render(<App />, container);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'portrait.png', { type: 'image/png' });
     Object.defineProperty(fileInput, 'files', { value: [file] });
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Wait for image onload
     await vi.waitFor(() => {
-      const nextBtn = container.querySelector('#wizard-next-btn') as HTMLButtonElement;
-      expect(nextBtn).not.toBeNull();
-      expect(nextBtn.disabled).toBe(false);
+      const canvas = container.querySelector('canvas');
+      expect(canvas).not.toBeNull();
     });
 
-    // Query standard size preset select element
-    const presetSelect = container.querySelector('#preset-size-select') as HTMLSelectElement;
-    expect(presetSelect).not.toBeNull();
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
 
-    // Select standard size preset: '30x40-cm' (width: 30, height: 40, unit: cm)
-    presetSelect.value = '30x40-cm';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    // Live cols/rows === aspectAwareGrid(80, 53, 1000, 1500): long-axis budget 80 on the
+    // vertical axis, short axis round(80 * (1000/1500)) = 53.
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
 
-    const widthEl = container.querySelector('input[data-field="width"]') as HTMLInputElement;
-    const heightEl = container.querySelector('input[data-field="height"]') as HTMLInputElement;
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+    expect(widthEl.value).toBe('73');
+    expect(heightEl.value).toBe('110');
 
-    // Wait for async Preact state update and render
-    await vi.waitFor(() => {
-      expect(widthEl.value).toBe('30');
-      expect(heightEl.value).toBe('40');
-    });
+    // Exactly one card highlighted: Medium aria-pressed true, Small/Large false.
+    const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const mediumCard = cards.find(c => c.textContent?.includes('Medium'))!;
+    const smallCard = cards.find(c => c.textContent?.includes('Small'))!;
+    const largeCard = cards.find(c => c.textContent?.includes('Large'))!;
+    expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
+    expect(smallCard.getAttribute('aria-pressed')).toBe('false');
+    expect(largeCard.getAttribute('aria-pressed')).toBe('false');
 
-    // Select standard grid preset: '80x53-grid'
-    presetSelect.value = '80x53-grid';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-    await vi.waitFor(() => {
-      expect(widthEl.value).toBe('80');
-      expect(heightEl.value).toBe('53');
-    });
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('collapses and expands the left sidebar correctly on trigger clicks', async () => {
+  it('an exact-3:2 upload keeps the 110×73 default (byte-identical) and highlights Medium', async () => {
+    const mockReader = {
+      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,mock' } });
+        }
+      }),
+    };
+    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
+
+    const mockImageInstance = {
+      naturalWidth: 3000,
+      naturalHeight: 2000,
+      width: 3000,
+      height: 2000,
+      set src(_val: string) {
+        if (this.onload) {
+          setTimeout(() => this.onload(), 0);
+        }
+      },
+      onload: null as any,
+    };
+    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
+
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const mockContext = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(3000 * 2000 * 4),
+        width: 3000,
+        height: 2000,
+      }),
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === '2d') return mockContext as any;
+      return null;
+    });
+
     render(<App />, container);
 
-    // Sidebar should start expanded
-    const sidebar = container.querySelector('aside') as HTMLElement;
-    expect(sidebar.className).toContain('w-80');
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([''], 'landscape.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Click collapse button
-    const collapseBtn = container.querySelector('button[title="Collapse Sidebar"]') as HTMLButtonElement;
-    expect(collapseBtn).not.toBeNull();
-    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Wait for sidebar to transition to collapsed state
     await vi.waitFor(() => {
-      expect(sidebar.className).toContain('w-0');
+      const canvas = container.querySelector('canvas');
+      expect(canvas).not.toBeNull();
     });
 
-    // Pushed expand button should now be visible in DOM
-    const expandBtn = container.querySelector('button[title="Expand Sidebar"]') as HTMLButtonElement;
-    expect(expandBtn).not.toBeNull();
-    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
+    const step2 = container.querySelector('[data-step-panel="2"]') as HTMLElement;
 
-    // Sidebar should expand back
-    await vi.waitFor(() => {
-      expect(sidebar.className).toContain('w-80');
-    });
+    // aspectAwareGrid(80, 53, 3000, 2000) at ar=1.5 reproduces the preset dims byte-for-byte:
+    // cols 80, rows round(80/1.5) = 53 — unchanged from prior behavior.
+    const customBtn = Array.from(step2.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const widthEl = step2.querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = step2.querySelector('#refine-height') as HTMLInputElement;
+    expect(widthEl.value).toBe('110');
+    expect(heightEl.value).toBe('73');
+
+    const cards = Array.from(step2.querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const mediumCard = cards.find(c => c.textContent?.includes('Medium'))!;
+    expect(mediumCard.getAttribute('aria-pressed')).toBe('true');
+
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('collapses and expands the DMC Supply List correctly on trigger clicks', async () => {
+  // Re-homed to the RefineScreen SizeCards (23-03): the legacy preset-size <select> moved
+  // OFF Upload (D-10/SC1) and is replaced by curated grid SizeCards (REFINE-01/D-05).
+  // Selecting a card applies its grid dims to the live cols/rows (worker tier). The "units"
+  // half of the old case is dropped — the canvas-first custom entry is grid-native (D-05).
+  it('updates grid dimensions when a Refine size card is selected', async () => {
     render(<App />, container);
+    await new Promise(r => setTimeout(r, 0));
 
-    // Should start open
-    let table = container.querySelector('.no-print table');
-    expect(table).not.toBeNull();
+    const step2 = () => container.querySelector('[data-step-panel="2"]') as HTMLElement;
 
-    // Click DMC Supply List header button to collapse
-    const supplyListToggle = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('DMC Supply List')
-    );
-    expect(supplyListToggle).not.toBeUndefined();
-    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Reveal the custom entry to read back the applied dims.
+    const customBtn = Array.from(step2().querySelectorAll('button')).find(
+      b => b.textContent?.trim() === 'Custom size'
+    ) as HTMLButtonElement;
+    customBtn.click();
+    await new Promise(r => setTimeout(r, 10));
 
-    // Verify table is collapsed (not in DOM)
+    const cards = () => Array.from(step2().querySelectorAll('button[aria-pressed]')) as HTMLButtonElement[];
+    const widthEl = () => step2().querySelector('#refine-width') as HTMLInputElement;
+    const heightEl = () => step2().querySelector('#refine-height') as HTMLInputElement;
+
+    // Select "Small" (80×53).
+    cards().find(c => c.textContent?.includes('80×53 grid'))!.click();
     await vi.waitFor(() => {
-      table = container.querySelector('.no-print table');
-      expect(table).toBeNull();
+      expect(widthEl().value).toBe('80');
+      expect(heightEl().value).toBe('53');
     });
 
-    // Expand it again
-    supplyListToggle!.dispatchEvent(new Event('click', { bubbles: true }));
+    // Select "Extra large" (190×127).
+    cards().find(c => c.textContent?.includes('190×127 grid'))!.click();
     await vi.waitFor(() => {
-      table = container.querySelector('.no-print table');
-      expect(table).not.toBeNull();
+      expect(widthEl().value).toBe('190');
+      expect(heightEl().value).toBe('127');
     });
   });
+
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): the left "Setup" fixed-width
+  // sidebar and its collapse/expand affordance are deleted in Plan 08 — the user asked to
+  // retire the left-hand menu and move those options into the viewport. The collapse chrome
+  // ceases to exist, so its test goes with it (Phase 25 strangler retirement pulled forward
+  // — intentional removal of deleted chrome, not a regression).
+
+  // RETIRED (23-07): "collapses and expands the DMC Supply List" covered the collapsible
+  // DMC Supply List that lived ONLY in the legacy right <aside> (deleted in Plan 08). The
+  // canvas-first SuppliesScreen replaces it with a display-only table (covered by
+  // SuppliesScreen unit tests), so the collapse toggle no longer exists. Intentional
+  // strangler retirement of deleted chrome.
 
   it('supports toggling between Grid View and Original Photo modes', async () => {
     // 1. Stub FileReader and Image to allow loading
@@ -616,121 +659,19 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('collapses and expands the right workspace panel sidebar correctly', async () => {
-    render(<App />, container);
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): the right "Color Legend"
+  // fixed-width workspace <aside> and its collapse/expand affordance are deleted in Plan 08.
+  // The legend/supply content is re-homed to the canvas-first SuppliesScreen; the collapse
+  // chrome ceases to exist, so its test is retired (intentional strangler retirement of
+  // deleted chrome, pulled forward from Phase 25).
 
-    // Sidebar should start expanded
-    const sidebars = container.querySelectorAll('aside');
-    const rightSidebar = sidebars[1] as HTMLElement; // second aside
-    expect(rightSidebar.className).toContain('w-96');
-
-    // Click collapse button inside right sidebar
-    const collapseBtn = rightSidebar.querySelector('button[title="Collapse Workspace"]') as HTMLButtonElement;
-    expect(collapseBtn).not.toBeNull();
-    collapseBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Wait for sidebar to transition to collapsed state
-    await vi.waitFor(() => {
-      expect(rightSidebar.className).toContain('w-0');
-    });
-
-    // Pushed expand button (labeled "Color Legend") should now be visible in main area
-    const expandBtn = container.querySelector('button[title="Expand color legend"]') as HTMLButtonElement;
-    expect(expandBtn).not.toBeNull();
-    expandBtn.dispatchEvent(new Event('click', { bubbles: true }));
-
-    // Sidebar should expand back
-    await vi.waitFor(() => {
-      expect(rightSidebar.className).toContain('w-96');
-    });
-  });
-
-  it('tracks loaded images in recent uploads list and lets users load or delete them', async () => {
-    // Stub FileReader & Image
-    const mockReader = {
-      readAsDataURL: vi.fn().mockImplementation(function(this: any) {
-        if (this.onload) {
-          this.onload({ target: { result: 'data:image/png;base64,mockImageSource' } });
-        }
-      }),
-    };
-    vi.stubGlobal('FileReader', vi.fn().mockImplementation(() => mockReader));
-
-    const mockImageInstance = {
-      naturalWidth: 10,
-      naturalHeight: 10,
-      width: 10,
-      height: 10,
-      set src(_val: string) {
-        if (this.onload) {
-          setTimeout(() => this.onload(), 0);
-        }
-      },
-      onload: null as any,
-    };
-    vi.stubGlobal('Image', vi.fn().mockImplementation(() => mockImageInstance));
-
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
-      if (type === '2d') {
-        return {
-          drawImage: vi.fn(),
-          getImageData: vi.fn().mockReturnValue({
-            data: new Uint8ClampedArray(400),
-            width: 10,
-            height: 10,
-          }),
-        } as any;
-      }
-      return null;
-    });
-
-    render(<App />, container);
-
-    // 1. Upload mock image (the Source Image menu auto-collapses once it loads)
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File([''], 'scenery.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [file], writable: true });
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-    // Wait for the collapsed Source Image summary to appear.
-    const expandSource = () => (container.querySelector('#source-image-toggle') as HTMLElement).click();
-    await vi.waitFor(() => {
-      expect(container.querySelector('#source-image-toggle')).not.toBeNull();
-    });
-
-    // 2. Expand the menu — the recent upload is now tracked inside it.
-    expandSource();
-    await vi.waitFor(() => {
-      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
-    });
-
-    // 3. Click thumbnail to load image; loading re-collapses the menu, so the
-    //    recents disappearing is the deterministic signal that the load ran.
-    (container.querySelector('div[title="scenery.png"]') as HTMLElement).click();
-    await vi.waitFor(() => {
-      expect(container.querySelector('canvas')).not.toBeNull();
-      expect(container.querySelector('div[title="scenery.png"]')).toBeNull();
-    });
-
-    // 4. Re-expand and delete the recent image
-    expandSource();
-    await vi.waitFor(() => {
-      expect(container.querySelector('div[title="scenery.png"]')).not.toBeNull();
-    });
-    const thumbnail = container.querySelector('div[title="scenery.png"]') as HTMLElement;
-    const deleteBtn = thumbnail.querySelector('button[title="Delete Image"]') as HTMLButtonElement;
-    expect(deleteBtn).not.toBeNull();
-    deleteBtn.click();
-
-    // Verify removed
-    await vi.waitFor(() => {
-      const recentList = container.querySelector('div[title="scenery.png"]');
-      expect(recentList).toBeNull();
-    });
-
-    HTMLCanvasElement.prototype.getContext = originalGetContext;
-  });
+  // DELETED (23-03): "tracks loaded images in recent uploads list…" — the legacy
+  // recent-UPLOADS strip (raw images via #source-image-toggle inside Step1Ingest) is not
+  // surfaced by the canvas-first UploadScreen, which shows recent PROJECTS from
+  // projectStore.list() instead (D-10/UI-SPEC A1). Recent raw-image chips are not part of
+  // the v4.0 customer flow, so this exercise has no home. The projectStore recents store
+  // itself remains covered by its own engine unit tests; recent-PROJECT load is covered by
+  // UploadScreen.test.tsx ("calls loadProject(id) on click").
 
   it('triggers fitToContainer when Fit to Container button is clicked', async () => {
     // Stub FileReader & Image
@@ -797,25 +738,9 @@ describe('Integration Match Triggering and Palette Toggles', () => {
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
-  it('supports sorting columns in the DMC Supply List on header clicks', async () => {
-    render(<App />, container);
-
-    // Click DMC header to sort by code
-    const dmcHeader = Array.from(container.querySelectorAll('.no-print th')).find(
-      (th) => th.textContent?.includes('DMC')
-    ) as HTMLElement;
-    expect(dmcHeader).not.toBeUndefined();
-
-    // Click it to trigger sort
-    dmcHeader.click();
-    await vi.waitFor(() => {
-      expect(dmcHeader.textContent).toContain('▲');
-    });
-
-    // Click it again to reverse sort direction
-    dmcHeader.click();
-    await vi.waitFor(() => {
-      expect(dmcHeader.textContent).toContain('▼');
-    });
-  });
+  // RETIRED (23-07, gap closure for Phase 23 UAT Test 26): "supports sorting columns in the
+  // DMC Supply List" covered the sortable column headers that lived ONLY on the legacy right
+  // <aside> supply list (deleted in Plan 08). The canvas-first SuppliesScreen table is
+  // display-only by design (SUPPLIES-01) with no sort affordance, so this behavior no longer
+  // exists — intentional strangler retirement of deleted chrome, pulled forward from Phase 25.
 });

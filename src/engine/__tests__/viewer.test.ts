@@ -12,6 +12,10 @@ class MockCanvas {
   public height = 600;
   public listeners: Record<string, Function[]> = {};
   public mockContext: any;
+  // Real DOM canvases expose a `.style` object; the viewer constructor assigns
+  // `canvas.style.touchAction` (D-06). The mock must provide it so that assignment
+  // does not throw, and so tests can assert the touch-action guard was set.
+  public style: Record<string, string> = {};
 
   constructor() {
     this.mockContext = {
@@ -356,6 +360,152 @@ describe('CanvasViewer Viewport Interaction & Logic', () => {
       onZoomChangeMock.mockClear();
       viewer.resetZoom();
       expect(onZoomChangeMock).toHaveBeenCalled();
+    });
+  });
+
+  describe('Fit-mode tracking (D-04 isFitMode)', () => {
+    it('should report fit mode by default before any zoom', () => {
+      // A freshly constructed viewer rests in fit-to-container mode.
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should stay in fit mode after fitToContainer', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.fitToContainer();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should leave fit mode on an explicit zoomIn', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should leave fit mode on an explicit zoomOut', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      viewer.zoomOut();
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should leave fit mode on a wheel zoom', () => {
+      expect(viewer.isInFitMode()).toBe(true);
+      canvas.dispatchEvent('wheel', { clientX: 210, clientY: 220, deltaY: -100 });
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+
+    it('should re-enter fit mode when fitToContainer runs after a user zoom', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+
+      viewer.fitToContainer();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should re-enter fit mode via resetZoom (delegates to fitToContainer)', () => {
+      const colorMap = new Map<string, string>();
+      colorMap.set('310', '#000000');
+      viewer.setData(2, 2, ['310', '310', '310', '310'], colorMap);
+
+      viewer.zoomIn();
+      expect(viewer.isInFitMode()).toBe(false);
+
+      viewer.resetZoom();
+      expect(viewer.isInFitMode()).toBe(true);
+    });
+
+    it('should keep the fit flag orthogonal to the resulting scale/offset math', () => {
+      // The wheel-zoom math asserted elsewhere must be unchanged by the flag.
+      canvas.dispatchEvent('wheel', { clientX: 210, clientY: 220, deltaY: -100 });
+      const state = viewer.getViewportState();
+      expect(state.scale).toBeCloseTo(1.1);
+      expect(state.offsetX).toBeCloseTo(-20);
+      expect(state.offsetY).toBeCloseTo(-20);
+      expect(viewer.isInFitMode()).toBe(false);
+    });
+  });
+
+  describe('Multi-touch pinch + touch-action', () => {
+    it('should set touch-action:none on the canvas element (D-06)', () => {
+      // Constructed in beforeEach. The viewer must declare the canvas as gesture-owned
+      // so the page never scrolls/zooms under a touch gesture.
+      expect(canvas.style.touchAction).toBe('none');
+    });
+
+    it('should zoom in when two pointers spread apart (pinch-out)', () => {
+      const onZoomChangeMock = vi.fn();
+      viewer.onZoomChange = onZoomChangeMock;
+
+      const initialScale = viewer.getViewportState().scale;
+
+      // Two fingers land close together (distance 100 along x).
+      canvas.dispatchEvent('pointerdown', { clientX: 100, clientY: 100, button: 0, pointerType: 'touch', pointerId: 1 });
+      canvas.dispatchEvent('pointerdown', { clientX: 200, clientY: 100, button: 0, pointerType: 'touch', pointerId: 2 });
+
+      // Spread them apart -> distance grows -> zoom in.
+      canvas.dispatchEvent('pointermove', { clientX: 50, clientY: 100, pointerId: 1 });
+      canvas.dispatchEvent('pointermove', { clientX: 250, clientY: 100, pointerId: 2 });
+
+      const afterScale = viewer.getViewportState().scale;
+      expect(afterScale).toBeGreaterThan(initialScale);
+      expect(onZoomChangeMock).toHaveBeenCalled();
+    });
+
+    it('should zoom out when two pointers move together (pinch-in)', () => {
+      // Start with a known non-clamped scale so a zoom-out is observable.
+      viewer.setViewportState(5.0, 0, 0);
+      const initialScale = viewer.getViewportState().scale;
+
+      // Two fingers land far apart (distance 1000 along x).
+      canvas.dispatchEvent('pointerdown', { clientX: 0, clientY: 100, button: 0, pointerType: 'touch', pointerId: 1 });
+      canvas.dispatchEvent('pointerdown', { clientX: 1000, clientY: 100, button: 0, pointerType: 'touch', pointerId: 2 });
+
+      // Move them together -> distance shrinks -> zoom out.
+      canvas.dispatchEvent('pointermove', { clientX: 400, clientY: 100, pointerId: 1 });
+      canvas.dispatchEvent('pointermove', { clientX: 600, clientY: 100, pointerId: 2 });
+
+      const afterScale = viewer.getViewportState().scale;
+      expect(afterScale).toBeLessThan(initialScale);
+    });
+
+    it('should clamp pinch zoom to the existing 0.5–50 scale bounds', () => {
+      // Drive many spread frames -> should saturate at maxScale 50, never exceed it.
+      canvas.dispatchEvent('pointerdown', { clientX: 100, clientY: 100, button: 0, pointerType: 'touch', pointerId: 1 });
+      canvas.dispatchEvent('pointerdown', { clientX: 110, clientY: 100, button: 0, pointerType: 'touch', pointerId: 2 });
+      for (let i = 1; i <= 120; i++) {
+        canvas.dispatchEvent('pointermove', { clientX: 100 + i * 20, clientY: 100, pointerId: 2 });
+      }
+      expect(viewer.getViewportState().scale).toBeLessThanOrEqual(50.0);
+      expect(viewer.getViewportState().scale).toBeGreaterThan(1.0);
+      canvas.dispatchEvent('pointerup', { pointerId: 1 });
+      canvas.dispatchEvent('pointerup', { pointerId: 2 });
+
+      // Drive many together frames -> should saturate at minScale 0.5, never below it.
+      canvas.dispatchEvent('pointerdown', { clientX: 0, clientY: 100, button: 0, pointerType: 'touch', pointerId: 3 });
+      canvas.dispatchEvent('pointerdown', { clientX: 3000, clientY: 100, button: 0, pointerType: 'touch', pointerId: 4 });
+      for (let i = 1; i <= 120; i++) {
+        const x = Math.max(1, 3000 - i * 25);
+        canvas.dispatchEvent('pointermove', { clientX: x, clientY: 100, pointerId: 4 });
+      }
+      expect(viewer.getViewportState().scale).toBeGreaterThanOrEqual(0.5);
+    });
+
+    it('should not pinch-zoom while only a single finger is down (pan, not zoom)', () => {
+      const initialScale = viewer.getViewportState().scale;
+      canvas.dispatchEvent('pointerdown', { clientX: 100, clientY: 100, button: 0, pointerType: 'touch', pointerId: 1 });
+      canvas.dispatchEvent('pointermove', { clientX: 140, clientY: 160, pointerId: 1 });
+
+      const state = viewer.getViewportState();
+      // Single finger pans (offsets change) but never changes scale.
+      expect(state.scale).toBe(initialScale);
+      expect(state.offsetX).toBe(40);
+      expect(state.offsetY).toBe(60);
     });
   });
 });

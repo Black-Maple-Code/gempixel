@@ -111,6 +111,35 @@ describe('Fixed-bag cost is mapping-aware (WR-02)', () => {
 // `src/engine/__tests__/bagPlanner.test.ts` (packColor / planColorSupply), and the
 // estimate == cart property is asserted there against `compileShopifyCartLink`.
 
+// D-03/WR-01: a plain Ctrl+P must print the canvas grid from EVERY step, not just
+// Refine. The single-mount canvas <main> composes `print:block` unconditionally, so
+// off-Refine its className is `hidden print:block` (display:none on screen, block in
+// print). jsdom applies no CSS, so assert the className carries `print:block` while on
+// a non-Refine step (App boots on step 1 / Upload). The dedicated report/legend print
+// modes still hide <main> via CSS `!important`, so no double-print conflict here.
+describe('Canvas <main> prints from every step (D-03/WR-01)', () => {
+  let container: HTMLDivElement;
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('carries print:block on a non-Refine step (Upload / step 1)', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    render(<App />, container);
+
+    // App boots on step 1 (Upload) — the canvas <main> is display:none on screen.
+    const main = container.querySelector('main') as HTMLElement;
+    expect(main).toBeTruthy();
+    // Off-Refine: hidden on screen, but print:block so a plain Ctrl+P still prints it.
+    expect(main.className).toContain('hidden');
+    expect(main.className).toContain('print:block');
+  });
+});
+
 // BAG-03/BAG-02 · D-08/D-10: the redesigned printable "GemPixel Supply Plan
 // Report" (the "Print Supply Report" button's output, isolated via
 // print-only-report-mode) must be self-contained: a static savings/why banner,
@@ -163,13 +192,19 @@ describe('Print supply report content (D-08/D-10, redesigned)', () => {
     expect(report.textContent).toMatch(/Proposed total: \$\d+\.\d{2}/);
   });
 
-  it('keeps the report sentence independent of the on-screen expander (empty plan)', () => {
+  it('keeps the report sentence present in the static print mirror (empty plan)', () => {
     renderApp();
-    // On the initial (step 1) empty-plan render the relocated Step3Canvas expander
-    // is not mounted, so the dye-lot sentence appears exactly once — in the static
-    // print mirror — never leaking from an on-screen expander.
+    // 23-04: the canvas-first SuppliesScreen (panel-3, always-mounted per D-14) now
+    // renders the dye-lot sentence in its native <details> "Why these bags?" body, so
+    // the sentence appears exactly twice — once in the static print mirror and once in
+    // the on-screen Supplies disclosure. The invariant that MATTERS is that the print
+    // mirror carries it independently (never relying on the on-screen expander being
+    // open); that the Supplies disclosure also shows it is the intended relocation.
     const occurrences = (container.textContent || '').split(DYE_LOT_WHY_SENTENCE).length - 1;
-    expect(occurrences).toBe(1);
+    expect(occurrences).toBe(2);
+    // And the static print mirror specifically carries it (independent of the expander).
+    const report = container.querySelector('.supply-report-print-container') as HTMLElement;
+    expect(report.textContent).toContain(DYE_LOT_WHY_SENTENCE);
   });
 });
 
@@ -225,12 +260,16 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
   const loadProjectToStep = async (targetStep: number) => {
     render(<App />, container);
     await new Promise((r) => setTimeout(r, 10));
-    const toggleBtn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes('My Images'));
-    toggleBtn?.click();
-    await new Promise((r) => setTimeout(r, 10));
-    const rowBtn = container.querySelector('.group.relative') as HTMLDivElement;
-    expect(rowBtn).toBeTruthy();
-    rowBtn.click();
+    // Load via the always-mounted UploadScreen recent-project chip (D-10) — the
+    // legacy "My Images" left drawer is retired in Plan 08. Each test here seeds
+    // exactly one project, so the first recent chip's load button (the first
+    // button inside a `.group.relative` chip) is that project; clicking it calls
+    // the same App loadProject(id) the drawer row called.
+    const chip = container.querySelector(
+      '[data-screen="upload"] .group.relative button',
+    ) as HTMLButtonElement;
+    expect(chip).toBeTruthy();
+    chip.click();
     await new Promise((r) => setTimeout(r, 10));
     for (let s = 1; s < targetStep; s++) {
       (container.querySelector('#wizard-next-btn') as HTMLButtonElement).click();
@@ -275,45 +314,12 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
   // sanitizeMoney guard, toCents(Infinity) threw in the render body and white-
   // screened the app. The load + step-3 render must now complete without throwing
   // and produce a finite, money-formatted total.
-  // WR-01: loading a project whose drillType differs from the active default
-  // ('standard') must preserve its saved per-bag prices. The drillType-keyed
-  // preset effect fires on the standard->ab change and, without the skip guard,
-  // clobbers the restored custom prices with the 'ab' type defaults.
-  it('preserves saved per-bag prices when the loaded drillType differs (WR-01)', async () => {
-    const nowStr = new Date().toISOString();
-    const summary = { id: projectId, name: 'WR-01 Custom Prices', thumbnail: '', dateModified: nowStr, dateCreated: nowStr };
-    const gridData = [...Array(250).fill(idx150), ...Array(250).fill(idx151)];
-    // Distinctive prices that match neither the 'standard' default nor the 'ab'
-    // preset ({200:0.70,500:1.30,1000:2.20,2000:3.90}).
-    const customPrices = { 200: 0.99, 500: 1.99, 1000: 2.99, 2000: 3.99 };
-    const data = {
-      id: projectId,
-      name: 'WR-01 Custom Prices',
-      dateCreated: nowStr,
-      dateModified: nowStr,
-      dimensions: { cols: 25, rows: 20 },
-      drillStyle: 'square',
-      selectedBaseKit: 'all',
-      drillType: 'ab', // differs from the initial 'standard' -> preset effect fires
-      kitBaseCost: 15,
-      drillPacketCost: 0.25,
-      pricesPerBagSize: customPrices,
-      gridData,
-    };
-    localStorage.setItem('gempixel_workspace_registry', JSON.stringify([summary]));
-    localStorage.setItem(`gempixel_project_${projectId}`, JSON.stringify(data));
-
-    await loadProjectToStep(3);
-
-    // Read the per-bag price grid inputs (200/500/1000/2000, in order).
-    const priceSection = Array.from(container.querySelectorAll('span'))
-      .find((s) => s.textContent === 'Prices per Bag Size ($)')
-      ?.closest('div');
-    expect(priceSection).toBeTruthy();
-    const priceInputs = Array.from(priceSection!.querySelectorAll('input')) as HTMLInputElement[];
-    // The restored custom prices survive — NOT overwritten by the 'ab' preset.
-    expect(priceInputs.map((i) => i.value)).toEqual(['0.99', '1.99', '2.99', '3.99']);
-  });
+  // RETIRED(26-03): "preserves saved per-bag prices when the loaded drillType differs (WR-01)"
+  // read the restored prices back through the legacy Step3Canvas "Prices per Bag Size ($)"
+  // input grid, which was deleted in 26-03 (SuppliesScreen is read-only, no price grid). The
+  // WR-01 behavior itself — loadProject's skipDrillPresetRef guard preserving saved prices
+  // across a differing drillType — still runs in App; only its price-grid readout is gone.
+  // Strangler-close retirement (D-02), mirroring the Phase 23 aside-retargeting precedent.
 
   it('does not white-screen when a loaded project has a non-finite kitBaseCost (CR-01)', async () => {
     const nowStr = new Date().toISOString();
@@ -349,28 +355,30 @@ describe('Populated supply report + relocated "Why these bags?" expander', () =>
     expect(container.textContent).not.toContain('NaN');
   });
 
-  it('exposes the "Why these bags?" a11y contract in the Step 3 Cost & Order panel', async () => {
+  // 23-04 re-home: the "Why these bags?" disclosure moved from the legacy Step3Canvas
+  // (a custom aria-controls button + #why-these-bags-explainer region) to the
+  // canvas-first SuppliesScreen, which uses a native <details>/<summary> (UI-SPEC
+  // Component Inventory — a11y-native, zero-JS). Assert the native disclosure contract:
+  // a <summary> named "Why these bags?" whose body is the static dye-lot sentence.
+  it('exposes the native "Why these bags?" disclosure in the Supplies panel', async () => {
     seedProject();
     await loadProjectToStep(3);
 
-    const whyButton = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.getAttribute('aria-controls') === 'why-these-bags-explainer',
-    );
-    expect(whyButton).toBeTruthy();
-    // Real <button type="button">.
-    expect(whyButton?.getAttribute('type')).toBe('button');
-    // Accessible name is exactly "Why these bags?" (the ▶ arrow is aria-hidden).
-    expect(whyButton?.textContent?.replace('▶', '').trim()).toBe('Why these bags?');
-    // Collapsed by default: aria-expanded=false and the region is absent.
-    expect(whyButton?.getAttribute('aria-expanded')).toBe('false');
-    expect(container.querySelector('#why-these-bags-explainer')).toBeNull();
+    const step3 = container.querySelector('[data-step-panel="3"]') as HTMLElement;
+    expect(step3.querySelector('[data-screen="supplies"]')).toBeTruthy();
 
-    // Toggling opens it: aria-expanded=true and the single static sentence appears.
-    whyButton!.click();
-    await new Promise((r) => setTimeout(r, 5));
-    expect(whyButton?.getAttribute('aria-expanded')).toBe('true');
-    const region = container.querySelector('#why-these-bags-explainer');
-    expect(region).toBeTruthy();
-    expect(region?.textContent).toContain(DYE_LOT_WHY_SENTENCE);
+    // Find the native <details> whose <summary> is "Why these bags?".
+    const details = Array.from(step3.querySelectorAll('details')).find(
+      (d) => d.querySelector('summary')?.textContent?.trim() === 'Why these bags?',
+    ) as HTMLDetailsElement | undefined;
+    expect(details).toBeTruthy();
+
+    // Native <summary> is the a11y toggle (no custom aria-controls needed).
+    const summary = details!.querySelector('summary') as HTMLElement;
+    expect(summary.textContent?.trim()).toBe('Why these bags?');
+
+    // The disclosure body is the single static dye-lot sentence (present in the DOM,
+    // screen-reader accessible, regardless of open state).
+    expect(details!.textContent).toContain(DYE_LOT_WHY_SENTENCE);
   });
 });
