@@ -49,6 +49,10 @@ export interface RefineScreenProps {
   heightInput: string;
   onWidthChange: (v: string) => void;
   onHeightChange: (v: string) => void;
+  /** Custom-size unit of measure. App converts the width/height inputs to grid
+   *  cols/rows based on this and keeps the displayed values in sync. */
+  unit: 'grid' | 'cm' | 'inch';
+  onUnitChange: (u: 'grid' | 'cm' | 'inch') => void;
   // ── Edge cleanup (post-process tier) → enableSmoothing + smoothingStrength ──
   edgeCleanup: 0 | 1 | 2 | 3;
   onEdgeCleanupChange: (v: 0 | 1 | 2 | 3) => void;
@@ -77,6 +81,8 @@ export function RefineScreen(props: RefineScreenProps) {
     heightInput,
     onWidthChange,
     onHeightChange,
+    unit,
+    onUnitChange,
     edgeCleanup,
     onEdgeCleanupChange,
     colorTarget,
@@ -144,9 +150,10 @@ export function RefineScreen(props: RefineScreenProps) {
                 id="refine-width"
                 type="number"
                 min={1}
+                step={unit === 'grid' ? 1 : 0.1}
                 value={widthInput}
                 onInput={(e) => onWidthChange((e.currentTarget as HTMLInputElement).value)}
-                className="w-20 rounded-[var(--radius-control)] border border-border bg-panel-2 px-2 py-1 text-sm text-ink"
+                className="w-16 rounded-[var(--radius-control)] border border-border bg-panel-2 px-2 py-1 text-sm text-ink"
               />
             </label>
             <span className="pb-1.5 text-muted">×</span>
@@ -156,10 +163,27 @@ export function RefineScreen(props: RefineScreenProps) {
                 id="refine-height"
                 type="number"
                 min={1}
+                step={unit === 'grid' ? 1 : 0.1}
                 value={heightInput}
                 onInput={(e) => onHeightChange((e.currentTarget as HTMLInputElement).value)}
-                className="w-20 rounded-[var(--radius-control)] border border-border bg-panel-2 px-2 py-1 text-sm text-ink"
+                className="w-16 rounded-[var(--radius-control)] border border-border bg-panel-2 px-2 py-1 text-sm text-ink"
               />
+            </label>
+            {/* Unit of measure — swappable; App converts to grid cols/rows and keeps
+                the width/height values in sync as the unit changes. */}
+            <label className="flex flex-col gap-1 text-[10px] font-mono uppercase tracking-wider text-faint">
+              Units
+              <select
+                id="refine-unit"
+                aria-label="Custom size units"
+                value={unit}
+                onChange={(e) => onUnitChange((e.currentTarget as HTMLSelectElement).value as 'grid' | 'cm' | 'inch')}
+                className="rounded-[var(--radius-control)] border border-border bg-panel-2 px-2 py-1 text-sm text-ink"
+              >
+                <option value="grid">Grid</option>
+                <option value="inch">Inch</option>
+                <option value="cm">cm</option>
+              </select>
             </label>
           </div>
         )}

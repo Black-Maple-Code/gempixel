@@ -9,7 +9,7 @@ import { gridToInches, formatInches } from './engine/density';
 import { hasVariantMapping } from './engine/variants';
 import { toCents, formatUSD, sanitizeMoney } from './engine/money';
 import { resolveActiveCandidates } from './engine/candidates';
-import { projectStore, generateUUID, generateThumbnail, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
+import { projectStore, generateUUID, generateThumbnail, imageToStorableDataUrl, type ProjectSummary, type ProjectData, type RecentImage } from './engine/projectStore';
 import { safeStorage } from './engine/safeStorage';
 import { useDiamondArtMatch } from './features/match/useDiamondArtMatch';
 import { useWizard } from './features/wizard/useWizard';
@@ -88,21 +88,19 @@ export const STANDARD_SIZES = [
  * (REFINE-02). "Medium" (80×53) is the default recommendation and carries the BEST tag.
  */
 export const REFINE_SIZE_PRESETS: Array<{ label: string; cols: number; rows: number; tag?: string }> = [
-  { label: 'Small', cols: 60, rows: 40 },
-  { label: 'Medium', cols: 80, rows: 53, tag: 'BEST' },
-  { label: 'Large', cols: 110, rows: 73 },
-  { label: 'Extra large', cols: 140, rows: 93 },
+  { label: 'Small', cols: 80, rows: 53 },
+  { label: 'Medium', cols: 110, rows: 73 },
+  { label: 'Large', cols: 140, rows: 93 },
+  { label: 'Extra large', cols: 190, rows: 127 },
 ];
 
 /**
- * The default post-upload size tier (Medium, tagged BEST). Anchoring the on-load default to
- * this tier via aspectAwareGrid makes the initial grid equal the Medium RefineScreen card, so
- * its selected-highlight lands immediately on load (reconciles the two anchoring strategies;
- * fixes size-selection-crops-image.md note #2). Derived from REFINE_SIZE_PRESETS — no duplicate
- * literal; the `?? [1]` fallback keeps the type non-optional under strict.
+ * The default post-upload size tier (Medium). Anchoring the on-load default to this tier via
+ * aspectAwareGrid makes the initial grid equal the Medium RefineScreen card, so its
+ * selected-highlight lands immediately on load (reconciles the two anchoring strategies; fixes
+ * size-selection-crops-image.md note #2). Derived from REFINE_SIZE_PRESETS — no duplicate literal.
  */
-export const DEFAULT_REFINE_PRESET =
-  REFINE_SIZE_PRESETS.find((p) => p.tag === 'BEST') ?? REFINE_SIZE_PRESETS[1];
+export const DEFAULT_REFINE_PRESET = REFINE_SIZE_PRESETS[1];
 
 /**
  * AR-aware preset sizing (fixes size-selection-crops-image). Each REFINE_SIZE_PRESET is a
@@ -202,8 +200,8 @@ export function hexToHue(hex: string): number {
 export function App() {
   const isTestEnv = typeof window !== 'undefined' && navigator.userAgent.includes('jsdom');
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [cols, setCols] = useState(80);
-  const [rows, setRows] = useState(53);
+  const [cols, setCols] = useState(110);
+  const [rows, setRows] = useState(73);
 
   // D-02: the COMMITTED match inputs the worker actually consumes. Live image/cols/rows
   // drive the editing UI; these advance only on an intentional commit (fresh upload,
@@ -211,7 +209,7 @@ export function App() {
   // debounced). Keeping a separate committed snapshot means the expensive/abort-race-prone
   // match runs once per commit, and the last-good grid renders until the fresh one lands.
   const [matchInputs, setMatchInputs] = useState<{ image: HTMLImageElement | null; cols: number; rows: number }>(
-    { image: null, cols: 80, rows: 53 }
+    { image: null, cols: 110, rows: 73 }
   );
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -235,8 +233,8 @@ export function App() {
   const [derivedWarning, setDerivedWarning] = useState<string | null>(null);
 
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
-  const [widthInput, setWidthInput] = useState<string>('80');
-  const [heightInput, setHeightInput] = useState<string>('53');
+  const [widthInput, setWidthInput] = useState<string>('110');
+  const [heightInput, setHeightInput] = useState<string>('73');
   // selectedPreset is no longer read by any live screen (legacy Step1Ingest showed it);
   // the setter is retained because live size-change handlers still reset it to 'custom'.
   const [, setSelectedPreset] = useState<string>('custom');
@@ -436,19 +434,32 @@ export function App() {
     } else {
       restore(null);
     }
+
+    // Rehydrate the source image (if this project was saved with one) so the load
+    // is complete: the canvas is already showing the restored grid (from gridData
+    // above), and once this async decode lands, `image` is set — so a later size
+    // change recomputes instead of hitting the "Re-upload the source image" guard.
+    // A NEW HTMLImageElement identity also fires the auto-advance effect, landing
+    // the user on Refine to see their restored project. Legacy blobs without an
+    // imageDataUrl keep the prior behavior (grid restored, no live image).
+    if (project.imageDataUrl) {
+      const restoredImg = new Image();
+      restoredImg.onload = () => setImage(restoredImg);
+      restoredImg.src = project.imageDataUrl;
+    }
   };
 
   const resetWorkspace = () => {
     setActiveProjectId(null);
     setImage(null);
     setImageName('');
-    setCols(80);
-    setRows(53);
+    setCols(110);
+    setRows(73);
     // D-13: reset clears the committed match inputs too (no residual stale state).
-    setMatchInputs({ image: null, cols: 80, rows: 53 });
+    setMatchInputs({ image: null, cols: 110, rows: 73 });
     setUnit('grid');
-    setWidthInput('80');
-    setHeightInput('53');
+    setWidthInput('110');
+    setHeightInput('73');
     setSelectedPreset('custom');
     setDrillStyle('square');
     setSelectedBaseKit('all');
@@ -525,7 +536,12 @@ export function App() {
       affiliateTag,
       affiliateApp,
       gridData,
-      selectedVendor
+      selectedVendor,
+      // Persist the source image (downscaled JPEG) so a reload fully restores the
+      // project — the canvas AND the ability to re-match on a size change — instead
+      // of prompting a re-upload. '' when there is no live image (e.g. a re-saved
+      // legacy project); the load path treats '' the same as absent.
+      imageDataUrl: image ? imageToStorableDataUrl(image) : ''
     };
 
     // CR-02/B3: on a quota failure, surface a warning and abort the "saved" side
@@ -1385,6 +1401,10 @@ export function App() {
     heightInput,
     onWidthChange: handleWidthChange,
     onHeightChange: handleHeightChange,
+    unit,
+    // Just set the unit — the dimension-sync effect converts the width/height
+    // inputs from the live cols/rows into the new unit's display values.
+    onUnitChange: setUnit,
     edgeCleanup,
     onEdgeCleanupChange: (v: 0 | 1 | 2 | 3) => {
       // Post-process tier (D-03): pure main-thread re-render, no worker, no staleness.
