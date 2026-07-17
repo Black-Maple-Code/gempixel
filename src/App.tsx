@@ -94,6 +94,42 @@ export const REFINE_SIZE_PRESETS: Array<{ label: string; cols: number; rows: num
   { label: 'Extra large', cols: 140, rows: 93 },
 ];
 
+/**
+ * AR-aware preset sizing (fixes size-selection-crops-image). Each REFINE_SIZE_PRESET is a
+ * size/detail TIER whose meaningful number is its drill budget on the LONG axis
+ * (`max(cols, rows)`). Given the loaded image's pixel dimensions this maps that long-axis
+ * budget onto the image's OWN long axis and derives the short axis from the image aspect
+ * ratio — the exact `Math.max(1, round(long / ar))` derivation the custom-size handlers
+ * (handleWidthChange/handleHeightChange) already use. The downscale crop
+ * (`calculateCropBounds`, Cover/Crop in ingest.ts) then becomes a no-op, so NO content is
+ * lost for any image aspect ratio: a portrait photo gets a TALL canvas of comparable
+ * long-axis budget instead of being center-cropped into a 3:2 grid.
+ *
+ * Byte-identical guarantee: a 3:2 landscape image (ar = 1.5) lands on the preset's original
+ * cols/rows exactly — long axis === preset long axis, and the short axis rounds back to the
+ * preset short axis (e.g. Medium: cols=80, rows=round(80/1.5)=53) — so already-3:2 matches
+ * are unchanged. Falls back to the raw preset for a missing/degenerate image (defensive; the
+ * Refine flow always has a loaded image).
+ */
+export function aspectAwareGrid(
+  presetCols: number,
+  presetRows: number,
+  imageWidth: number,
+  imageHeight: number,
+): { cols: number; rows: number } {
+  const longBudget = Math.max(presetCols, presetRows);
+  const ar = imageWidth / imageHeight; // width / height
+  if (!Number.isFinite(ar) || ar <= 0) {
+    return { cols: presetCols, rows: presetRows };
+  }
+  if (ar >= 1) {
+    // Landscape or square: the image's long axis is its width → cols carries the budget.
+    return { cols: longBudget, rows: Math.max(1, Math.round(longBudget / ar)) };
+  }
+  // Portrait: the image's long axis is its height → rows carries the budget.
+  return { cols: Math.max(1, Math.round(longBudget * ar)), rows: longBudget };
+}
+
 
 export function calculateSafetyPurchase(exactCount: number, bagSize: number = 200): { safety: number; packets: number; purchase: number } {
   const safety = Math.ceil(Math.round(exactCount * 110) / 100);
@@ -1295,14 +1331,22 @@ export function App() {
   // the NEW enableReduce/targetColorCount post-process tier. Size selection sets
   // live cols/rows only → the existing soft-invalidate/Recompute owns the worker.
   const refineSizePresets = REFINE_SIZE_PRESETS.map(p => {
-    const { widthIn, heightIn } = gridToInches(p.cols, p.rows);
+    // AR-aware preset dims (fixes size-selection-crops-image): with an image loaded, derive
+    // cols/rows from its aspect ratio so selecting a preset never crops. The card LABELS
+    // (grid dims, inches, drill count) and the `selected` highlight all read these adjusted
+    // dims, and onSelectSize commits them — so the labels never lie and the highlight tracks
+    // the AR-adjusted size. A 3:2 image reproduces the preset's original dims byte-for-byte.
+    const { cols: presetCols, rows: presetRows } = image
+      ? aspectAwareGrid(p.cols, p.rows, image.naturalWidth, image.naturalHeight)
+      : { cols: p.cols, rows: p.rows };
+    const { widthIn, heightIn } = gridToInches(presetCols, presetRows);
     return {
       label: p.label,
-      cols: p.cols,
-      rows: p.rows,
+      cols: presetCols,
+      rows: presetRows,
       tag: p.tag,
       inches: `${formatInches(widthIn)} × ${formatInches(heightIn)} in`,
-      drillCount: p.cols * p.rows,
+      drillCount: presetCols * presetRows,
     };
   });
   // Edge-cleanup value: Off (0) when smoothing disabled, else the strength (1-3).

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'preact';
-import { App } from '../App';
+import { App, aspectAwareGrid } from '../App';
 import { planOrderSupply } from '../engine/bagPlanner';
 import { DMC_PALETTE } from '../engine/palette';
+import { calculateCropBounds } from '../engine/ingest';
 import { triggerCanvasDownload } from '../engine/export';
 import { compileShopifyCartLink } from '../engine/checkout';
 
@@ -1353,5 +1354,79 @@ describe('Layout regression — the four screens host the viewport; legacy shell
     const canvasAfter = container.querySelector('canvas');
     expect(container.querySelectorAll('canvas').length).toBe(1);
     expect(canvasAfter).toBe(canvasBefore);
+  });
+});
+
+// ── size-selection-crops-image (debug fix): AR-aware presets never crop ──────────
+// The REFINE size presets used to force a fixed ~3:2 grid; selecting one center-cropped
+// any non-3:2 photo (calculateCropBounds is a Cover/Crop to the grid AR). aspectAwareGrid
+// now maps the preset's LONG-axis drill budget onto the image's OWN long axis and derives
+// the short axis from the image AR — so the downscale crop becomes a no-op for ANY image
+// aspect ratio, while a 3:2 image still lands on the preset's original dims byte-for-byte.
+describe('aspectAwareGrid — AR-aware presets eliminate the size-selection crop', () => {
+  // The four curated REFINE_SIZE_PRESETS long-axis budgets.
+  const budgets = [
+    { label: 'Small', cols: 60, rows: 40 },
+    { label: 'Medium', cols: 80, rows: 53 },
+    { label: 'Large', cols: 110, rows: 73 },
+    { label: 'Extra large', cols: 140, rows: 93 },
+  ];
+
+  // A crop is "effectively none" when calculateCropBounds keeps (almost) the whole source:
+  // integer grid quantization can shave a sub-pixel sliver (identical to the custom-size
+  // path), so allow < 2% loss on either axis — versus the ~56% loss the bug caused.
+  const assertNoMeaningfulCrop = (
+    dims: { cols: number; rows: number },
+    srcW: number,
+    srcH: number,
+  ) => {
+    const b = calculateCropBounds(srcW, srcH, dims.cols, dims.rows);
+    expect(b.cropWidth / srcW).toBeGreaterThan(0.98);
+    expect(b.cropHeight / srcH).toBeGreaterThan(0.98);
+  };
+
+  it('reproduces the preset dims byte-for-byte for an exact 3:2 landscape image (no regression)', () => {
+    // ar = 1.5 → cols carries the long-axis budget, rows = round(budget / 1.5).
+    for (const p of budgets) {
+      expect(aspectAwareGrid(p.cols, p.rows, 3000, 2000)).toEqual({ cols: p.cols, rows: p.rows });
+    }
+  });
+
+  it('maps the long-axis budget onto a PORTRAIT image and yields a tall, uncropped canvas', () => {
+    // 2:3 portrait (1000×1500, ar ≈ 0.667): Medium's budget (80) lands on the HEIGHT.
+    const dims = aspectAwareGrid(80, 53, 1000, 1500);
+    expect(dims.rows).toBe(80); // long-axis budget on the image's long (vertical) axis
+    expect(dims.cols).toBe(Math.round(80 * (1000 / 1500))); // 53 — short axis from image AR
+    expect(dims.rows).toBeGreaterThan(dims.cols); // genuinely a TALL canvas
+    // The grid AR now tracks the image AR, so the Cover/Crop is a no-op (whole image kept).
+    assertNoMeaningfulCrop(dims, 1000, 1500);
+  });
+
+  it('BUG REPRODUCTION: the raw fixed preset would have cropped >50% of the same portrait', () => {
+    // Proves the defect the fix removes: forcing 80×53 onto a 2:3 portrait discards most of it.
+    const cropped = calculateCropBounds(1000, 1500, 80, 53);
+    expect(cropped.cropHeight / 1500).toBeLessThan(0.5); // majority of the image lost
+  });
+
+  it('keeps the whole image for assorted non-3:2 ratios across every preset budget', () => {
+    const images = [
+      { w: 1080, h: 1080 }, // 1:1 square
+      { w: 1600, h: 900 }, // 16:9 wide
+      { w: 1200, h: 1600 }, // 3:4 portrait
+      { w: 900, h: 1600 }, // 9:16 tall portrait
+    ];
+    for (const p of budgets) {
+      for (const img of images) {
+        const dims = aspectAwareGrid(p.cols, p.rows, img.w, img.h);
+        // The long-axis budget is always preserved on the image's long axis.
+        expect(Math.max(dims.cols, dims.rows)).toBe(Math.max(p.cols, p.rows));
+        assertNoMeaningfulCrop(dims, img.w, img.h);
+      }
+    }
+  });
+
+  it('falls back to the raw preset for a degenerate/zero-height image (defensive)', () => {
+    expect(aspectAwareGrid(80, 53, 100, 0)).toEqual({ cols: 80, rows: 53 });
+    expect(aspectAwareGrid(80, 53, 0, 0)).toEqual({ cols: 80, rows: 53 });
   });
 });
