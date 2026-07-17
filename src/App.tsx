@@ -179,6 +179,15 @@ export function App() {
   // handler clears it at its start (clear-then-act) and it is dismissible.
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // WR-03: the PERSISTENT derived advisory (unpriced bag sizes + unmapped-shape colors)
+  // lives in its OWN state, rendered as its own banner — NEVER on the shared one-shot
+  // actionError. This is what makes it survive the clear-then-act `setActionError(null)`
+  // every imperative handler runs at its start: previously the derived warning was
+  // written onto actionError and any action that did not change its deps (e.g. "Download
+  // canvas", "Open drill cart") cleared it with no way for the effect to restore it. It
+  // is derived from live state, so it is not user-dismissible (dismissing would be a lie).
+  const [derivedWarning, setDerivedWarning] = useState<string | null>(null);
+
   const [unit, setUnit] = useState<'cm' | 'inch' | 'grid'>('grid');
   const [widthInput, setWidthInput] = useState<string>('80');
   const [heightInput, setHeightInput] = useState<string>('53');
@@ -1171,10 +1180,11 @@ export function App() {
     .filter(code => !hasVariantMapping(code, drillStyle));
   const unmappedShapeKey = unmappedShapeCodes.join(',');
 
-  // Only THIS derived warning is managed on the shared actionError banner; track the
-  // last value we set so the effect can clear its own stale warning (WR-01) without
-  // clobbering an unrelated storage/download/checkout error that is currently showing.
-  const derivedActionWarningRef = useRef<string | null>(null);
+  // WR-03: this derived advisory owns its OWN state (derivedWarning) rendered as its own
+  // banner, so it is fully decoupled from the imperative actionError. The effect simply
+  // re-asserts the current derived value whenever its deps change — no previous-value
+  // gating, no ref, no risk of an imperative clear dropping it or a stale checkout note
+  // suppressing a fresh warning.
   useEffect(() => {
     const messages: string[] = [];
     if (unpricedColorsKey) {
@@ -1185,17 +1195,13 @@ export function App() {
     }
     if (unmappedShapeKey) {
       const codes = unmappedShapeKey.split(',').join(', ');
-      // WR-02: state the fact (no drills available for this shape) without claiming the
-      // color was excluded from the total — in fixed-bag mode it is still billed.
+      // State the fact (no drills available for this shape) without claiming the color
+      // was excluded from the total — in fixed-bag mode it is still billed.
       messages.push(
         `These colors have no ${drillStyle} drills available: ${codes} — switch drill shape or exclude them.`
       );
     }
-    const next = messages.length > 0 ? messages.join(' ') : null;
-    const prevDerived = derivedActionWarningRef.current;
-    derivedActionWarningRef.current = next;
-    // Reactively clear/replace our own warning; leave any unrelated error untouched.
-    setActionError(current => (current === prevDerived || current === null ? next : current));
+    setDerivedWarning(messages.length > 0 ? messages.join(' ') : null);
   }, [unpricedColorsKey, unmappedShapeKey, drillStyle]);
 
   const handleShopifyCheckout = () => {
@@ -1542,6 +1548,15 @@ export function App() {
             >
               ×
             </button>
+          </div>
+        )}
+        {/* WR-03: the derived advisory (unpriced bag sizes / unmapped-shape colors) is a
+            SEPARATE, persistent banner. It reflects live state, so it is not dismissible
+            and is never touched by the imperative clear-then-act — it disappears only when
+            the underlying condition is resolved. Text-only (no dangerouslySetInnerHTML). */}
+        {derivedWarning && (
+          <div className="no-print mb-3 max-w-md self-center rounded-lg border border-warn bg-panel-2 px-4 py-2.5 text-xs font-medium text-warn shadow-lg">
+            {derivedWarning}
           </div>
         )}
 
