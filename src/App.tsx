@@ -1563,7 +1563,7 @@ export function App() {
             <button
               id="wizard-back-btn"
               onClick={wizard.back}
-              className="cursor-pointer text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:text-ink"
+              className="cursor-pointer rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wide text-muted transition-all hover:bg-border hover:text-ink"
             >
               Back
             </button>
@@ -1592,8 +1592,13 @@ export function App() {
         1180px card frame on the cream Atelier background. This replaces the retired
         dark 3-column shell (the dark full-bleed wrapper + 320px left "My Images" aside
         + center <main> + right Color-Legend/DMC aside). UAT Test 26 gap closed. */}
-    <div className="relative h-full min-h-0 bg-bg print:h-auto print:min-h-0">
-      <div className="flex h-full min-h-0 w-full flex-col pl-4 pr-0 pt-2 pb-4 print:h-auto print:p-0">
+    {/* Height mode is step-aware: Refine (step 2) is a FIXED-height viewport
+        (`h-full` bounds it so the canvas fills and the rail scrolls internally),
+        while the other steps flow naturally (`min-h-full` grows with content so
+        Zone-2 scrolls the whole page — required for the Supplies sticky order
+        summary and normal long-form scrolling). */}
+    <div className={`relative min-h-0 bg-bg print:h-auto print:min-h-0 ${wizard.step === 2 ? 'h-full' : 'min-h-full'}`}>
+      <div className={`flex min-h-0 w-full flex-col pl-4 pr-0 pt-2 pb-4 print:h-auto print:p-0 ${wizard.step === 2 ? 'h-full' : 'min-h-full'}`}>
 
         {/* Hoisted error banners (frame scope) — surface on ANY step, not only while
             the canvas is visible (they moved out of CanvasWorkspace in Plan 08).
