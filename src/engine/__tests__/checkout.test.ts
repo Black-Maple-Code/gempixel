@@ -141,56 +141,57 @@ describe('Checkout and Sizing Integration', () => {
   describe('Canvas Cost Calculator', () => {
     it('returns exact tier prices when dimensions match exactly (using inches)', () => {
       // 12x16 inches = 192 sq in
-      expect(calculateCanvasCost(12, 16, 'inch', 'lumaprints')).toBe(6.50);
+      expect(calculateCanvasCost(12, 16, 'inch', 'lumaprints')).toBe(15.00);
       // 16x20 inches = 320 sq in
-      expect(calculateCanvasCost(16, 20, 'inch', 'lumaprints')).toBe(8.50);
+      expect(calculateCanvasCost(16, 20, 'inch', 'lumaprints')).toBe(21.00);
       // 20x28 inches = 560 sq in
-      expect(calculateCanvasCost(20, 28, 'inch', 'lumaprints')).toBe(12.00);
+      expect(calculateCanvasCost(20, 28, 'inch', 'lumaprints')).toBe(33.00);
       // 40x60 inches = 2400 sq in
-      expect(calculateCanvasCost(40, 60, 'inch', 'lumaprints')).toBe(28.00);
+      expect(calculateCanvasCost(40, 60, 'inch', 'lumaprints')).toBe(80.00);
     });
 
     it('handles exact matches for other vendors', () => {
       // 12x16 inches = 192 sq in
-      expect(calculateCanvasCost(12, 16, 'inch', 'finerworks')).toBe(11.00);
+      expect(calculateCanvasCost(12, 16, 'inch', 'finerworks')).toBe(22.00);
     });
 
     it('interpolates prices linearly between tiers', () => {
       // Area = 16x16 = 256 sq in
-      // For Lumaprints: between 192 ($6.50) and 320 ($8.50)
+      // For Lumaprints: between 192 ($15.00) and 320 ($21.00)
       // (256 - 192) / (320 - 192) = 64 / 128 = 0.5
-      // 6.50 + 0.5 * (8.50 - 6.50) = 7.50
-      expect(calculateCanvasCost(16, 16, 'inch', 'lumaprints')).toBe(7.50);
+      // 15.00 + 0.5 * (21.00 - 15.00) = 18.00
+      expect(calculateCanvasCost(16, 16, 'inch', 'lumaprints')).toBe(18.00);
 
       // Area = 18x24 = 432 sq in
-      // For FinerWorks: between 320 ($14.00) and 560 ($19.50)
+      // For FinerWorks: between 320 ($30.00) and 560 ($46.00)
       // Fraction = (432 - 320) / (560 - 320) = 112 / 240 = 0.46667
-      // Price = 14.00 + 0.46667 * (19.50 - 14.00) = 14.00 + 2.5667 = 16.57
-      expect(calculateCanvasCost(18, 24, 'inch', 'finerworks')).toBe(16.57);
+      // Price = 30.00 + 0.46667 * (46.00 - 30.00) = 30.00 + 7.4667 = 37.47
+      expect(calculateCanvasCost(18, 24, 'inch', 'finerworks')).toBe(37.47);
     });
 
-    it('falls back to custom square inch rate when area is below minimum tier', () => {
-      // Area = 10x10 = 100 sq in (below 192)
-      // For Lumaprints: 100 * 0.035 = 3.50
-      expect(calculateCanvasCost(10, 10, 'inch', 'lumaprints')).toBe(3.50);
-      // For FinerWorks: 100 * 0.058 = 5.80
-      expect(calculateCanvasCost(10, 10, 'inch', 'finerworks')).toBe(5.80);
+    it('clamps small canvases up to the vendor minimum-price floor', () => {
+      // Area = 10x10 = 100 sq in (below the 192 tier). The raw per-sq-in fallback
+      // would be under market, so the result is clamped up to the vendor minimum.
+      // Lumaprints: 100 * 0.10 = 10.00 → clamped to minPrice 14.00
+      expect(calculateCanvasCost(10, 10, 'inch', 'lumaprints')).toBe(14.00);
+      // FinerWorks: 100 * 0.15 = 15.00 → clamped to minPrice 19.00
+      expect(calculateCanvasCost(10, 10, 'inch', 'finerworks')).toBe(19.00);
     });
 
     it('falls back to custom square inch rate when area is above maximum tier', () => {
       // Area = 50x60 = 3000 sq in (above 2400)
-      // For FinerWorks: 3000 * 0.058 = 174.00
-      expect(calculateCanvasCost(50, 60, 'inch', 'finerworks')).toBe(174.00);
+      // For FinerWorks: 3000 * 0.15 = 450.00 (well above the minimum floor)
+      expect(calculateCanvasCost(50, 60, 'inch', 'finerworks')).toBe(450.00);
     });
 
     it('performs unit conversions correctly', () => {
       // Grid unit: w = cols/10, h = rows/10
       // 120 x 160 grid = 12 x 16 inches = 192 sq in
-      expect(calculateCanvasCost(120, 160, 'grid', 'lumaprints')).toBe(6.50);
+      expect(calculateCanvasCost(120, 160, 'grid', 'lumaprints')).toBe(15.00);
 
       // Cm unit: w = cm/2.54, h = cm/2.54
       // 30.48 x 40.64 cm = 12 x 16 inches = 192 sq in
-      expect(calculateCanvasCost(30.48, 40.64, 'cm', 'lumaprints')).toBe(6.50);
+      expect(calculateCanvasCost(30.48, 40.64, 'cm', 'lumaprints')).toBe(15.00);
     });
   });
 

@@ -111,6 +111,13 @@ export interface VendorConfig {
   name: string;
   baseShipping: number;
   sqInchRate: number;
+  /**
+   * Per-canvas minimum charge (dollars). Custom canvas printing has a real setup/
+   * minimum cost, so small canvases must never price below this — without it, the
+   * pure per-sq-in fallback extrapolates a ~10×11" print down to a few dollars,
+   * well under market. `calculateCanvasCost` clamps every result up to this floor.
+   */
+  minPrice: number;
   pricingPoints: PricingPoint[];
   /** Direct "door" to the provider's rolled-canvas order / image-upload page. */
   uploadUrl: string;
@@ -128,25 +135,27 @@ export const VENDOR_REGISTRY: Record<CanvasVendor, VendorConfig> = {
   lumaprints: {
     name: 'Lumaprints',
     baseShipping: 4.99,
-    sqInchRate: 0.035,
+    sqInchRate: 0.10,
+    minPrice: 14.00,
     uploadUrl: 'https://www.lumaprints.com/canvas-prints/',
     pricingPoints: [
-      { areaSqIn: 192, price: 6.50 },  // 12x16
-      { areaSqIn: 320, price: 8.50 },  // 16x20
-      { areaSqIn: 560, price: 12.00 }, // 20x28
-      { areaSqIn: 2400, price: 28.00 } // 40x60
+      { areaSqIn: 192, price: 15.00 },  // 12x16
+      { areaSqIn: 320, price: 21.00 },  // 16x20
+      { areaSqIn: 560, price: 33.00 },  // 20x28
+      { areaSqIn: 2400, price: 80.00 }  // 40x60
     ]
   },
   finerworks: {
     name: 'FinerWorks',
     baseShipping: 5.50,
-    sqInchRate: 0.058,
+    sqInchRate: 0.15,
+    minPrice: 19.00,
     uploadUrl: 'https://finerworks.com/createaprint/default.aspx',
     pricingPoints: [
-      { areaSqIn: 192, price: 11.00 },
-      { areaSqIn: 320, price: 14.00 },
-      { areaSqIn: 560, price: 19.50 },
-      { areaSqIn: 2400, price: 42.00 }
+      { areaSqIn: 192, price: 22.00 },
+      { areaSqIn: 320, price: 30.00 },
+      { areaSqIn: 560, price: 46.00 },
+      { areaSqIn: 2400, price: 110.00 }
     ]
   }
 };
@@ -211,15 +220,21 @@ export function calculateCanvasCost(
   const area = widthIn * heightIn;
   const points = config.pricingPoints;
 
+  // Compute the raw (pre-floor) price via tier match → interpolation → per-sq-in
+  // fallback, then clamp UP to the vendor minimum so a small canvas can never
+  // price below a realistic market floor (a ~10×11" print was extrapolating to a
+  // few dollars — well under any real custom-canvas rate).
+  const clamp = (raw: number) => Math.max(config.minPrice, Math.round(raw * 100) / 100);
+
   // 2. Exact tier match lookup
   const exactMatch = points.find(p => Math.abs(p.areaSqIn - area) < 0.05);
   if (exactMatch) {
-    return exactMatch.price;
+    return clamp(exactMatch.price);
   }
 
   // 3. Fallback to custom rate if area lies outside tier bounds
   if (area < points[0].areaSqIn || area > points[points.length - 1].areaSqIn) {
-    return Math.round(area * config.sqInchRate * 100) / 100;
+    return clamp(area * config.sqInchRate);
   }
 
   // 4. Perform Linear Interpolation between adjacent points
@@ -229,9 +244,9 @@ export function calculateCanvasCost(
     if (area >= p1.areaSqIn && area <= p2.areaSqIn) {
       const scaleFraction = (area - p1.areaSqIn) / (p2.areaSqIn - p1.areaSqIn);
       const interpolatedVal = p1.price + scaleFraction * (p2.price - p1.price);
-      return Math.round(interpolatedVal * 100) / 100;
+      return clamp(interpolatedVal);
     }
   }
 
-  return Math.round(area * config.sqInchRate * 100) / 100;
+  return clamp(area * config.sqInchRate);
 }
