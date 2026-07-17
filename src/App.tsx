@@ -539,6 +539,21 @@ export function App() {
   const matchCols = matchInputs.cols;
   const matchRows = matchInputs.rows;
 
+  // WR-01: the Order terminals ("Downloaded ✓" / "Cart opened ↗") assert that the
+  // on-disk artifacts and the opened cart reflect the CURRENT design. So any upstream
+  // edit that changes the committed grid OR the drill plan must invalidate both
+  // per-task done-states — otherwise a user can download / open the cart, go back to
+  // Refine, change the size / kit / exclusions / reduce / smoothing (all of which
+  // re-derive matchResult) or the drill shape (drillStyle), and return to a stale
+  // "done" claim. Keying on matchResult identity captures EVERY grid-affecting input
+  // precisely (it is the hook's memo output), so this can never drift as inputs are
+  // added; drillStyle covers the drill-cart plan. Resetting to false when already
+  // false (initial mount, or an edit before any download) is a no-op in React.
+  useEffect(() => {
+    setCanvasDownloaded(false);
+    setCartOpened(false);
+  }, [matchResult, drillStyle]);
+
   // D-02 auto-recompute: commit the given (or current live) inputs. Committing makes
   // the match hook — which keys on matchInputs — fire the EXISTING match effect exactly
   // once (no new worker path, no B2 abort-race re-entry). Callers pass the freshly
