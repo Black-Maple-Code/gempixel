@@ -95,6 +95,16 @@ export const REFINE_SIZE_PRESETS: Array<{ label: string; cols: number; rows: num
 ];
 
 /**
+ * The default post-upload size tier (Medium, tagged BEST). Anchoring the on-load default to
+ * this tier via aspectAwareGrid makes the initial grid equal the Medium RefineScreen card, so
+ * its selected-highlight lands immediately on load (reconciles the two anchoring strategies;
+ * fixes size-selection-crops-image.md note #2). Derived from REFINE_SIZE_PRESETS — no duplicate
+ * literal; the `?? [1]` fallback keeps the type non-optional under strict.
+ */
+export const DEFAULT_REFINE_PRESET =
+  REFINE_SIZE_PRESETS.find((p) => p.tag === 'BEST') ?? REFINE_SIZE_PRESETS[1];
+
+/**
  * AR-aware preset sizing (fixes size-selection-crops-image). Each REFINE_SIZE_PRESET is a
  * size/detail TIER whose meaningful number is its drill budget on the LONG axis
  * (`max(cols, rows)`). Given the loaded image's pixel dimensions this maps that long-axis
@@ -986,24 +996,22 @@ export function App() {
         setActiveProjectId(null);
         setImageName(file.name || 'Uploaded Image');
 
-        // Adjust dimensions to match aspect ratio
-        const ar = img.naturalWidth / img.naturalHeight;
-        let newRows = rows;
-        if (unit === 'grid') {
-          newRows = Math.max(1, Math.round(cols / ar));
-          setHeightInput(newRows.toString());
-        } else if (unit === 'cm') {
-          const currentWidthCm = cols / 4;
-          const newHeightCm = currentWidthCm / ar;
-          newRows = Math.max(1, Math.round(newHeightCm * 4));
-          setHeightInput(newHeightCm.toFixed(1));
-        } else if (unit === 'inch') {
-          const currentWidthInch = cols / 10;
-          const newHeightInch = currentWidthInch / ar;
-          newRows = Math.max(1, Math.round(newHeightInch * 10));
-          setHeightInput(newHeightInch.toFixed(1));
-        }
-        setRows(newRows);
+        // Default the post-upload grid to the recommended Medium size TIER mapped through
+        // aspectAwareGrid so the grid AR follows the image (no crop) AND the dims equal the
+        // Medium RefineScreen card exactly — so its selected-highlight lands on load (reconciles
+        // the two anchoring strategies; fixes size-selection-crops-image.md note #2). An
+        // exact-3:2 image reproduces 80×53 byte-for-byte because aspectAwareGrid(80,53,·)
+        // returns the preset dims at ar=1.5.
+        const { cols: defaultCols, rows: defaultRows } = aspectAwareGrid(
+          DEFAULT_REFINE_PRESET.cols,
+          DEFAULT_REFINE_PRESET.rows,
+          img.naturalWidth,
+          img.naturalHeight,
+        );
+        setCols(defaultCols);
+        setRows(defaultRows);
+        setWidthInput(String(defaultCols));
+        setHeightInput(String(defaultRows));
         setImage(img);
         // D-08 image-swap commit: EVERY successful ingest commits the new image — not
         // just the first (the prior `if (!matchResult)` guard left a same-size re-upload
@@ -1016,7 +1024,7 @@ export function App() {
         // image commit re-firing on the OLD image) cannot occur when they commit together.
         setExcludedColors(new Set());
         setSelectedPreset('custom');
-        setMatchInputs({ image: img, cols, rows: newRows });
+        setMatchInputs({ image: img, cols: defaultCols, rows: defaultRows });
 
         // Add to recent images history (limit to 5)
         setRecentImages(prev => {
