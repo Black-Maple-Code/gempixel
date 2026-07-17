@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 Phase: 26
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-17 — Completed quick task 260717-eim: compact Refine size cards + reflow Order step (top row + 3-col strip) to fit one screen
+Last activity: 2026-07-17 — Completed quick task 260717-f6b: 8-item polish batch (drop Image wrap, Title-Case CTAs, Back button, sticky Supplies summary, realistic canvas price, Advanced overflow, promote Drill shape, Drills label)
 
 Progress: [██████████] 100%
 
@@ -140,6 +140,7 @@ Progress: [██████████] 100%
 | 260717-02w | Reconcile default post-upload grid to a RefineScreen preset card: on-load default now runs aspectAwareGrid on the Medium tier (DEFAULT_REFINE_PRESET), so the correct card highlights immediately with no crop; exact-3:2 dims kept byte-identical (size-selection-crops-image.md note #2) | 2026-07-17 | f9fab53..b2f7a1f | [260717-02w-reconcile-default-post-upload-grid-to-a-](./quick/260717-02w-reconcile-default-post-upload-grid-to-a-/) |
 | 260717-dp8 | RefineScreen (step 2) UI polish: fixed-height canvas viewport (kills the top gap; rail scrolls internally), pan/zoom hint pinned to viewport bottom & visible while zooming, Back/Next made arrowless + uppercase (BACK / NEXT STEP) to match header pills, and a visible white slider track (.gem-slider) on the color-count control | 2026-07-17 | eb115b2..33bcbb3 | [260717-dp8-refinescreen-ui-polish-fixed-viewport-no](./quick/260717-dp8-refinescreen-ui-polish-fixed-viewport-no/) |
 | 260717-eim | Compact Refine size cards (px-4 py-3, 2-line layout — less empty space, whole rail fits) + reflow the Order step from a tall two-column stack into a top row (spec+finish · ship-to) plus a full-width 3-column strip (Price · downloads · drills); ship-to packed into 4 rows via a 6-col grid. Content height ~800px→~611px so the step fits one standard-height screen | 2026-07-17 | f41180d..7edeecf | [260717-eim-compact-refine-size-cards-reflow-order-s](./quick/260717-eim-compact-refine-size-cards-reflow-order-s/) |
+| 260717-f6b | 8-item cross-screen polish: remove Image-wrap finish; Title-Case Order CTAs + cap Order width (1180px centered) on wide monitors; Back is now a bordered button; step-aware page height restores the Supplies sticky order-summary; realistic canvas price via per-vendor minPrice floor (~$3.73→$14); Advanced content reachable + Drill shape promoted out of Advanced; "Drills" label on size-card counts. 392 tests green | 2026-07-17 | 699e60d..101a1ff | [260717-f6b-order-supplies-refine-polish-drop-image-](./quick/260717-f6b-order-supplies-refine-polish-drop-image-/) |
 
 ## Continuity & Handoff
 
